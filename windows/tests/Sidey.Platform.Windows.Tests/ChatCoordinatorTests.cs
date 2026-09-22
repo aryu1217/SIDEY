@@ -43,6 +43,25 @@ public sealed class ChatCoordinatorTests
     }
 
     [Fact]
+    public async Task AmbiguousCommitKeepsOriginalMessagePendingForHistoryReconciliation()
+    {
+        await using var fixture = new ChatFixture();
+        fixture.Backend.Send = (id, roomId, _) => Task.FromException<ChatMessage>(
+            new ChatCommitAmbiguousException(
+                id,
+                roomId,
+                new HttpRequestException("Response was lost.")));
+
+        await fixture.Coordinator.SendMessageAsync(fixture.Room.Id, "Reconcile me");
+
+        MessageLedgerEntry entry = Assert.Single(fixture.Coordinator.State.Messages);
+        Assert.Equal(MessageDeliveryState.Pending, entry.State);
+        Assert.Equal("Reconcile me", entry.Body);
+        Assert.Single(fixture.Bubbles.Bubbles);
+        Assert.Equal(1, fixture.Backend.Sends);
+    }
+
+    [Fact]
     public async Task ComposerFromThePreviousRoomCannotSendIntoTheNewActiveRoom()
     {
         await using var fixture = new ChatFixture();

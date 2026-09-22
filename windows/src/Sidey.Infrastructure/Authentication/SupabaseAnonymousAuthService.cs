@@ -106,8 +106,17 @@ public sealed class SupabaseAnonymousAuthService : IAuthService, IAuthSessionAcc
                 }
             }
 
-            await _credentials.DeleteAsync(CredentialKey.SupabaseSession, cancellationToken)
-                .ConfigureAwait(false);
+            try
+            {
+                await _credentials.DeleteAsync(
+                    CredentialKey.FirebaseRealtimeSession,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                await _credentials.DeleteAsync(CredentialKey.SupabaseSession, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         finally
         {

@@ -67,6 +67,19 @@ public sealed record MessageHistoryPage(
     IReadOnlyList<ChatMessage> Messages,
     MessageHistoryCursor? NextCursor);
 
+public sealed class ChatCommitAmbiguousException : Exception
+{
+    public ChatCommitAmbiguousException(Guid messageId, Guid roomId, Exception innerException)
+        : base("Chat commit outcome is ambiguous and will be reconciled.", innerException)
+    {
+        MessageId = messageId;
+        RoomId = roomId;
+    }
+
+    public Guid MessageId { get; }
+    public Guid RoomId { get; }
+}
+
 public sealed record CommerceCheckout(Guid OrderId, Uri CheckoutUri);
 
 public sealed record RealtimeConnectionStatus(
@@ -164,6 +177,7 @@ public interface IMonitorService
 public enum CredentialKey
 {
     SupabaseSession,
+    FirebaseRealtimeSession,
 }
 
 public interface ICredentialStore

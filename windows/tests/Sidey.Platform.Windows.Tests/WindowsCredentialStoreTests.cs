@@ -8,6 +8,7 @@ public sealed class WindowsCredentialStoreTests
 {
     private const string TestPrefix = "SIDEY-Test/";
     private const string RootTarget = TestPrefix + nameof(CredentialKey.SupabaseSession);
+    private const string FirebaseRootTarget = TestPrefix + nameof(CredentialKey.FirebaseRealtimeSession);
 
     [Fact]
     public async Task ExistingSingleCredentialSessionIsReadWithoutMigration()
@@ -37,6 +38,31 @@ public sealed class WindowsCredentialStoreTests
 
         Assert.Equal("refreshed-short-session", await backend.CreateStore().ReadAsync(CredentialKey.SupabaseSession));
         Assert.Single(backend.Values);
+    }
+
+    [Fact]
+    public async Task FirebaseSessionUsesIndependentAtomicChunkGeneration()
+    {
+        var backend = new FakeCredentialManager();
+        WindowsCredentialStore store = backend.CreateStore();
+        string supabase = new('s', 5000);
+        string firebase = new('f', 7000);
+        await store.WriteAsync(CredentialKey.SupabaseSession, supabase);
+
+        await store.WriteAsync(CredentialKey.FirebaseRealtimeSession, firebase);
+
+        Assert.Equal(supabase, await store.ReadAsync(CredentialKey.SupabaseSession));
+        Assert.Equal(firebase, await store.ReadAsync(CredentialKey.FirebaseRealtimeSession));
+        Assert.Contains(RootTarget, backend.Values.Keys);
+        Assert.Contains(FirebaseRootTarget, backend.Values.Keys);
+        Assert.All(backend.Values.Values, value => Assert.True(value.Length * sizeof(char) <= 2560));
+
+        await store.DeleteAsync(CredentialKey.FirebaseRealtimeSession);
+
+        Assert.Null(await store.ReadAsync(CredentialKey.FirebaseRealtimeSession));
+        Assert.Equal(supabase, await store.ReadAsync(CredentialKey.SupabaseSession));
+        Assert.DoesNotContain(backend.Values.Keys, key =>
+            key.StartsWith(FirebaseRootTarget, StringComparison.Ordinal));
     }
 
     [Theory]

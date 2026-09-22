@@ -23,6 +23,7 @@ public sealed class AccountSessionTests
         await auth.SignOutAsync();
 
         Assert.Null(credentials.SessionJson);
+        Assert.Null(credentials.FirebaseRealtimeJson);
     }
 
     [Fact]
@@ -72,6 +73,7 @@ public sealed class AccountSessionTests
             handler.RequestTargets);
         Assert.All(handler.AuthorizationSchemes, scheme => Assert.Equal("Bearer", scheme));
         Assert.Null(credentials.SessionJson);
+        Assert.Null(credentials.FirebaseRealtimeJson);
         Assert.Contains(roomId, credentials.DeletedInviteRooms);
         Assert.Equal(GoogleAuthenticationState.Required, coordinator.State.GoogleAuthentication);
         Assert.True(coordinator.State.NeedsOnboarding);
@@ -139,24 +141,44 @@ public sealed class AccountSessionTests
     private sealed class MemoryCredentials(string? sessionJson) : ICredentialStore
     {
         public string? SessionJson { get; private set; } = sessionJson;
+        public string? FirebaseRealtimeJson { get; private set; } = "firebase-realtime-session";
         public List<Guid> DeletedInviteRooms { get; } = [];
         public ValueTask<string?> ReadAsync(
             CredentialKey key,
             CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(SessionJson);
+            ValueTask.FromResult(key switch
+            {
+                CredentialKey.SupabaseSession => SessionJson,
+                CredentialKey.FirebaseRealtimeSession => FirebaseRealtimeJson,
+                _ => null,
+            });
         public ValueTask WriteAsync(
             CredentialKey key,
             string value,
             CancellationToken cancellationToken = default)
         {
-            SessionJson = value;
+            if (key == CredentialKey.SupabaseSession)
+            {
+                SessionJson = value;
+            }
+            else if (key == CredentialKey.FirebaseRealtimeSession)
+            {
+                FirebaseRealtimeJson = value;
+            }
             return ValueTask.CompletedTask;
         }
         public ValueTask DeleteAsync(
             CredentialKey key,
             CancellationToken cancellationToken = default)
         {
-            SessionJson = null;
+            if (key == CredentialKey.SupabaseSession)
+            {
+                SessionJson = null;
+            }
+            else if (key == CredentialKey.FirebaseRealtimeSession)
+            {
+                FirebaseRealtimeJson = null;
+            }
             return ValueTask.CompletedTask;
         }
         public ValueTask<string?> ReadInviteCodeAsync(

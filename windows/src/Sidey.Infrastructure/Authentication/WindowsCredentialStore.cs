@@ -37,22 +37,14 @@ public sealed class WindowsCredentialStore : ICredentialStore
         _delete = delete;
     }
 
-    private string SessionTarget => _prefix + CredentialKey.SupabaseSession;
-
     public ValueTask<string?> ReadAsync(CredentialKey key, CancellationToken cancellationToken = default) =>
-        key == CredentialKey.SupabaseSession
-            ? ReadSessionAsync(cancellationToken)
-            : _read(_prefix + key, cancellationToken);
+        ReadSessionAsync(SessionTarget(key), cancellationToken);
 
     public ValueTask WriteAsync(CredentialKey key, string value, CancellationToken cancellationToken = default) =>
-        key == CredentialKey.SupabaseSession
-            ? WriteSessionAsync(value, cancellationToken)
-            : _write(_prefix + key, value, cancellationToken);
+        WriteSessionAsync(SessionTarget(key), value, cancellationToken);
 
     public ValueTask DeleteAsync(CredentialKey key, CancellationToken cancellationToken = default) =>
-        key == CredentialKey.SupabaseSession
-            ? DeleteSessionAsync(cancellationToken)
-            : _delete(_prefix + key, cancellationToken);
+        DeleteSessionAsync(SessionTarget(key), cancellationToken);
 
     public ValueTask<string?> ReadInviteCodeAsync(Guid roomId, CancellationToken cancellationToken = default) =>
         _read(InviteTarget(roomId), cancellationToken);
@@ -63,12 +55,14 @@ public sealed class WindowsCredentialStore : ICredentialStore
     public ValueTask DeleteInviteCodeAsync(Guid roomId, CancellationToken cancellationToken = default) =>
         _delete(InviteTarget(roomId), cancellationToken);
 
-    private async ValueTask<string?> ReadSessionAsync(CancellationToken cancellationToken)
+    private async ValueTask<string?> ReadSessionAsync(
+        string target,
+        CancellationToken cancellationToken)
     {
         await s_sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            string? root = await _read(SessionTarget, cancellationToken).ConfigureAwait(false);
+            string? root = await _read(target, cancellationToken).ConfigureAwait(false);
             SessionManifest? manifest = ParseManifest(root);
             if (manifest is null)
             {
@@ -78,7 +72,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
             string[] chunks = new string[manifest.Count];
             for (int index = 0; index < chunks.Length; index++)
             {
-                chunks[index] = await _read(ChunkTarget(manifest, index), cancellationToken).ConfigureAwait(false)
+                chunks[index] = await _read(ChunkTarget(target, manifest, index), cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidDataException("Stored session is incomplete.");
             }
 
@@ -90,7 +84,10 @@ public sealed class WindowsCredentialStore : ICredentialStore
         }
     }
 
-    private async ValueTask WriteSessionAsync(string value, CancellationToken cancellationToken)
+    private async ValueTask WriteSessionAsync(
+        string target,
+        string value,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(value);
         int count = checked((int)(((long)value.Length + ChunkCharacters - 1) / ChunkCharacters));
@@ -102,7 +99,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
         await s_sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            SessionManifest? previous = ParseManifest(await _read(SessionTarget, cancellationToken).ConfigureAwait(false));
+            SessionManifest? previous = ParseManifest(await _read(target, cancellationToken).ConfigureAwait(false));
             SessionManifest? next = value.Length > ChunkCharacters ? new(Guid.NewGuid(), count) : null;
             try
             {
@@ -112,7 +109,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
                     {
                         int offset = index * ChunkCharacters;
                         string chunk = value.Substring(offset, Math.Min(ChunkCharacters, value.Length - offset));
-                        await _write(ChunkTarget(next, index), chunk, cancellationToken).ConfigureAwait(false);
+                        await _write(ChunkTarget(target, next, index), chunk, cancellationToken).ConfigureAwait(false);
                     }
                 }
 
@@ -121,15 +118,15 @@ public sealed class WindowsCredentialStore : ICredentialStore
                 string root = next is null
                     ? value
                     : $"{ManifestPrefix}{next.Generation:N}:{next.Count.ToString(CultureInfo.InvariantCulture)}";
-                await _write(SessionTarget, root, cancellationToken).ConfigureAwait(false);
+                await _write(target, root, cancellationToken).ConfigureAwait(false);
             }
             catch
             {
-                await CleanupChunksAsync(next).ConfigureAwait(false);
+                await CleanupChunksAsync(target, next).ConfigureAwait(false);
                 throw;
             }
 
-            await CleanupChunksAsync(previous).ConfigureAwait(false);
+            await CleanupChunksAsync(target, previous).ConfigureAwait(false);
         }
         finally
         {
@@ -137,15 +134,17 @@ public sealed class WindowsCredentialStore : ICredentialStore
         }
     }
 
-    private async ValueTask DeleteSessionAsync(CancellationToken cancellationToken)
+    private async ValueTask DeleteSessionAsync(
+        string target,
+        CancellationToken cancellationToken)
     {
         await s_sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            SessionManifest? previous = ParseManifest(await _read(SessionTarget, cancellationToken).ConfigureAwait(false));
+            SessionManifest? previous = ParseManifest(await _read(target, cancellationToken).ConfigureAwait(false));
             // Remove the root first so incomplete cleanup cannot revive the session.
-            await _delete(SessionTarget, cancellationToken).ConfigureAwait(false);
-            await CleanupChunksAsync(previous).ConfigureAwait(false);
+            await _delete(target, cancellationToken).ConfigureAwait(false);
+            await CleanupChunksAsync(target, previous).ConfigureAwait(false);
         }
         finally
         {
@@ -153,7 +152,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
         }
     }
 
-    private async ValueTask CleanupChunksAsync(SessionManifest? manifest)
+    private async ValueTask CleanupChunksAsync(string target, SessionManifest? manifest)
     {
         if (manifest is null)
         {
@@ -164,7 +163,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
         {
             try
             {
-                await _delete(ChunkTarget(manifest, index), CancellationToken.None).ConfigureAwait(false);
+                await _delete(ChunkTarget(target, manifest, index), CancellationToken.None).ConfigureAwait(false);
             }
             catch (Win32Exception)
             {
@@ -192,8 +191,10 @@ public sealed class WindowsCredentialStore : ICredentialStore
         return new SessionManifest(generation, count);
     }
 
-    private string ChunkTarget(SessionManifest manifest, int index) =>
-        $"{SessionTarget}/{manifest.Generation:N}/{index.ToString(CultureInfo.InvariantCulture)}";
+    private string SessionTarget(CredentialKey key) => _prefix + key;
+
+    private static string ChunkTarget(string target, SessionManifest manifest, int index) =>
+        $"{target}/{manifest.Generation:N}/{index.ToString(CultureInfo.InvariantCulture)}";
 
     private sealed record SessionManifest(Guid Generation, int Count);
 

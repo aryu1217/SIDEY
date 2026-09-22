@@ -6,6 +6,32 @@ namespace Sidey.Platform.Windows.Tests;
 public sealed class RuntimeConfigurationTests
 {
     [Theory]
+    [InlineData(null, false, RealtimeTransportMode.FirebaseV2, RealtimeTransportMode.LegacySupabase)]
+    [InlineData(null, true, RealtimeTransportMode.FirebaseV2, RealtimeTransportMode.FirebaseV2)]
+    [InlineData("automatic", true, RealtimeTransportMode.FirebaseV2, RealtimeTransportMode.FirebaseV2)]
+    [InlineData("legacy", true, RealtimeTransportMode.LegacySupabase, RealtimeTransportMode.LegacySupabase)]
+    [InlineData("firebase-v2", false, RealtimeTransportMode.FirebaseV2, RealtimeTransportMode.LegacySupabase)]
+    [InlineData("firebase-v2", true, RealtimeTransportMode.FirebaseV2, RealtimeTransportMode.FirebaseV2)]
+    public void RealtimeTransportRequiresExplicitSelectionAndReadiness(
+        string? value,
+        bool firebaseV2Ready,
+        RealtimeTransportMode requested,
+        RealtimeTransportMode effective)
+    {
+        RealtimeTransportSelection selection = RealtimeTransportConfiguration.Parse(value, firebaseV2Ready);
+
+        Assert.Equal(requested, selection.Requested);
+        Assert.Equal(effective, selection.Effective);
+    }
+
+    [Fact]
+    public void InvalidRealtimeTransportSelectionFailsClosed()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            RealtimeTransportConfiguration.Parse("firebase", firebaseV2Ready: true));
+    }
+
+    [Theory]
     [InlineData("https://example.supabase.co", true)]
     [InlineData("http://localhost:54321", true)]
     [InlineData("http://127.0.0.1:54321", true)]

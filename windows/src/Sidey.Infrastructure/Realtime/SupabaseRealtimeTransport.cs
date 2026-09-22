@@ -18,7 +18,7 @@ internal sealed record RealtimePresenceIntent(
     Guid? ActiveRoomId,
     PresenceState LocalPresence);
 
-internal sealed class SupabaseRealtimeTransport : IAsyncDisposable
+internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
 {
     private static readonly TimeSpan s_unhealthyAfter = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan s_authorizationRefreshInterval = TimeSpan.FromSeconds(30);
@@ -87,13 +87,13 @@ internal sealed class SupabaseRealtimeTransport : IAsyncDisposable
         _networkMonitor.Start();
     }
 
-    internal RealtimeConnectionStatus ConnectionStatus =>
+    public RealtimeConnectionStatus ConnectionStatus =>
         Volatile.Read(ref _lastEmittedConnectionStatus);
-    internal bool IsRecoveryPaused => Volatile.Read(ref _recoveryPaused) != 0;
+    public bool IsRecoveryPaused => Volatile.Read(ref _recoveryPaused) != 0;
 
     private event Action<RealtimeConnectionStatus>? ConnectionStatusChanged;
 
-    internal async Task<bool> RunWhileConnectedAsync(
+    public async Task<bool> RunWhileConnectedAsync(
         Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
     {
         using var interrupted = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -1284,7 +1284,7 @@ internal sealed class SupabaseRealtimeTransport : IAsyncDisposable
         return true;
     }
 
-    internal void RequestReconnect(bool userInitiated = false)
+    public void RequestReconnect(bool userInitiated = false)
     {
         if (_shutdown.IsCancellationRequested)
             return;

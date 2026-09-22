@@ -337,6 +337,12 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             return;
         }
 
+        RealtimeTransportSelection realtimeTransport = RealtimeTransportConfiguration.FromEnvironment(
+            firebaseV2Ready: true);
+        StartupDiagnostics.Stage(
+            $"realtime-transport requested={realtimeTransport.Requested} "
+            + $"effective={realtimeTransport.Effective} reason={realtimeTransport.Reason}");
+
         bool developmentCommerceEnabled = WindowsCommerceConfiguration.IsEnabled(configuration);
         AuthCallbackScheme = WindowsCommerceConfiguration.IsProduction(configuration)
             ? WindowsAuthCallback.ProductionScheme : WindowsAuthCallback.DevelopmentScheme;
@@ -379,7 +385,12 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             }
             SetState(_state with { GoogleAuthentication = GoogleAuthenticationState.Verified, ErrorMessage = null });
             ShowStartupOverlay();
-            _backend = new SupabaseBackendGateway(configuration, auth, _credentialStore);
+            _backend = new SupabaseBackendGateway(
+                configuration,
+                auth,
+                _credentialStore,
+                appVersion: typeof(AppCoordinator).Assembly.GetName().Version?.ToString(3),
+                firebaseV2Capable: realtimeTransport.Effective == RealtimeTransportMode.FirebaseV2);
         }
         var backend = (SupabaseBackendGateway)_backend;
 
@@ -947,7 +958,22 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
             if (_backend is SupabaseBackendGateway backend)
             {
-                await backend.DisposeAsync().ConfigureAwait(false);
+                try
+                {
+                    await backend.InvalidateRealtimeSessionAsync(cleanupToken).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    StartupDiagnostics.NonFatal("account-session-realtime-invalidate", exception);
+                }
+                try
+                {
+                    await backend.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    StartupDiagnostics.NonFatal("account-session-backend-dispose", exception);
+                }
             }
             _backend = null;
 
@@ -1114,6 +1140,12 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                 normalized,
                 cancellationToken);
             _messages.Confirm(confirmed);
+            PublishState();
+        }
+        catch (ChatCommitAmbiguousException)
+        {
+            // Keep the original UUID pending. Firebase notification or the next
+            // authoritative history reconciliation will confirm the same entry.
             PublishState();
         }
         catch

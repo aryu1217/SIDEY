@@ -23,7 +23,7 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     private readonly IAuthSessionAccessor _sessions;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
-    private readonly SupabaseRealtimeTransport _realtime;
+    private readonly IRealtimeTransport _realtime;
     private IReadOnlyDictionary<Guid, long> _roomEpochs = new Dictionary<Guid, long>();
     private Guid? _activeRoomId;
 
@@ -31,14 +31,41 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         SupabaseRuntimeConfiguration configuration,
         SupabaseAnonymousAuthService auth,
         ICredentialStore credentials,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        string? appVersion = null,
+        bool firebaseV2Capable = true)
+        : this(
+            configuration,
+            auth,
+            credentials,
+            httpClient,
+            realtime: null,
+            appVersion,
+            firebaseV2Capable)
+    {
+    }
+
+    internal SupabaseBackendGateway(
+        SupabaseRuntimeConfiguration configuration,
+        SupabaseAnonymousAuthService auth,
+        ICredentialStore credentials,
+        HttpClient? httpClient,
+        IRealtimeTransport? realtime,
+        string? appVersion = null,
+        bool firebaseV2Capable = true)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _sessions = auth ?? throw new ArgumentNullException(nameof(auth));
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _httpClient = httpClient ?? new HttpClient();
         _ownsHttpClient = httpClient is null;
-        _realtime = new SupabaseRealtimeTransport(configuration, auth);
+        _realtime = realtime ?? CreateRealtimeTransport(
+            configuration,
+            auth,
+            credentials,
+            _httpClient,
+            appVersion,
+            firebaseV2Capable);
     }
 
     public async Task<BackendSnapshot> FetchSnapshotAsync(CancellationToken cancellationToken = default)
@@ -280,13 +307,26 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             throw new ArgumentOutOfRangeException(nameof(catalogItemId));
         }
 
+        var parameters = new
+        {
+            p_product_kind = kind.ToString().ToLowerInvariant(),
+            p_catalog_item_id = normalized,
+        };
+        if (_realtime.UsesFirebaseChat)
+        {
+            EquippedCosmeticV2Row v2 = await RpcSingleAsync<EquippedCosmeticV2Row>(
+                "set_equipped_cosmetic_v2",
+                parameters,
+                cancellationToken).ConfigureAwait(false);
+            await _realtime.ConvergeGrantAsync(
+                RequireAccessRevision(v2.AccessRevision),
+                CancellationToken.None).ConfigureAwait(false);
+            return MapProfile(v2.Profile);
+        }
+
         DatabaseProfile row = await RpcSingleAsync<DatabaseProfile>(
             "set_equipped_cosmetic",
-            new
-            {
-                p_product_kind = kind.ToString().ToLowerInvariant(),
-                p_catalog_item_id = normalized,
-            },
+            parameters,
             cancellationToken).ConfigureAwait(false);
         return MapProfile(row);
     }
@@ -296,10 +336,26 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         ValidateRoomName(name);
-        CreateRoomRow row = await RpcSingleAsync<CreateRoomRow>(
-            "create_room",
-            new { p_name = RoomNameValidator.Normalize(name) },
-            cancellationToken).ConfigureAwait(false);
+        object parameters = new { p_name = RoomNameValidator.Normalize(name) };
+        CreateRoomRow row;
+        if (_realtime.UsesFirebaseChat)
+        {
+            CreateRoomV2Row v2 = await RpcSingleAsync<CreateRoomV2Row>(
+                "create_room_v2",
+                parameters,
+                cancellationToken).ConfigureAwait(false);
+            await _realtime.ConvergeGrantAsync(
+                RequireAccessRevision(v2.AccessRevision),
+                CancellationToken.None).ConfigureAwait(false);
+            row = new CreateRoomRow(v2.RoomId, v2.InviteCode);
+        }
+        else
+        {
+            row = await RpcSingleAsync<CreateRoomRow>(
+                "create_room",
+                parameters,
+                cancellationToken).ConfigureAwait(false);
+        }
         await _credentials.WriteInviteCodeAsync(row.RoomId, row.InviteCode, cancellationToken)
             .ConfigureAwait(false);
         BackendSnapshot snapshot = await FetchSnapshotAsync(cancellationToken).ConfigureAwait(false);
@@ -318,10 +374,30 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             throw new ArgumentException(I18n.Get("onboarding.inviteRequired"), nameof(inviteCode));
         }
 
-        JoinRoomRow row = await RpcSingleAsync<JoinRoomRow>(
-            "join_room",
-            new { p_invite_code = normalized },
-            cancellationToken).ConfigureAwait(false);
+        object parameters = new { p_invite_code = normalized };
+        JoinRoomRow row;
+        if (_realtime.UsesFirebaseChat)
+        {
+            JoinRoomV2Row v2 = await RpcSingleAsync<JoinRoomV2Row>(
+                "join_room_v2",
+                parameters,
+                cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(v2.ErrorCode))
+            {
+                throw new InvalidOperationException(I18n.Format("backend.joinFailed", v2.ErrorCode));
+            }
+            await _realtime.ConvergeGrantAsync(
+                RequireAccessRevision(v2.AccessRevision),
+                CancellationToken.None).ConfigureAwait(false);
+            row = new JoinRoomRow(v2.RoomId, v2.ErrorCode);
+        }
+        else
+        {
+            row = await RpcSingleAsync<JoinRoomRow>(
+                "join_room",
+                parameters,
+                cancellationToken).ConfigureAwait(false);
+        }
         if (!string.IsNullOrEmpty(row.ErrorCode))
         {
             throw new InvalidOperationException(I18n.Format("backend.joinFailed", row.ErrorCode));
@@ -449,11 +525,56 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             throw new ArgumentException(I18n.Get("validation.messageLength"), nameof(body));
         }
 
-        DatabaseMessage row = await RpcSingleAsync<DatabaseMessage>(
-            "send_message",
-            new { p_id = id, p_room_id = roomId, p_body = normalized },
-            cancellationToken).ConfigureAwait(false);
-        return MapMessage(row);
+        if (!_realtime.UsesFirebaseChat)
+        {
+            DatabaseMessage legacyRow = await RpcSingleAsync<DatabaseMessage>(
+                "send_message",
+                new { p_id = id, p_room_id = roomId, p_body = normalized },
+                cancellationToken).ConfigureAwait(false);
+            return MapMessage(legacyRow);
+        }
+
+        FirebaseRealtimeChatResult? committed;
+        try
+        {
+            committed = await _realtime.PublishChatAsync(
+                id,
+                roomId,
+                normalized,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (FirebaseRealtimeChatException exception) when (
+            exception.Classification == FirebaseRealtimeChatFailureClassification.CommitAmbiguous)
+        {
+            DatabaseMessage? reconciled;
+            try
+            {
+                reconciled = await ReconcileMessageAsync(
+                    id,
+                    roomId,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception reconciliationFailure)
+            {
+                throw new ChatCommitAmbiguousException(id, roomId, reconciliationFailure);
+            }
+            if (reconciled is not null)
+            {
+                return MapMessage(reconciled);
+            }
+            throw;
+        }
+
+        if (committed is null)
+        {
+            throw new InvalidDataException("Firebase chat response did not contain a committed message.");
+        }
+        return new ChatMessage(
+            committed.MessageId,
+            committed.RoomId,
+            committed.SenderId,
+            committed.Body,
+            DateTimeOffset.FromUnixTimeMilliseconds(committed.TimestampMilliseconds));
     }
 
     public Task PublishPresenceAsync(
@@ -567,6 +688,102 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         {
             _httpClient.Dispose();
         }
+    }
+
+    private static IRealtimeTransport CreateRealtimeTransport(
+        SupabaseRuntimeConfiguration configuration,
+        SupabaseAnonymousAuthService auth,
+        ICredentialStore credentials,
+        HttpClient httpClient,
+        string? appVersion,
+        bool firebaseV2Capable)
+    {
+        var legacy = new SupabaseRealtimeTransport(configuration, auth);
+        if (!firebaseV2Capable)
+        {
+            return legacy;
+        }
+
+        string version = string.IsNullOrWhiteSpace(appVersion) ? "2.0.0" : appVersion;
+        var credentialProvider = new FirebaseRealtimeCredentialProvider(
+            auth,
+            credentials,
+            httpClient);
+        var selector = new FirebaseRealtimeRolloutSelector(
+            configuration,
+            auth,
+            version,
+            httpClient);
+        var chat = new FirebaseRealtimeChatClient(credentialProvider, httpClient);
+        return new FirebaseV2RealtimeTransport(
+            legacy,
+            selector,
+            chat,
+            credentialProvider,
+            sink => new FirebaseRealtimeListener(credentialProvider, sink));
+    }
+
+    private async Task<DatabaseMessage?> FindMessageAsync(
+        Guid messageId,
+        Guid roomId,
+        CancellationToken cancellationToken)
+    {
+        DatabaseMessage[] rows = await GetAsync<DatabaseMessage[]>(
+            $"/rest/v1/messages?id=eq.{messageId:D}&room_id=eq.{roomId:D}&select=*&limit=1",
+            cancellationToken).ConfigureAwait(false);
+        return rows.SingleOrDefault();
+    }
+
+    public ValueTask InvalidateRealtimeSessionAsync(
+        CancellationToken cancellationToken = default) =>
+        _realtime.InvalidateSessionAsync(cancellationToken);
+
+    private async Task<DatabaseMessage?> ReconcileMessageAsync(
+        Guid messageId,
+        Guid roomId,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan[] delays =
+        [
+            TimeSpan.Zero,
+            TimeSpan.FromMilliseconds(250),
+            TimeSpan.FromMilliseconds(500),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(4),
+            TimeSpan.FromSeconds(8),
+            TimeSpan.FromSeconds(16),
+        ];
+        bool completedLookup = false;
+        foreach (TimeSpan delay in delays)
+        {
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            DatabaseMessage? message;
+            try
+            {
+                message = await FindMessageAsync(
+                    messageId,
+                    roomId,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException)
+            {
+                continue;
+            }
+            completedLookup = true;
+            if (message is not null)
+            {
+                return message;
+            }
+        }
+        if (!completedLookup)
+        {
+            throw new HttpRequestException("Chat reconciliation was unavailable.");
+        }
+        return null;
     }
 
     private async Task PumpEventsAsync(
@@ -1028,6 +1245,17 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         }
     }
 
+    private static string RequireAccessRevision(string? value)
+    {
+        if (value is null
+            || value.Length != 20
+            || value.Any(character => character is < '0' or > '9'))
+        {
+            throw new InvalidDataException("Realtime access revision is invalid.");
+        }
+        return value;
+    }
+
     private sealed record DatabaseProfile(
         Guid Id,
         string Nickname,
@@ -1082,7 +1310,21 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         [property: JsonPropertyName("room_id")] Guid RoomId,
         [property: JsonPropertyName("invite_code")] string InviteCode);
 
+    private sealed record CreateRoomV2Row(
+        [property: JsonPropertyName("room_id")] Guid RoomId,
+        [property: JsonPropertyName("invite_code")] string InviteCode,
+        [property: JsonPropertyName("accessRevision")] string? AccessRevision);
+
     private sealed record JoinRoomRow(
         [property: JsonPropertyName("room_id")] Guid? RoomId,
         [property: JsonPropertyName("error_code")] string? ErrorCode);
+
+    private sealed record JoinRoomV2Row(
+        [property: JsonPropertyName("room_id")] Guid? RoomId,
+        [property: JsonPropertyName("error_code")] string? ErrorCode,
+        [property: JsonPropertyName("accessRevision")] string? AccessRevision);
+
+    private sealed record EquippedCosmeticV2Row(
+        DatabaseProfile Profile,
+        [property: JsonPropertyName("accessRevision")] string? AccessRevision);
 }
