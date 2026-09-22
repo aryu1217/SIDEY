@@ -10,7 +10,7 @@ public sealed class WindowsBorderlessWindowController : IDisposable
     private const nuint SubclassId = 0x5349424C;
     private readonly WindowSubclassProcedure _windowProcedure;
     private nint _windowHandle;
-    private (double X, double Y)? _dragAnchor;
+    private DragAnchor? _dragAnchor;
     private bool _dragGripHovered;
 
     public event Action? DisplayConfigurationChanged;
@@ -44,29 +44,46 @@ public sealed class WindowsBorderlessWindowController : IDisposable
         _ = DwmSetWindowAttribute(windowHandle, 33, ref cornerPreference, sizeof(int));
     }
 
-    // All coordinates are local DIPs supplied by the captured SIDEY pointer.
-    // Avoid the modal caption move loop: it can defer WinUI updates until release.
-    public void BeginDrag(double clientX, double clientY)
+    // Track the pointer and window in physical screen pixels. Client coordinates move
+    // with the window and create a feedback loop when used to position that same window.
+    public void BeginDrag()
     {
-        if (_windowHandle != nint.Zero)
+        if (_windowHandle != nint.Zero && GetCursorPos(out NativePoint pointer))
         {
-            _dragAnchor = (clientX, clientY);
+            BeginDragAtScreenPosition(pointer.X, pointer.Y);
         }
     }
 
-    public void DragTo(double clientX, double clientY, double rasterizationScale)
+    public void DragTo()
+    {
+        if (_windowHandle != nint.Zero && GetCursorPos(out NativePoint pointer))
+        {
+            DragToScreenPosition(pointer.X, pointer.Y);
+        }
+    }
+
+    internal void BeginDragAtScreenPosition(int pointerX, int pointerY)
+    {
+        if (_windowHandle != nint.Zero && GetWindowRect(_windowHandle, out WindowRect bounds))
+        {
+            _dragAnchor = new DragAnchor(pointerX, pointerY, bounds.Left, bounds.Top);
+        }
+    }
+
+    internal void DragToScreenPosition(int pointerX, int pointerY)
     {
         if (_windowHandle == nint.Zero || _dragAnchor is not { } anchor)
         {
             return;
         }
 
-        int dx = (int)Math.Round((clientX - anchor.X) * rasterizationScale);
-        int dy = (int)Math.Round((clientY - anchor.Y) * rasterizationScale);
-        if ((dx != 0 || dy != 0) && GetWindowRect(_windowHandle, out WindowRect bounds))
+        int targetX = anchor.WindowX + pointerX - anchor.PointerX;
+        int targetY = anchor.WindowY + pointerY - anchor.PointerY;
+        if (GetWindowRect(_windowHandle, out WindowRect bounds) &&
+            (bounds.Left != targetX || bounds.Top != targetY))
         {
             // NOSIZE | NOZORDER | NOACTIVATE; update the real window on every move.
-            _ = SetWindowPos(_windowHandle, 0, bounds.Left + dx, bounds.Top + dy, 0, 0, 0x0015);
+            _ = SetWindowPos(_windowHandle, 0, targetX, targetY, 0, 0, 0x0015);
         }
     }
 
@@ -168,7 +185,20 @@ public sealed class WindowsBorderlessWindowController : IDisposable
         public int Bottom;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    private readonly record struct DragAnchor(int PointerX, int PointerY, int WindowX, int WindowY);
+
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(nint window, out WindowRect bounds);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
 }

@@ -45,13 +45,13 @@ public sealed class WindowsBorderlessWindowControllerTests
         using var frame = new WindowsBorderlessWindowController(window);
         Assert.True(DestroyWindow(window));
         frame.Dispose();
-        frame.BeginDrag(10, 10);
-        frame.DragTo(30, 40, 1);
+        frame.BeginDrag();
+        frame.DragTo();
         frame.EndDrag();
     }
 
     [Fact]
-    public void CapturedDragMovesBeforeReleaseAndStopsAfterCancellation()
+    public void ScreenAnchoredDragTracksPointerWithoutWindowCoordinateFeedback()
     {
         nint window = CreateWindowEx(0, "STATIC", "SIDEY drag test", 0x00CF0000,
             100, 100, 400, 100, 0, 0, 0, 0);
@@ -59,28 +59,34 @@ public sealed class WindowsBorderlessWindowControllerTests
         try
         {
             using var frame = new WindowsBorderlessWindowController(window);
-            frame.BeginDrag(8, 20);
-            frame.DragTo(48, 50, 1);
+            frame.BeginDragAtScreenPosition(108, 120);
+            frame.DragToScreenPosition(148, 150);
             Assert.True(GetWindowRect(window, out Rect duringDrag));
             Assert.Equal(140, duringDrag.Left);
             Assert.Equal(130, duringDrag.Top);
             Assert.Equal(400, duringDrag.Right - duringDrag.Left);
 
-            // The next local point is relative to the window's new location.
-            frame.DragTo(18, 10, 1);
+            // Every sample remains anchored to the original screen positions, even
+            // though the window itself moved after the preceding pointer event.
+            frame.DragToScreenPosition(158, 140);
             Assert.True(GetWindowRect(window, out Rect nextMove));
             Assert.Equal(150, nextMove.Left);
             Assert.Equal(120, nextMove.Top);
 
+            frame.DragToScreenPosition(158, 140);
+            Assert.True(GetWindowRect(window, out Rect repeatedMove));
+            Assert.Equal(nextMove.Left, repeatedMove.Left);
+            Assert.Equal(nextMove.Top, repeatedMove.Top);
+
             frame.EndDrag();
-            frame.DragTo(200, 200, 1);
+            frame.DragToScreenPosition(200, 200);
             Assert.True(GetWindowRect(window, out Rect afterCancel));
             Assert.Equal(nextMove.Left, afterCancel.Left);
             Assert.Equal(nextMove.Top, afterCancel.Top);
 
-            // A new press resets the grab offset, including a changed monitor scale.
-            frame.BeginDrag(4, 12);
-            frame.DragTo(14, 22, 1.5);
+            // Physical screen pixels do not need a client-DIP scale conversion.
+            frame.BeginDragAtScreenPosition(154, 132);
+            frame.DragToScreenPosition(169, 147);
             Assert.True(GetWindowRect(window, out Rect secondDrag));
             Assert.Equal(165, secondDrag.Left);
             Assert.Equal(135, secondDrag.Top);
