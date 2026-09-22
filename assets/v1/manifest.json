@@ -209,6 +209,7 @@
       "display_name": "시바견",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "macos_directory": "PixelShiba",
@@ -229,6 +230,7 @@
       "display_name": "오리",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "macos_directory": "PixelDuck",
@@ -249,6 +251,7 @@
       "display_name": "똥",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "macos_directory": "PixelPoop",
@@ -269,6 +272,7 @@
       "display_name": "떡볶이",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "macos_directory": "PixelTteokbokki",
@@ -289,6 +293,7 @@
       "display_name": "쿼카",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "macos_directory": "PixelQuokka",
@@ -326,6 +331,7 @@
       "display_name": "테니스공",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "web_directory": "store",
@@ -339,6 +345,7 @@
       "display_name": "휴지 뭉치",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "web_directory": "store",
@@ -352,6 +359,7 @@
       "display_name": "어묵꼬치",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "web_directory": "store",
@@ -365,6 +373,7 @@
       "display_name": "잎사귀",
       "supported_platforms": [
         "macos",
+        "windows",
         "checkout"
       ],
       "web_directory": "store",

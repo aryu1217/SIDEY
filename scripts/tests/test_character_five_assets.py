@@ -95,10 +95,15 @@ class ApprovedContentTests(unittest.TestCase):
         self.assertFalse(any('rubber_duck' in p['id'] for p in catalog))
         for animal in ['shiba', 'duck', 'poop', 'tteokbokki', 'quokka']:
             entry = next(p for p in catalog if p['id'] == 'character_' + animal)
+            character = next(c for c in manifest['characters'] if c['id'] == 'pixel_' + animal)
             copy = json.loads((ROOT / f'docs/reviews/character-five/copy-v1/pixel_{animal}.json').read_text())
             self.assertEqual(entry['description'], copy['character']['description'])
             self.assertEqual(entry['direct_price'], 1100)
+            self.assertIn('windows', character['supported_platforms'])
             related = [p for p in catalog if p['related_character_product_id'] == entry['id']]
             self.assertEqual(len(related), 1)
             self.assertEqual(related[0]['description'], copy['keepsake']['description'])
             self.assertNotEqual(entry['entitlement'], related[0]['entitlement'])
+            throwable = next(t for t in manifest['throwables']
+                             if t['id'] == related[0]['render_asset_id'])
+            self.assertIn('windows', throwable['supported_platforms'])
