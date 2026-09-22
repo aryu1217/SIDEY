@@ -21,7 +21,7 @@ public sealed class StoreStateGatewayTests
 
         IReadOnlyList<CommerceProductState> states = await context.Backend.GetWindowsCommerceStateAsync();
 
-        Assert.Equal(24, states.Count);
+        Assert.Equal(33, states.Count);
         Assert.Equal(WindowsCommerceCatalog.Products.Select(product => product.Id), states.Select(state => state.Product.Id));
         Assert.Equal(CommercePurchaseState.Owned, states[0].PurchaseState);
         Assert.Equal(CommercePurchaseState.Refunded, states[1].PurchaseState);

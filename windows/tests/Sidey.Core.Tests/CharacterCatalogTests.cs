@@ -8,13 +8,14 @@ namespace Sidey.Core.Tests;
 public sealed class CharacterCatalogTests
 {
     [Fact]
-    public void ProductCatalogContainsAllTwelveRenderableCharactersAndFiveSelectableCharacters()
+    public void ProductCatalogContainsAllSeventeenRenderableCharactersAndFiveSelectableCharacters()
     {
         Assert.Equal(
             [
                 "pixel_hamster", "pixel_cat", "pixel_puppy", "pixel_rabbit", "pixel_penguin",
                 "pixel_guinea_pig", "pixel_monkey", "pixel_chinchilla", "pixel_starlight_upalupa",
-                "pixel_otter", "pixel_pig", "pixel_tree",
+                "pixel_otter", "pixel_pig", "pixel_tree", "pixel_shiba", "pixel_duck", "pixel_poop",
+                "pixel_tteokbokki", "pixel_quokka",
             ],
             PixelCharacterCatalog.All.Select(character => character.Id));
         Assert.Equal(

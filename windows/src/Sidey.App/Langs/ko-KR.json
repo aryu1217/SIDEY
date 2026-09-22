@@ -236,7 +236,11 @@
       "throwable_starlight_orb": "별빛 우파루파의 별빛 구슬",
       "throwable_clam": "수달의 조개",
       "throwable_pork": "아기 돼지의 돼지고기",
-      "throwable_timber": "나무의 작은 나무"
+      "throwable_timber": "나무의 작은 나무",
+      "throwable_tennis_ball": "테니스공",
+      "throwable_tissue_ball": "휴지 뭉치",
+      "throwable_fish_cake_skewer": "어묵꼬치",
+      "throwable_leaf": "잎사귀"
     },
     "starlightUpalupaDescription": "진주빛 몸과 별빛 아가미를 가진 우파루파예요. 온라인일 때 별이 은은하게 따라다니고, 더블클릭하면 별무리가 두 겹으로 팡 터져요.",
     "guineaPigDescription": "낮고 동글동글한 몸에 비대칭 삼색 무늬가 매력인 작은 친구예요.",
@@ -279,7 +283,16 @@
       "throwable_starlight_orb": "별빛을 꾹꾹 뭉쳤어요. 하늘에서 별 하나가 없어졌다는데요?",
       "throwable_clam": "수달이 품고 다니던 조개예요. 진주는 없고, 미련은 좀 있어요.",
       "throwable_pork": "찰진 촵! 근데 옆집 꿀꿀이가 며칠 전부터 안 보이던데…?",
-      "throwable_timber": "나무가 작은 나무를 던져요. 일단 족보부터 확인해 볼까요?"
+      "throwable_timber": "나무가 작은 나무를 던져요. 일단 족보부터 확인해 볼까요?",
+      "character_shiba": "산책은 다녀왔어요. 시바는 그 사실을 인정하지 않아요.",
+      "throwable_tennis_ball": "던질 사람은 정했어요. 주워 올 사람은 아직이요.",
+      "character_duck": "오리발 내미는 데는 자신 있어요. 진짜 오리발이거든요.",
+      "character_poop": "누가 불렀는지는 모르겠지만, 일단 나왔어요.",
+      "throwable_tissue_ball": "똥휴지인지 아닌지는 모르겠어요. 일단 피하세요!",
+      "character_tteokbokki": "순한맛이라더니요. 누구 기준인지는 안 알려줬어요.",
+      "throwable_fish_cake_skewer": "드시라고 드린 건데 왜 휘두르세요?",
+      "character_quokka": "항상 웃고 있어요. 방금 잎사귀를 던진 것도 얘예요.",
+      "throwable_leaf": "쿼카의 도시락이에요. 던져도 되는지는 안 물어봤어요."
     },
     "keepsake": "애착 물건",
     "soldSeparately": "캐릭터와 별도 판매"
@@ -424,7 +437,7 @@
     "noActiveRoom": "활성 그룹 없음",
     "joinPrompt": "그룹에 참가하면 최근 메시지를 확인할 수 있습니다."
   },
-  "characters": {"hamster": "아기 햄스터", "cat": "아기 고양이", "dog": "아기 강아지", "rabbit": "아기 토끼", "penguin": "아기 펭귄", "guineaPig": "아기 기니피그", "monkey": "아기 원숭이", "chinchilla": "아기 친칠라", "starlightUpalupa": "별빛 우파루파", "otter": "아기 수달", "pig": "아기 돼지", "tree": "나무"},
+  "characters": {"hamster": "아기 햄스터", "cat": "아기 고양이", "dog": "아기 강아지", "rabbit": "아기 토끼", "penguin": "아기 펭귄", "guineaPig": "아기 기니피그", "monkey": "아기 원숭이", "chinchilla": "아기 친칠라", "starlightUpalupa": "별빛 우파루파", "otter": "아기 수달", "pig": "아기 돼지", "tree": "나무", "shiba": "시바견", "duck": "오리", "poop": "똥", "tteokbokki": "떡볶이", "quokka": "쿼카"},
   "overlay": { "currentUser": "{0} · 나" },
   "unsupported": {
     "title": "지원되지 않는 Windows 버전",

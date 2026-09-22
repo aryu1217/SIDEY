@@ -150,7 +150,11 @@
       "throwable_starlight_orb": "Starlight Axolotl’s Star Orb",
       "throwable_clam": "Otter’s Clam",
       "throwable_pork": "Baby Pig’s Pork",
-      "throwable_timber": "Little Tree’s Tiny Tree"
+      "throwable_timber": "Little Tree’s Tiny Tree",
+      "throwable_tennis_ball": "Tennis Ball",
+      "throwable_tissue_ball": "Tissue Ball",
+      "throwable_fish_cake_skewer": "Fish Cake Skewer",
+      "throwable_leaf": "Leaf"
     },
     "starlightUpalupaDescription": "A pearly little axolotl with starry gills. Tiny stars twinkle around it while it's online. Double-click to see two rings of starlight.",
     "guineaPigDescription": "A round little guinea pig with a one-of-a-kind tricolor coat.",
@@ -193,7 +197,16 @@
       "throwable_starlight_orb": "A handful of starlight. Has anyone checked if the sky is missing a star?",
       "throwable_clam": "Otter's treasured clam. No pearl inside, just a few lingering feelings.",
       "throwable_pork": "A satisfying slap! Say… has anyone seen the pig next door lately?",
-      "throwable_timber": "A tree throwing a tree. Perhaps we should check the family tree first."
+      "throwable_timber": "A tree throwing a tree. Perhaps we should check the family tree first.",
+      "character_shiba": "Went for a walk. Shiba refuses to admit it.",
+      "throwable_tennis_ball": "The thrower is decided. The retriever isn't.",
+      "character_duck": "An expert at playing innocent. Those are real duck feet, after all.",
+      "character_poop": "Not sure who called, but here it is.",
+      "throwable_tissue_ball": "No one knows whether it's used tissue. Dodge first!",
+      "character_tteokbokki": "They said it was mild. They never said by whose standards.",
+      "throwable_fish_cake_skewer": "It was offered as food. Why are you swinging it?",
+      "character_quokka": "Always smiling. Also the one who just threw that leaf.",
+      "throwable_leaf": "Quokka's lunchbox. We didn't ask if it was okay to throw."
     },
     "keepsake": "Keepsake",
     "soldSeparately": "Sold separately from the character"
@@ -309,7 +322,7 @@
   "composer": { "dragTooltip": "Drag to move the input window", "closeTooltip": "Close message composer", "placeholder": "Type a message…", "sendTooltip": "Send message", "activeRoomRequired": "Set up your profile and choose a group to send a message." },
   "tray": { "hotkeyRegistrationFailedBody": "These shortcuts are unavailable: {0}. Another app may be using them. Use the tray menu instead.", "open": "Open", "hideOverlay": "Hide Overlay", "showOverlay": "Show Overlay", "compose": "Compose Message…", "noGroups": "No connected groups", "activeGroup": "Active Group", "quietMode": "Quiet Mode", "history": "Recent History…", "store": "Store…", "groups": "Group Settings…", "startup": "Start at Sign-in", "checkUpdates": "Check for Updates…", "settings": "Settings…", "exit": "Exit", "unreadTooltip": "SIDEY · {0} unread messages", "connectionFailedTitle": "SIDEY Disconnected", "connectionFailedBody": "Select Reconnect in Connection. If SIDEY still cannot connect, contact us with a diagnostic log.", "updateLatest": "You're using the latest version.", "updateAvailable": "An update is available. {0}", "updateInstalled": "SIDEY was updated to {0}. Click to see what changed.", "updateCheckFailed": "Couldn't check for updates. Please try again shortly." },
   "history": { "retentionNotice": "Messages are automatically deleted from the server after 3 days.", "title": "{0} · Message History", "empty": "No messages yet.", "emptyDescription": "Recent messages from this group will appear here.", "sent": "Sent", "delivered": "Delivered", "read": "Read", "recentTitle": "Recent Messages", "roomTitle": "Recent Messages · {0}", "retryDescription": "Please try opening your message history again in a moment.", "unknownUser": "Unknown member", "sending": "Sending", "failed": "Send failed", "loading": "Loading recent messages…", "loadingMore": "Loading earlier messages…", "initialFailed": "Couldn’t load message history", "loadMoreFailed": "Couldn’t load earlier messages", "retry": "Try Again", "exhausted": "You’ve reached the end of the last 3 days", "noActiveRoom": "No active group", "joinPrompt": "Join a group to see recent messages." },
-  "characters": {"hamster": "Baby Hamster", "cat": "Kitten", "dog": "Puppy", "rabbit": "Bunny", "penguin": "Baby Penguin", "guineaPig": "Baby Guinea Pig", "monkey": "Baby Monkey", "chinchilla": "Baby Chinchilla", "starlightUpalupa": "Starlight Axolotl", "otter": "Baby Otter", "pig": "Baby Pig", "tree": "Tree"},
+  "characters": {"hamster": "Baby Hamster", "cat": "Kitten", "dog": "Puppy", "rabbit": "Bunny", "penguin": "Baby Penguin", "guineaPig": "Baby Guinea Pig", "monkey": "Baby Monkey", "chinchilla": "Baby Chinchilla", "starlightUpalupa": "Starlight Axolotl", "otter": "Baby Otter", "pig": "Baby Pig", "tree": "Tree", "shiba": "Shiba Inu", "duck": "Duck", "poop": "Poop", "tteokbokki": "Tteokbokki", "quokka": "Quokka"},
   "overlay": { "currentUser": "{0} · Me" },
   "unsupported": { "title": "Unsupported Windows Version", "description": "SIDEY requires Windows 10 1809 (build 17763) or later on x64.", "windowTitle": "SIDEY — Unsupported Windows" },
   "dialogs": { "rotateInviteTitle": "Create a new invite code?", "rotateInviteBody": "The existing code will be revoked immediately. This cannot be undone.", "rotateInvitePrimary": "Create New Code", "roomNamePlaceholder": "Group name, 1–20 characters", "removeMemberTitle": "Remove ‘{0}’?", "removeMemberBody": "This member will no longer be able to access the group or its message history.", "removeMemberPrimary": "Remove", "leaveRoomTitle": "Leave ‘{0}’?", "leaveRoomBody": "You will no longer be able to access this group or its recent messages.", "leaveOwnedRoomBody": "The earliest remaining member will become the owner. If no members remain, the group will be deleted.", "leaveRoomPrimary": "Leave", "deleteRoomTitle": "Delete ‘{0}’?", "deleteRoomBody": "This will remove everyone from the group and delete its messages. This can't be undone.", "deleteRoomContinue": "Continue", "deleteRoomFinalTitle": "Permanently delete this group?", "deleteRoomFinalBody": "‘{0}’ and all its messages will be permanently deleted now.", "updateTitle": "An Update Is Available", "updateBody": "Download SIDEY {0}?", "download": "Download", "later": "Later" },

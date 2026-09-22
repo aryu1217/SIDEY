@@ -143,7 +143,11 @@
       "throwable_starlight_orb": "星光美西螈的星光球",
       "throwable_clam": "水獭的贝壳",
       "throwable_pork": "小猪的猪肉",
-      "throwable_timber": "小树的小小树"
+      "throwable_timber": "小树的小小树",
+      "throwable_tennis_ball": "网球",
+      "throwable_tissue_ball": "纸巾团",
+      "throwable_fish_cake_skewer": "鱼饼串",
+      "throwable_leaf": "叶子"
     },
     "starlightUpalupaDescription": "珍珠色的小美西螈有着星光般的鳃。在线时会有小星星在身边闪烁，双击后还会绽放两圈星光。",
     "guineaPigDescription": "圆滚滚的小豚鼠，独特的三色花纹格外可爱。",
@@ -186,7 +190,16 @@
       "throwable_starlight_orb": "把星光揉成了一团。听说天上少了一颗星？",
       "throwable_clam": "水獭珍爱的贝壳。里面没有珍珠，倒是有点舍不得。",
       "throwable_pork": "啪！话说，最近是不是没见到隔壁的小猪？",
-      "throwable_timber": "小树扔小树。要不先查查家谱？"
+      "throwable_timber": "小树扔小树。要不先查查家谱？",
+      "character_shiba": "已经出去散过步了。柴犬就是不肯承认。",
+      "throwable_tennis_ball": "扔球的人定好了，捡球的人还没有。",
+      "character_duck": "装无辜最拿手，毕竟真的长着鸭脚。",
+      "character_poop": "不知道是谁叫的，不过先出来了。",
+      "throwable_tissue_ball": "不知道是不是用过的纸巾，先躲开再说！",
+      "character_tteokbokki": "明明说是微辣，却没说是谁的标准。",
+      "throwable_fish_cake_skewer": "本来是给你吃的，为什么要挥来挥去？",
+      "character_quokka": "总是在笑。刚才扔叶子的也是它。",
+      "throwable_leaf": "这是短尾矮袋鼠的午餐。还没问过能不能扔。"
     },
     "keepsake": "心爱之物",
     "soldSeparately": "与角色分开出售"
@@ -302,7 +315,7 @@
   "composer": { "dragTooltip": "拖动以移动输入窗口", "closeTooltip": "关闭消息输入框", "placeholder": "输入消息…", "sendTooltip": "发送消息", "activeRoomRequired": "请先设置个人资料并选择一个群组。" },
   "tray": { "hotkeyRegistrationFailedBody": "以下快捷键不可用：{0}。可能已被其他应用占用，请使用托盘菜单。", "open": "打开", "hideOverlay": "隐藏浮层", "showOverlay": "显示浮层", "compose": "编写消息…", "noGroups": "没有已连接的群组", "activeGroup": "当前群组", "quietMode": "安静模式", "history": "最近消息…", "store": "商店…", "groups": "群组设置…", "startup": "登录时启动", "checkUpdates": "检查更新…", "settings": "设置…", "exit": "退出 SIDEY", "unreadTooltip": "SIDEY · {0} 条未读消息", "connectionFailedTitle": "SIDEY 连接已断开", "connectionFailedBody": "请在连接状态中选择“重新连接”。如果 SIDEY 仍无法连接，请附上诊断日志联系我们。", "updateLatest": "已是最新版本。", "updateAvailable": "有可用更新。{0}", "updateInstalled": "SIDEY 已更新至 {0}。点击查看更新内容。", "updateCheckFailed": "无法检查更新，请稍后重试。" },
   "history": { "retentionNotice": "消息会在 3 天后从服务器自动删除。", "title": "{0} · 消息记录", "empty": "暂无消息", "emptyDescription": "此群组的最近消息会显示在这里。", "sent": "已发送", "delivered": "已送达", "read": "已读", "recentTitle": "最近消息", "roomTitle": "最近消息 · {0}", "retryDescription": "请稍后重新打开消息记录。", "unknownUser": "未知成员", "sending": "正在发送", "failed": "发送失败", "loading": "正在加载最近消息…", "loadingMore": "正在加载更早的消息…", "initialFailed": "无法加载消息记录", "loadMoreFailed": "无法加载更早的消息", "retry": "重试", "exhausted": "最近 3 天的消息已全部显示", "noActiveRoom": "没有当前群组", "joinPrompt": "加入群组后即可查看最近消息。" },
-  "characters": {"hamster": "仓鼠宝宝", "cat": "猫咪宝宝", "dog": "狗狗宝宝", "rabbit": "兔兔宝宝", "penguin": "企鹅宝宝", "guineaPig": "豚鼠宝宝", "monkey": "猴子宝宝", "chinchilla": "龙猫宝宝", "starlightUpalupa": "星光美西螈", "otter": "小水獭", "pig": "小猪", "tree": "小树"},
+  "characters": {"hamster": "仓鼠宝宝", "cat": "猫咪宝宝", "dog": "狗狗宝宝", "rabbit": "兔兔宝宝", "penguin": "企鹅宝宝", "guineaPig": "豚鼠宝宝", "monkey": "猴子宝宝", "chinchilla": "龙猫宝宝", "starlightUpalupa": "星光美西螈", "otter": "小水獭", "pig": "小猪", "tree": "小树", "shiba": "柴犬", "duck": "鸭子", "poop": "便便", "tteokbokki": "辣炒年糕", "quokka": "短尾矮袋鼠"},
   "overlay": { "currentUser": "{0} · 我" },
   "unsupported": { "title": "不受支持的 Windows 版本", "description": "SIDEY 需要 x64 版 Windows 10 1809（内部版本 17763）或更高版本。", "windowTitle": "SIDEY — 不受支持的 Windows" },
   "dialogs": { "rotateInviteTitle": "要生成新邀请码吗？", "rotateInviteBody": "现有邀请码会立即失效，此操作无法撤销。", "rotateInvitePrimary": "生成新邀请码", "roomNamePlaceholder": "群组名称，1–20 个字符", "removeMemberTitle": "要移出“{0}”吗？", "removeMemberBody": "此成员将无法再访问群组和已有消息。", "removeMemberPrimary": "移出", "leaveRoomTitle": "要退出“{0}”吗？", "leaveRoomBody": "你将无法再访问此群组和已有消息。", "leaveOwnedRoomBody": "群主会转交给最早加入的剩余成员，你也将无法再访问群组和已有消息。", "leaveRoomPrimary": "退出", "deleteRoomTitle": "要删除“{0}”吗？", "deleteRoomBody": "所有成员和消息将被永久删除，且无法恢复。", "deleteRoomContinue": "继续", "deleteRoomFinalTitle": "要永久删除此群组吗？", "deleteRoomFinalBody": "“{0}”及其所有消息将立即被永久删除。", "updateTitle": "有可用更新", "updateBody": "要下载 SIDEY {0} 吗？", "download": "下载", "later": "以后再说" },

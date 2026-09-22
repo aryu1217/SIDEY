@@ -95,7 +95,7 @@ public sealed class CharacterFeedbackTests
     [Fact]
     public void SoundMappingUsesTheEquippedObjectOrTheCommonBall()
     {
-        Assert.Equal(15, ImpactSoundCatalog.Ids.Distinct().Count());
+        Assert.Equal(19, ImpactSoundCatalog.Ids.Distinct().Count());
         Assert.Equal("patch_soft_ball", ImpactSoundCatalog.Resolve("pixel_monkey", null));
         Assert.Equal("banana", ImpactSoundCatalog.Resolve("pixel_hamster", "throwable_banana"));
         Assert.Equal("clam", ImpactSoundCatalog.Resolve("pixel_tree", "throwable_clam"));

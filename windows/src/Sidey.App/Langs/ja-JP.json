@@ -143,7 +143,11 @@
       "throwable_starlight_orb": "ウーパールーパーの星玉",
       "throwable_clam": "カワウソの貝",
       "throwable_pork": "こぶたの豚肉",
-      "throwable_timber": "小さな木のちび木"
+      "throwable_timber": "小さな木のちび木",
+      "throwable_tennis_ball": "テニスボール",
+      "throwable_tissue_ball": "ティッシュ玉",
+      "throwable_fish_cake_skewer": "おでん串",
+      "throwable_leaf": "葉っぱ"
     },
     "starlightUpalupaDescription": "真珠色の体に星のようなエラを持つウーパールーパー。オンライン中は小さな星がきらめき、ダブルクリックすると二重の星の輪が広がります。",
     "guineaPigDescription": "ころんとまあるいモルモット。左右で違う三毛模様がチャームポイントです。",
@@ -186,7 +190,16 @@
       "throwable_starlight_orb": "星明かりをぎゅっと丸めました。空の星がひとつ減ったそうですが？",
       "throwable_clam": "大事に抱えていた貝です。真珠はないけれど、未練は少しあります。",
       "throwable_pork": "ぺちっ！ところで、お隣のぶたさんを最近見かけませんね…？",
-      "throwable_timber": "木が木を投げます。まずは家系図から確認しましょうか。"
+      "throwable_timber": "木が木を投げます。まずは家系図から確認しましょうか。",
+      "character_shiba": "散歩には行きました。柴犬はその事実を認めません。",
+      "throwable_tennis_ball": "投げる人は決まりました。拾いに行く人はまだです。",
+      "character_duck": "しらばっくれるのは得意です。本物のアヒルの足ですから。",
+      "character_poop": "誰に呼ばれたのか分かりませんが、とりあえず出てきました。",
+      "throwable_tissue_ball": "使用済みかどうかは分かりません。とにかく避けて！",
+      "character_tteokbokki": "辛くないと言っていたのに。誰基準かは教えてくれませんでした。",
+      "throwable_fish_cake_skewer": "食べてくださいと渡したのに、どうして振り回すんですか？",
+      "character_quokka": "いつも笑っています。さっき葉っぱを投げたのもこの子です。",
+      "throwable_leaf": "クオッカのお弁当です。投げていいかは聞いていません。"
     },
     "keepsake": "お気に入りの品",
     "soldSeparately": "キャラクターとは別売り"
@@ -302,7 +315,7 @@
   "composer": { "dragTooltip": "ドラッグして入力ウィンドウを移動", "closeTooltip": "メッセージ入力欄を閉じる", "placeholder": "メッセージを入力…", "sendTooltip": "メッセージを送信", "activeRoomRequired": "プロフィールを設定して、表示するグループを選んでください。" },
   "tray": { "hotkeyRegistrationFailedBody": "次のショートカットは使用できません：{0}。他のアプリで使用されている可能性があります。トレイメニューをご利用ください。", "open": "開く", "hideOverlay": "オーバーレイを隠す", "showOverlay": "オーバーレイを表示", "compose": "メッセージを書く…", "noGroups": "接続中のグループなし", "activeGroup": "表示中のグループ", "quietMode": "サイレントモード", "history": "最近のメッセージ…", "store": "ストア…", "groups": "グループ設定…", "startup": "サインイン時に自動起動", "checkUpdates": "アップデートを確認…", "settings": "設定…", "exit": "終了", "unreadTooltip": "SIDEY · 未読 {0}件", "connectionFailedTitle": "SIDEYの接続が切れました", "connectionFailedBody": "接続状態で「再接続」を選んでください。それでも接続できない場合は、診断ログを添えてお問い合わせください。", "updateLatest": "最新バージョンです。", "updateAvailable": "アップデートがあります。{0}", "updateInstalled": "SIDEY {0} へのアップデートが完了しました。クリックして変更内容を確認できます。", "updateCheckFailed": "アップデートを確認できませんでした。しばらくしてからお試しください。" },
   "history": { "retentionNotice": "メッセージは3日後にサーバーから自動削除されます。", "title": "{0} · メッセージ履歴", "empty": "まだメッセージがありません。", "emptyDescription": "このグループの最近のメッセージがここに表示されます。", "sent": "送信済み", "delivered": "配信済み", "read": "既読", "recentTitle": "最近のメッセージ", "roomTitle": "最近のメッセージ · {0}", "retryDescription": "しばらくしてから履歴を開き直してください。", "unknownUser": "不明なユーザー", "sending": "送信中", "failed": "送信失敗", "loading": "最近のメッセージを読み込み中…", "loadingMore": "以前のメッセージを読み込み中…", "initialFailed": "メッセージ履歴を読み込めませんでした", "loadMoreFailed": "以前のメッセージを読み込めませんでした", "retry": "再試行", "exhausted": "過去3日分の履歴はここまでです", "noActiveRoom": "表示中のグループがありません", "joinPrompt": "グループに参加すると、最近のメッセージを確認できます。" },
-  "characters": {"hamster": "ちびハムスター", "cat": "子ねこ", "dog": "子いぬ", "rabbit": "子うさぎ", "penguin": "ペンギンのヒナ", "guineaPig": "ちびモルモット", "monkey": "子ざる", "chinchilla": "ちびチンチラ", "starlightUpalupa": "星あかりのウーパールーパー", "otter": "赤ちゃんラッコ", "pig": "子ぶた", "tree": "木"},
+  "characters": {"hamster": "ちびハムスター", "cat": "子ねこ", "dog": "子いぬ", "rabbit": "子うさぎ", "penguin": "ペンギンのヒナ", "guineaPig": "ちびモルモット", "monkey": "子ざる", "chinchilla": "ちびチンチラ", "starlightUpalupa": "星あかりのウーパールーパー", "otter": "赤ちゃんラッコ", "pig": "子ぶた", "tree": "木", "shiba": "柴犬", "duck": "アヒル", "poop": "うんち", "tteokbokki": "トッポッキ", "quokka": "クオッカ"},
   "overlay": { "currentUser": "{0} · 自分" },
   "unsupported": { "title": "対応していないWindowsです", "description": "SIDEYにはWindows 10 1809（ビルド17763）以降のx64版が必要です。", "windowTitle": "SIDEY — 非対応のWindows" },
   "dialogs": { "rotateInviteTitle": "招待コードを再発行しますか？", "rotateInviteBody": "現在のコードはすぐに無効になります。この操作は取り消せません。", "rotateInvitePrimary": "再発行", "roomNamePlaceholder": "グループ名（1〜20文字）", "removeMemberTitle": "「{0}」を退出させますか？", "removeMemberBody": "このメンバーはグループや過去のメッセージにアクセスできなくなります。", "removeMemberPrimary": "退出させる", "leaveRoomTitle": "「{0}」から退出しますか？", "leaveRoomBody": "このグループや最近のメッセージにアクセスできなくなります。", "leaveOwnedRoomBody": "残ったメンバーのうち、最も早く参加した人がオーナーになります。誰も残らない場合は、グループが削除されます。", "leaveRoomPrimary": "退出", "deleteRoomTitle": "「{0}」を削除しますか？", "deleteRoomBody": "メンバー情報とメッセージがサーバーから削除されます。この操作は取り消せません。", "deleteRoomContinue": "続ける", "deleteRoomFinalTitle": "このグループを完全に削除しますか？", "deleteRoomFinalBody": "「{0}」とすべてのメッセージが、今すぐ完全に削除されます。", "updateTitle": "新しいアップデートがあります", "updateBody": "SIDEY {0}をダウンロードしますか？", "download": "ダウンロード", "later": "あとで" },

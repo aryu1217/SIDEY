@@ -21,6 +21,11 @@ public sealed class CharacterThrowAssetTests
             ["Characters/pixel_monkey/throw_hit"] = "059a288dde75695febec8a42303dc63f126636b094e3896b795b6a4ac1cce39a",
             ["Characters/pixel_chinchilla/throw_hit"] = "a6dd2b4f1837812bc9fd0d979fe379c4362ed8018b9d5e6991e5c28d53265b02",
             ["Characters/pixel_starlight_upalupa/throw_hit"] = "7a9bae8b1359f432857e026c972e3bc99777539ce7cfff89bc01e95d1938de75",
+            ["Characters/pixel_shiba/throw_hit"] = "0e2a54c5d53dd827526afca86ab3ec073f860da21ade1b1289b864c30f5a0e87",
+            ["Characters/pixel_duck/throw_hit"] = "ad802bb86d51eed5e2e5a1208da93503ff30c3886c5e21e8e40b86494a78881f",
+            ["Characters/pixel_poop/throw_hit"] = "2dfe350847ee18096f9e14431d573bf840f1445a4cef459622d77ca97760fc50",
+            ["Characters/pixel_tteokbokki/throw_hit"] = "f0f71c0d3843662a7ba80faf8c6476257adda33547e325ceea2031885ff5c5fc",
+            ["Characters/pixel_quokka/throw_hit"] = "ab43e2997d6e869ee6256a22a42f13ff76fc7b4f6a411f940319d7e98ab7a6f9",
             ["Throwables/patch_soft_ball/sprite"] = "cdde7f417c5d8d82d0f4df6b03fa8e7d494d98a37d75aa66699505d7c87c53fe",
             ["Throwables/mini_paprika/sprite"] = "85b8d0525a865e531882a736561e9b7c4fbb6a2c3f80d91b456c4c4a7425724d",
             ["Throwables/banana/sprite"] = "9cfca454ff6305fdd374c08f64c3c21e3af278166ffe15f7f81a183bb214f138",
@@ -29,6 +34,10 @@ public sealed class CharacterThrowAssetTests
             ["Throwables/throwable_bouncy_heart/sprite"] = "8474458c5d810a598c16a7f74bbfecf65300d7fb2c55aaaf0cabfa0399945305",
             ["Throwables/throwable_toy_cannon/sprite"] = "c42c472f216ec4d291a41562dfaf6a28204625133961a5a225198daf87459bef",
             ["Throwables/throwable_squeaky_duck/sprite"] = "3b6935398d41b6d1cd5efa922392dbf4864782deb9880c5d0f10885e00906e7a",
+            ["Throwables/tennis_ball/sprite"] = "19c1a71275fd2e5be5be0b39ebd7be95d960f80ac65dd629aedd885b64f89fc3",
+            ["Throwables/tissue_ball/sprite"] = "ae0a3d483f6a606b4dc35bdac173044720668679f6462e36ff19720334dea975",
+            ["Throwables/fish_cake_skewer/sprite"] = "bdcfc04e33f3cf4f45305aa9fbf6c6fed70b515fe826823c890ccbb5e28340fd",
+            ["Throwables/leaf/sprite"] = "b0a419e6659ded829130ec7d0be92d0b693ccd1cdc158aa8aabbd8b24936173e",
         };
 
     private static readonly IReadOnlyDictionary<string, string> s_cosmeticBgraHashes =
@@ -38,6 +47,15 @@ public sealed class CharacterThrowAssetTests
             ["Throwables/throwable_toy_cannon/sprite"] = "f685f7eaf078c1f800bbcd76525e717c7ebb72ae93f8c031fa2d4250b84969d4",
             ["Throwables/throwable_toy_cannon/emitter"] = "a7801effb2e7117ca7f2fc386c1f1e9bfddcf8aa70df3328312f573a84d890da",
             ["Throwables/throwable_squeaky_duck/sprite"] = "2456adbd1f17ea4b831b4d58bb510c3a9a663a7aa2a36c030f286ab4e9ee31f9",
+            ["Characters/pixel_shiba/throw_hit"] = "3640fbb89e5f45087458e1c2ba428fa35c62eddfbd2be5a396ac4180f0756548",
+            ["Characters/pixel_duck/throw_hit"] = "b29aa940f3094a22e3553791a454913716f1c25e9962c718258d4cd3cb08cf93",
+            ["Characters/pixel_poop/throw_hit"] = "1a83d67282a48c2b432656b4843524a10bfffec3d47d3390089db236ec317dba",
+            ["Characters/pixel_tteokbokki/throw_hit"] = "cf513ed3cc6d581385c98e1f6f3f4e2403b3643ef02e5f64314138e62b642b8d",
+            ["Characters/pixel_quokka/throw_hit"] = "d7c7779507c689026adb0a77b8a2d6ca61fdafe91ca2f37a3bb11b02b0b88398",
+            ["Throwables/tennis_ball/sprite"] = "3c4c13ab951ce13d138e94233a3d954dffdbb35aef53c8547978183a9567b418",
+            ["Throwables/tissue_ball/sprite"] = "30aeb15b7ffc56982ed3af71eb7908469949dc4c7b80b18f089b5653d940d65f",
+            ["Throwables/fish_cake_skewer/sprite"] = "f40f0ab9d981835201372015a3bc3961892bcc037edd7cda3937f71acd3664ca",
+            ["Throwables/leaf/sprite"] = "b16c4c00835d7eaac04307983271ce931207acabbb89e8d3d688f4f44b59f137",
         };
 
     [Fact]

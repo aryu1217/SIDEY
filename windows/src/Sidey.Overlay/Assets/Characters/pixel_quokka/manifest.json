@@ -1,0 +1,46 @@
+{
+  "character_id": "pixel_quokka",
+  "display_name": "쿼카",
+  "legacy_aliases": [],
+  "frame_pixel_size": [
+    24,
+    24
+  ],
+  "render_dip_size": [
+    48,
+    48
+  ],
+  "sheet_pixel_size": [
+    240,
+    24
+  ],
+  "foot_baseline_pixel": 3,
+  "filtering": "nearest",
+  "animations": {
+    "idle": [
+      0,
+      1
+    ],
+    "walk": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "doze": [
+      6,
+      7
+    ],
+    "offline": [
+      8,
+      9
+    ]
+  },
+  "sha256": "55965cec0be9ac26787c255c92dd6ca5300164a505e12e506be2f87c010dcf3a",
+  "runtime_bgra": {
+    "byte_order": "BGRA",
+    "alpha": "straight",
+    "byte_length": 23040,
+    "sha256": "1ad17e381cbfc500a7e8885888cdeb2693aa31efe555cdabee85dab235ca522b"
+  }
+}

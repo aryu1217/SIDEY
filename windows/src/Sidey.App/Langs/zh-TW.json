@@ -143,7 +143,11 @@
       "throwable_starlight_orb": "星光六角恐龍的星光球",
       "throwable_clam": "水獺的貝殼",
       "throwable_pork": "小豬的豬肉",
-      "throwable_timber": "小樹的小小樹"
+      "throwable_timber": "小樹的小小樹",
+      "throwable_tennis_ball": "網球",
+      "throwable_tissue_ball": "衛生紙球",
+      "throwable_fish_cake_skewer": "魚板串",
+      "throwable_leaf": "葉子"
     },
     "starlightUpalupaDescription": "珍珠色的小六角恐龍有著星光般的鰓。上線時，小星星會在身邊閃爍；按兩下還會綻放兩圈星光。",
     "guineaPigDescription": "圓滾滾的小天竺鼠，獨一無二的三色花紋格外可愛。",
@@ -186,7 +190,16 @@
       "throwable_starlight_orb": "把星光揉成了一團。聽說天上少了一顆星？",
       "throwable_clam": "水獺珍愛的貝殼。裡面沒有珍珠，倒是有點捨不得。",
       "throwable_pork": "啪！話說，最近是不是沒見到隔壁的小豬？",
-      "throwable_timber": "小樹丟小樹。要不先查查家譜？"
+      "throwable_timber": "小樹丟小樹。要不先查查家譜？",
+      "character_shiba": "已經出去散過步了。柴犬就是不肯承認。",
+      "throwable_tennis_ball": "丟球的人決定了，撿球的人還沒有。",
+      "character_duck": "裝無辜最拿手，畢竟真的長著鴨腳。",
+      "character_poop": "不知道是誰叫的，不過先出來了。",
+      "throwable_tissue_ball": "不知道是不是用過的衛生紙，先躲開再說！",
+      "character_tteokbokki": "明明說是微辣，卻沒說是誰的標準。",
+      "throwable_fish_cake_skewer": "本來是給你吃的，為什麼要揮來揮去？",
+      "character_quokka": "總是在笑。剛才丟葉子的也是牠。",
+      "throwable_leaf": "這是短尾矮袋鼠的午餐。還沒問過能不能丟。"
     },
     "keepsake": "心愛之物",
     "soldSeparately": "與角色分開販售"
@@ -302,7 +315,7 @@
   "composer": { "dragTooltip": "拖曳以移動輸入視窗", "closeTooltip": "關閉訊息輸入框", "placeholder": "輸入訊息…", "sendTooltip": "傳送訊息", "activeRoomRequired": "請先設定個人檔案並選擇一個群組。" },
   "tray": { "hotkeyRegistrationFailedBody": "以下快捷鍵無法使用：{0}。可能已被其他應用程式使用，請使用系統匣選單。", "open": "開啟", "hideOverlay": "隱藏浮動層", "showOverlay": "顯示浮動層", "compose": "撰寫訊息…", "noGroups": "沒有已連線的群組", "activeGroup": "目前群組", "quietMode": "安靜模式", "history": "最近訊息…", "store": "商店…", "groups": "群組設定…", "startup": "登入時啟動", "checkUpdates": "檢查更新…", "settings": "設定…", "exit": "結束 SIDEY", "unreadTooltip": "SIDEY · {0} 則未讀訊息", "connectionFailedTitle": "SIDEY 連線已中斷", "connectionFailedBody": "請在連線狀態中選擇「重新連線」。如果 SIDEY 仍無法連線，請附上診斷記錄與我們聯絡。", "updateLatest": "目前已是最新版本。", "updateAvailable": "有可用的更新。{0}", "updateInstalled": "SIDEY 已更新至 {0}。按一下即可查看更新內容。", "updateCheckFailed": "無法檢查更新，請稍後再試。" },
   "history": { "retentionNotice": "訊息會在 3 天後自動從伺服器刪除。", "title": "{0} · 訊息記錄", "empty": "尚無訊息", "emptyDescription": "此群組的最近訊息會顯示在這裡。", "sent": "已傳送", "delivered": "已送達", "read": "已讀", "recentTitle": "最近訊息", "roomTitle": "最近訊息 · {0}", "retryDescription": "請稍後重新開啟訊息記錄。", "unknownUser": "未知成員", "sending": "正在傳送", "failed": "傳送失敗", "loading": "正在載入最近訊息…", "loadingMore": "正在載入較早的訊息…", "initialFailed": "無法載入訊息記錄", "loadMoreFailed": "無法載入較早的訊息", "retry": "重試", "exhausted": "最近 3 天的訊息已全部顯示", "noActiveRoom": "沒有目前群組", "joinPrompt": "加入群組後即可查看最近訊息。" },
-  "characters": {"hamster": "倉鼠寶寶", "cat": "小貓", "dog": "小狗", "rabbit": "小兔子", "penguin": "企鵝寶寶", "guineaPig": "天竺鼠寶寶", "monkey": "小猴子", "chinchilla": "龍貓寶寶", "starlightUpalupa": "星光六角恐龍", "otter": "小水獺", "pig": "小豬", "tree": "小樹"},
+  "characters": {"hamster": "倉鼠寶寶", "cat": "小貓", "dog": "小狗", "rabbit": "小兔子", "penguin": "企鵝寶寶", "guineaPig": "天竺鼠寶寶", "monkey": "小猴子", "chinchilla": "龍貓寶寶", "starlightUpalupa": "星光六角恐龍", "otter": "小水獺", "pig": "小豬", "tree": "小樹", "shiba": "柴犬", "duck": "鴨子", "poop": "便便", "tteokbokki": "辣炒年糕", "quokka": "短尾矮袋鼠"},
   "overlay": { "currentUser": "{0} · 我" },
   "unsupported": { "title": "不支援的 Windows 版本", "description": "SIDEY 需要 x64 版 Windows 10 1809（組建 17763）或更新版本。", "windowTitle": "SIDEY — 不支援的 Windows" },
   "dialogs": { "rotateInviteTitle": "要產生新邀請碼嗎？", "rotateInviteBody": "目前的邀請碼會立即失效，此操作無法復原。", "rotateInvitePrimary": "產生新邀請碼", "roomNamePlaceholder": "群組名稱，1–20 個字元", "removeMemberTitle": "要移除「{0}」嗎？", "removeMemberBody": "此成員將無法再存取群組和現有訊息。", "removeMemberPrimary": "移除", "leaveRoomTitle": "要離開「{0}」嗎？", "leaveRoomBody": "你將無法再存取此群組和現有訊息。", "leaveOwnedRoomBody": "群主會轉交給最早加入的剩餘成員，你也將無法再存取群組和現有訊息。", "leaveRoomPrimary": "離開", "deleteRoomTitle": "要刪除「{0}」嗎？", "deleteRoomBody": "所有成員和訊息將永久刪除，且無法復原。", "deleteRoomContinue": "繼續", "deleteRoomFinalTitle": "要永久刪除此群組嗎？", "deleteRoomFinalBody": "「{0}」及其所有訊息將立即永久刪除。", "updateTitle": "有可用的更新", "updateBody": "要下載 SIDEY {0} 嗎？", "download": "下載", "later": "稍後" },

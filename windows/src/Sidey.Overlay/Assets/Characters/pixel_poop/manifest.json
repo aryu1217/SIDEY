@@ -1,0 +1,46 @@
+{
+  "character_id": "pixel_poop",
+  "display_name": "똥",
+  "legacy_aliases": [],
+  "frame_pixel_size": [
+    24,
+    24
+  ],
+  "render_dip_size": [
+    48,
+    48
+  ],
+  "sheet_pixel_size": [
+    240,
+    24
+  ],
+  "foot_baseline_pixel": 3,
+  "filtering": "nearest",
+  "animations": {
+    "idle": [
+      0,
+      1
+    ],
+    "walk": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "doze": [
+      6,
+      7
+    ],
+    "offline": [
+      8,
+      9
+    ]
+  },
+  "sha256": "0f2853654e953abe92fbfbd8894df1396f28fc32fe06db9b5c3db60197da1c43",
+  "runtime_bgra": {
+    "byte_order": "BGRA",
+    "alpha": "straight",
+    "byte_length": 23040,
+    "sha256": "d486ea343046314422a7cc185fdbe208b8a730f1eec1e650f24c89aaead65132"
+  }
+}

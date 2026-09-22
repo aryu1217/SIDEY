@@ -109,6 +109,31 @@ public static class PixelCharacterCatalog
             "characters.tree",
             "ddf40aa115034c2c4fb3046673f6e20d2ca208d0b5a9ffa5737fb79c2e6cc97f",
             entitlementKey: "character:pixel_tree"),
+        Create(
+            "pixel_shiba",
+            "characters.shiba",
+            "f0fbdc42e774c4fc005b6712d7361f1032864c71f1dae6a62d4f631483de647f",
+            entitlementKey: "character:pixel_shiba"),
+        Create(
+            "pixel_duck",
+            "characters.duck",
+            "007e181fc7546b5346fc52746daf60985fe6113f366795a8c90f21d1b084e559",
+            entitlementKey: "character:pixel_duck"),
+        Create(
+            "pixel_poop",
+            "characters.poop",
+            "0f2853654e953abe92fbfbd8894df1396f28fc32fe06db9b5c3db60197da1c43",
+            entitlementKey: "character:pixel_poop"),
+        Create(
+            "pixel_tteokbokki",
+            "characters.tteokbokki",
+            "1da9b6df95412bfc52df6dc21157d2708a40f508de48cb3f9c8764ca7a378b92",
+            entitlementKey: "character:pixel_tteokbokki"),
+        Create(
+            "pixel_quokka",
+            "characters.quokka",
+            "55965cec0be9ac26787c255c92dd6ca5300164a505e12e506be2f87c010dcf3a",
+            entitlementKey: "character:pixel_quokka"),
     ];
 
     private static readonly PixelCharacterDefinition[] s_selectableDefinitions = s_definitions[..5];

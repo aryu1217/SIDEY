@@ -554,7 +554,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public void StorePreviewsAllTwentyFourCosmeticsWithoutAddingPaidCharactersToThePicker()
+    public void StorePreviewsAllThirtyThreeCosmeticsWithoutAddingPaidCharactersToThePicker()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         var viewModel = new MainWindowViewModel(
@@ -562,10 +562,10 @@ public sealed class MainWindowViewModelTests
             new FakeMainWindowDialogService(),
             new FakeUpdateService());
 
-        Assert.Equal(24, viewModel.StoreProducts.Count);
-        Assert.Equal(7, viewModel.StoreProducts.Count(product => product.Kind == CommerceProductKind.Character));
+        Assert.Equal(33, viewModel.StoreProducts.Count);
+        Assert.Equal(12, viewModel.StoreProducts.Count(product => product.Kind == CommerceProductKind.Character));
         Assert.Equal(3, viewModel.StoreProducts.Count(product => product.Kind == CommerceProductKind.Bubble));
-        Assert.Equal(14, viewModel.StoreProducts.Count(product => product.Kind == CommerceProductKind.Throwable));
+        Assert.Equal(18, viewModel.StoreProducts.Count(product => product.Kind == CommerceProductKind.Throwable));
         Assert.All(viewModel.StoreProducts, product => Assert.NotEmpty(product.Description));
         Assert.DoesNotContain(
             viewModel.StoreProducts.Where(product => product.Kind == CommerceProductKind.Character).Select(product => product.CharacterId),
@@ -1103,14 +1103,14 @@ public sealed class MainWindowViewModelTests
             new FakeMainWindowDialogService(),
             new FakeUpdateService());
 
-        Assert.Equal(7, viewModel.VisibleStoreProducts.Count);
+        Assert.Equal(12, viewModel.VisibleStoreProducts.Count);
         Assert.All(viewModel.VisibleStoreProducts, product =>
             Assert.Equal(CommerceProductKind.Character, product.Kind));
 
         viewModel.SelectedStoreKindIndex = (int)CommerceProductKind.Throwable;
         viewModel.SelectedStoreSortIndex = 2;
         Assert.Equal(
-            new[] { 3_300, 2_200, 2_200 }.Concat(Enumerable.Repeat(1_100, 11)),
+            new[] { 3_300, 2_200, 2_200 }.Concat(Enumerable.Repeat(1_100, 15)),
             viewModel.VisibleStoreProducts.Select(product => product.AmountKrw));
 
         viewModel.HidesOwnedStoreProducts = true;
@@ -1150,7 +1150,7 @@ public sealed class MainWindowViewModelTests
         Assert.Equal(0, viewModel.SelectedStoreSortIndex);
         Assert.False(viewModel.HidesOwnedStoreProducts);
         Assert.Empty(viewModel.StoreSearchText);
-        Assert.Equal(14, viewModel.VisibleStoreProducts.Count);
+        Assert.Equal(18, viewModel.VisibleStoreProducts.Count);
         Assert.All(viewModel.VisibleStoreProducts, product =>
             Assert.Equal(CommerceProductKind.Throwable, product.Kind));
     }

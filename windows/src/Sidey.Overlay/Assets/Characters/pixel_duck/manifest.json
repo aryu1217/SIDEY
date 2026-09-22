@@ -1,0 +1,46 @@
+{
+  "character_id": "pixel_duck",
+  "display_name": "오리",
+  "legacy_aliases": [],
+  "frame_pixel_size": [
+    24,
+    24
+  ],
+  "render_dip_size": [
+    48,
+    48
+  ],
+  "sheet_pixel_size": [
+    240,
+    24
+  ],
+  "foot_baseline_pixel": 3,
+  "filtering": "nearest",
+  "animations": {
+    "idle": [
+      0,
+      1
+    ],
+    "walk": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "doze": [
+      6,
+      7
+    ],
+    "offline": [
+      8,
+      9
+    ]
+  },
+  "sha256": "007e181fc7546b5346fc52746daf60985fe6113f366795a8c90f21d1b084e559",
+  "runtime_bgra": {
+    "byte_order": "BGRA",
+    "alpha": "straight",
+    "byte_length": 23040,
+    "sha256": "bb3ca688b16245e3215c8c0a5e9c47b8af4b0cb862f778304fba40f0f3a60a00"
+  }
+}

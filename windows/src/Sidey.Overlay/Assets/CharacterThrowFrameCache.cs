@@ -24,6 +24,11 @@ internal sealed class CharacterThrowFrameCache : IDisposable
             ["pixel_otter"] = "ad7d076f4c63910c2c97f6e6ed03c27b47642a825d002d64b8c9dc86c11c2716",
             ["pixel_pig"] = "045344ec128ed34cfe2e6a641cf90c1a04b3ac639045dc200bc996c0089da85b",
             ["pixel_tree"] = "af22b750129b813d0affd8fa572604837f6bf67acfa14bda68074abf45a11f15",
+            ["pixel_shiba"] = "0e2a54c5d53dd827526afca86ab3ec073f860da21ade1b1289b864c30f5a0e87",
+            ["pixel_duck"] = "ad802bb86d51eed5e2e5a1208da93503ff30c3886c5e21e8e40b86494a78881f",
+            ["pixel_poop"] = "2dfe350847ee18096f9e14431d573bf840f1445a4cef459622d77ca97760fc50",
+            ["pixel_tteokbokki"] = "f0f71c0d3843662a7ba80faf8c6476257adda33547e325ceea2031885ff5c5fc",
+            ["pixel_quokka"] = "ab43e2997d6e869ee6256a22a42f13ff76fc7b4f6a411f940319d7e98ab7a6f9",
         };
 
     private static readonly IReadOnlyDictionary<string, string> s_objectHashes =
@@ -44,6 +49,10 @@ internal sealed class CharacterThrowFrameCache : IDisposable
             ["throwable_baseball"] = "73f3dc8d86a9f8f76f07494df5ee48a8ff5380feec55a718eed8aad6940b94e5",
             ["throwable_wakkuball"] = "4627c3538efcdaae3deda1ee390fbac92f96cf6e199dceb58a60f7917b7de295",
             ["throwable_dujjonku"] = "bb2468a5a9f3a692c294c7546c2b20cd4bfdfc903e6779304b2bfeccaea50b32",
+            ["tennis_ball"] = "19c1a71275fd2e5be5be0b39ebd7be95d960f80ac65dd629aedd885b64f89fc3",
+            ["tissue_ball"] = "ae0a3d483f6a606b4dc35bdac173044720668679f6462e36ff19720334dea975",
+            ["fish_cake_skewer"] = "bdcfc04e33f3cf4f45305aa9fbf6c6fed70b515fe826823c890ccbb5e28340fd",
+            ["leaf"] = "b0a419e6659ded829130ec7d0be92d0b693ccd1cdc158aa8aabbd8b24936173e",
         };
 
     private static readonly IReadOnlyDictionary<string, string> s_bgraHashes =
@@ -70,6 +79,11 @@ internal sealed class CharacterThrowFrameCache : IDisposable
             ["Characters/pixel_otter/throw_hit"] = "27aeb7a143f9bbeda7d5aab4dc0c69666d444e5e09f27b9249d3c22b4d960e4f",
             ["Characters/pixel_pig/throw_hit"] = "a4da4e142417243e16c8e60f9ba7864d836d3fbd3c88aa607dfa6dd56e9d8b5b",
             ["Characters/pixel_tree/throw_hit"] = "4bc7a7960f778346910a5e071b0396a3a2d61ca869fd79eec58d6516d2c71c85",
+            ["Characters/pixel_shiba/throw_hit"] = "3640fbb89e5f45087458e1c2ba428fa35c62eddfbd2be5a396ac4180f0756548",
+            ["Characters/pixel_duck/throw_hit"] = "b29aa940f3094a22e3553791a454913716f1c25e9962c718258d4cd3cb08cf93",
+            ["Characters/pixel_poop/throw_hit"] = "1a83d67282a48c2b432656b4843524a10bfffec3d47d3390089db236ec317dba",
+            ["Characters/pixel_tteokbokki/throw_hit"] = "cf513ed3cc6d581385c98e1f6f3f4e2403b3643ef02e5f64314138e62b642b8d",
+            ["Characters/pixel_quokka/throw_hit"] = "d7c7779507c689026adb0a77b8a2d6ca61fdafe91ca2f37a3bb11b02b0b88398",
             ["Throwables/clam/sprite"] = "fb5486a6a17ac8406ccf63c9671de233f62d285376f598361be8c02edc23d8c4",
             ["Throwables/pork/sprite"] = "f521506a1d95f1423dbade5645c4a2e9497878bdab672729f1ff8169c059ff3f",
             ["Throwables/timber/sprite"] = "bcc35b32478d06fa051a306ecf14475d1429d75b9cf58e8949de28773b566a8d",
@@ -77,6 +91,10 @@ internal sealed class CharacterThrowFrameCache : IDisposable
             ["Throwables/throwable_baseball/sprite"] = "c0df6dd6c04815fa4373eb6dbb710a8f36db0e120f7c07d81206f9259f3f1e6c",
             ["Throwables/throwable_wakkuball/sprite"] = "5bed22d92763fb0a16917ef89b03d86b94e63e3594f52021437cc861582de1b0",
             ["Throwables/throwable_dujjonku/sprite"] = "f1b7c6583f64a6990c556a29d8874a8762b61ecf9117c79f7fe86a73f8423e53",
+            ["Throwables/tennis_ball/sprite"] = "3c4c13ab951ce13d138e94233a3d954dffdbb35aef53c8547978183a9567b418",
+            ["Throwables/tissue_ball/sprite"] = "30aeb15b7ffc56982ed3af71eb7908469949dc4c7b80b18f089b5653d940d65f",
+            ["Throwables/fish_cake_skewer/sprite"] = "f40f0ab9d981835201372015a3bc3961892bcc037edd7cda3937f71acd3664ca",
+            ["Throwables/leaf/sprite"] = "b16c4c00835d7eaac04307983271ce931207acabbb89e8d3d688f4f44b59f137",
         };
 
     private readonly Dictionary<string, byte[][]> _actions = new(StringComparer.Ordinal);
