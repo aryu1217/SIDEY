@@ -625,6 +625,18 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         PremultipliedVisual nameplate,
         (int X, int Y) nameplatePosition)
     {
+        if (_edge is OverlayEdge.Left or OverlayEdge.Right)
+        {
+            RenderSideMessageBubbles(
+                destination,
+                senderTangent,
+                bubbles,
+                visuals,
+                nameplate,
+                nameplatePosition);
+            return;
+        }
+
         int normalDistance = _bubbleCharacterGapPixels + _bubbleTailHeightPixels;
         for (int index = bubbles.Count - 1; index >= 0; index--)
         {
@@ -647,6 +659,80 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             }
             _drawnBubbleIds.Add(activeBubble.MessageId);
             normalDistance += BubbleNormalExtent(bubble) + _bubbleBodySpacingPixels;
+        }
+    }
+
+    private void RenderSideMessageBubbles(
+        Span<byte> destination,
+        double senderTangent,
+        IReadOnlyList<ActiveBubble> bubbles,
+        PixelMemberVisuals visuals,
+        PremultipliedVisual nameplate,
+        (int X, int Y) nameplatePosition)
+    {
+        Span<int> heightsNewestFirst = stackalloc int[ActiveBubbleLedger.MaximumVisiblePerSender];
+        int visibleCount = 0;
+        PremultipliedVisual? newestBubble = null;
+        for (int index = bubbles.Count - 1; index >= 0; index--)
+        {
+            if (!visuals.MessageBubbles.TryGetValue(bubbles[index].MessageId, out PremultipliedVisual? bubble))
+            {
+                continue;
+            }
+
+            newestBubble ??= bubble;
+            heightsNewestFirst[visibleCount++] = bubble.Height;
+        }
+
+        if (newestBubble is null || visibleCount == 0)
+        {
+            return;
+        }
+
+        int normalDistance = _bubbleCharacterGapPixels + _bubbleTailHeightPixels;
+        (int X, int Y) desiredNewestPosition = PlaceBubbleBody(
+            senderTangent,
+            newestBubble,
+            normalDistance,
+            nameplate,
+            nameplatePosition);
+        int tangentMargin = (int)Math.Ceiling(_bubbleTangentMarginPixels);
+        int newestTop = MessageBubbleLayoutPolicy.ClampedVerticalStackNewestTop(
+            desiredNewestPosition.Y,
+            heightsNewestFirst[..visibleCount],
+            _activityBounds.Y + tangentMargin,
+            _activityBounds.Y + _activityBounds.Height - tangentMargin,
+            _bubbleBodySpacingPixels);
+
+        int currentTop = newestTop;
+        int renderedCount = 0;
+        for (int index = bubbles.Count - 1; index >= 0; index--)
+        {
+            ActiveBubble activeBubble = bubbles[index];
+            if (!visuals.MessageBubbles.TryGetValue(activeBubble.MessageId, out PremultipliedVisual? bubble))
+            {
+                continue;
+            }
+
+            if (renderedCount > 0)
+            {
+                currentTop -= bubble.Height + _bubbleBodySpacingPixels;
+            }
+
+            (int x, _) = PlaceBubbleBody(
+                senderTangent,
+                bubble,
+                normalDistance,
+                nameplate,
+                nameplatePosition);
+            (int X, int Y) position = (x, currentTop);
+            CompositeVisual(destination, bubble, position.X, position.Y);
+            if (renderedCount == 0)
+            {
+                CompositeBubbleTail(destination, position, bubble, senderTangent);
+            }
+            _drawnBubbleIds.Add(activeBubble.MessageId);
+            renderedCount++;
         }
     }
 
@@ -679,6 +765,49 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         out double lower,
         out double upper)
     {
+        if (_edge is OverlayEdge.Left or OverlayEdge.Right)
+        {
+            Span<int> heightsNewestFirst = stackalloc int[ActiveBubbleLedger.MaximumVisiblePerSender];
+            int visibleCount = 0;
+            PremultipliedVisual? newestBubble = null;
+            for (int index = bubbles.Count - 1; index >= 0; index--)
+            {
+                if (!visuals.MessageBubbles.TryGetValue(bubbles[index].MessageId, out PremultipliedVisual? bubble))
+                {
+                    continue;
+                }
+
+                newestBubble ??= bubble;
+                heightsNewestFirst[visibleCount++] = bubble.Height;
+            }
+
+            if (newestBubble is null || visibleCount == 0)
+            {
+                lower = double.PositiveInfinity;
+                upper = double.NegativeInfinity;
+                return false;
+            }
+
+            int tangentMargin = (int)Math.Ceiling(_bubbleTangentMarginPixels);
+            int desiredNewestTop = (int)Math.Round(ClampedBubbleVisualTangentStart(senderTangent, newestBubble));
+            int newestTop = MessageBubbleLayoutPolicy.ClampedVerticalStackNewestTop(
+                desiredNewestTop,
+                heightsNewestFirst[..visibleCount],
+                tangentMargin,
+                (int)Math.Floor(_geometry.TangentLength - _bubbleTangentMarginPixels),
+                _bubbleBodySpacingPixels);
+            int totalHeight = 0;
+            for (int index = 0; index < visibleCount; index++)
+            {
+                totalHeight += heightsNewestFirst[index];
+            }
+            totalHeight += _bubbleBodySpacingPixels * (visibleCount - 1);
+
+            lower = newestTop - (totalHeight - heightsNewestFirst[0]);
+            upper = lower + totalHeight;
+            return true;
+        }
+
         lower = double.PositiveInfinity;
         upper = double.NegativeInfinity;
         foreach (ActiveBubble activeBubble in bubbles)

@@ -127,4 +127,28 @@ public sealed class MessageBubbleLayoutPolicyTests
         Assert.Equal(2, MessageBubbleLayoutPolicy.TypingFrameIndex(21, 30, 3));
         Assert.Equal(0, MessageBubbleLayoutPolicy.TypingFrameIndex(32, 30, 3));
     }
+
+    [Theory]
+    [InlineData(100, 100)]
+    [InlineData(10, 50)]
+    [InlineData(180, 166)]
+    public void SideBubbleStackKeepsNewestBubbleNearestTheSenderAndStacksOlderBubbleAbove(
+        int desiredNewestTop,
+        int expectedNewestTop)
+    {
+        int[] heightsNewestFirst = [30, 40];
+
+        int newestTop = MessageBubbleLayoutPolicy.ClampedVerticalStackNewestTop(
+            desiredNewestTop,
+            heightsNewestFirst,
+            minimumTop: 4,
+            maximumBottom: 196,
+            spacing: 6);
+
+        int olderTop = newestTop - 6 - heightsNewestFirst[1];
+        Assert.Equal(expectedNewestTop, newestTop);
+        Assert.True(olderTop < newestTop);
+        Assert.True(olderTop >= 4);
+        Assert.True(newestTop + heightsNewestFirst[0] <= 196);
+    }
 }

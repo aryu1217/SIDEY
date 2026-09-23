@@ -70,6 +70,45 @@ internal static class MessageBubbleLayoutPolicy
         return (int)(elapsedIntervals % frameCount);
     }
 
+    internal static int ClampedVerticalStackNewestTop(
+        int desiredNewestTop,
+        ReadOnlySpan<int> visualHeightsNewestFirst,
+        int minimumTop,
+        int maximumBottom,
+        int spacing)
+    {
+        if (visualHeightsNewestFirst.IsEmpty)
+        {
+            throw new ArgumentException("At least one bubble height is required.", nameof(visualHeightsNewestFirst));
+        }
+        if (maximumBottom < minimumTop)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumBottom));
+        }
+        if (spacing < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(spacing));
+        }
+
+        int totalHeight = 0;
+        foreach (int height in visualHeightsNewestFirst)
+        {
+            if (height <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(visualHeightsNewestFirst));
+            }
+
+            totalHeight = checked(totalHeight + height);
+        }
+
+        totalHeight = checked(totalHeight + (spacing * (visualHeightsNewestFirst.Length - 1)));
+        int olderStackExtent = totalHeight - visualHeightsNewestFirst[0];
+        int desiredStackTop = desiredNewestTop - olderStackExtent;
+        int maximumStackTop = Math.Max(minimumTop, maximumBottom - totalHeight);
+        int stackTop = Math.Clamp(desiredStackTop, minimumTop, maximumStackTop);
+        return checked(stackTop + olderStackExtent);
+    }
+
     internal static MessageBubbleTail Tail(
         OverlayEdge edge,
         RectD body,
