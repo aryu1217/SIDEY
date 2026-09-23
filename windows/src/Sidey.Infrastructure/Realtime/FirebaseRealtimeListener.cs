@@ -199,7 +199,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                         await next.DisposeAsync().ConfigureAwait(false);
                     }
                     _emit(new BackendEvent.Diagnostic(
-                        $"firebase-listener-connect-failed kind={FailureKind(exception)}"));
+                        $"firebase-listener-connect-failed {FailureDiagnostic(exception)}"));
                     await DelayForReconnectAsync(cancellationToken).ConfigureAwait(false);
                     continue;
                 }
@@ -227,7 +227,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                 {
                     Exception? failure = current.Failure;
                     _emit(new BackendEvent.Diagnostic(
-                        $"firebase-listener-disconnected kind={FailureKind(failure)}"));
+                        $"firebase-listener-disconnected {FailureDiagnostic(failure)}"));
                     Volatile.Write(ref _ready, 0);
                     await current.DisposeAsync().ConfigureAwait(false);
                     current = null;
@@ -290,40 +290,49 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             cancellationToken,
             credential.LifetimeToken,
             streamSet.Token);
-        await using FirebaseRtdbEventStream stream = await streamSet.Client.OpenEventStreamAsync(
-            path,
-            credential.IdToken,
-            linked.Token).ConfigureAwait(false);
-        var snapshot = new FirebaseRtdbSnapshot();
-        bool initialMutation = true;
-        await foreach (FirebaseSseEvent firebaseEvent in stream.ReadEventsAsync(linked.Token))
+        try
         {
-            if (generation != Volatile.Read(ref _generation))
+            await using FirebaseRtdbEventStream stream = await streamSet.Client.OpenEventStreamAsync(
+                path,
+                credential.IdToken,
+                linked.Token).ConfigureAwait(false);
+            var snapshot = new FirebaseRtdbSnapshot();
+            bool initialMutation = true;
+            await foreach (FirebaseSseEvent firebaseEvent in stream.ReadEventsAsync(linked.Token))
             {
-                return;
-            }
-
-            if (firebaseEvent.Kind is FirebaseSseEventKind.Put or FirebaseSseEventKind.Patch)
-            {
-                snapshot.Apply(firebaseEvent.GetMutation());
-                ProcessSnapshot(
-                    roomId,
-                    snapshot.Value,
-                    initialMutation,
-                    credential.UserId,
-                    generation);
-                if (initialMutation)
+                if (generation != Volatile.Read(ref _generation))
                 {
-                    initialMutation = false;
-                    streamSet.MarkReady();
+                    return;
                 }
-                continue;
-            }
 
-            if (firebaseEvent.Kind is FirebaseSseEventKind.Cancel or FirebaseSseEventKind.AuthRevoked)
-            {
-                throw new UnauthorizedAccessException("Firebase realtime permission was revoked.");
+                if (firebaseEvent.Kind is FirebaseSseEventKind.Put or FirebaseSseEventKind.Patch)
+                {
+                    snapshot.Apply(firebaseEvent.GetMutation());
+                    ProcessSnapshot(
+                        roomId,
+                        snapshot.Value,
+                        initialMutation,
+                        credential.UserId,
+                        generation);
+                    if (initialMutation)
+                    {
+                        initialMutation = false;
+                        streamSet.MarkReady();
+                    }
+                    continue;
+                }
+
+                if (firebaseEvent.Kind is FirebaseSseEventKind.Cancel or FirebaseSseEventKind.AuthRevoked)
+                {
+                    throw new UnauthorizedAccessException("Firebase realtime permission was revoked.");
+                }
             }
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new FirebaseRealtimeStreamProtocolException(
+                roomId.HasValue ? "room" : "inbox",
+                exception);
         }
     }
 
@@ -591,15 +600,27 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
     }
 
-    private static string FailureKind(Exception? exception) => exception switch
+    private static string FailureDiagnostic(Exception? exception) => exception switch
     {
-        UnauthorizedAccessException => "access-denied",
-        FirebaseRtdbRequestException request => request.FailureKind.ToString().ToLowerInvariant(),
-        InvalidDataException => "protocol",
-        OperationCanceledException => "canceled",
-        null => "eof",
-        _ => "transport",
+        FirebaseRealtimeStreamProtocolException protocol =>
+            $"kind=protocol stream={protocol.StreamKind}",
+        UnauthorizedAccessException => "kind=access-denied",
+        FirebaseRtdbRequestException request =>
+            $"kind={request.FailureKind.ToString().ToLowerInvariant()}",
+        InvalidDataException => "kind=protocol",
+        OperationCanceledException => "kind=canceled",
+        null => "kind=eof",
+        _ => "kind=transport",
     };
+
+    private sealed class FirebaseRealtimeStreamProtocolException(
+        string streamKind,
+        InvalidDataException innerException) : Exception(
+            "Firebase realtime stream payload is invalid.",
+            innerException)
+    {
+        public string StreamKind { get; } = streamKind;
+    }
 
     private sealed class StreamSet : IAsyncDisposable
     {
@@ -659,6 +680,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             catch (Exception exception) when (exception is OperationCanceledException
                 or FirebaseRtdbRequestException
                 or UnauthorizedAccessException
+                or FirebaseRealtimeStreamProtocolException
                 or InvalidDataException)
             {
             }

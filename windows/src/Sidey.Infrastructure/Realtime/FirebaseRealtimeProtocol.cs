@@ -231,6 +231,14 @@ internal static class FirebaseRealtimeProtocol
     public static FirebaseRealtimeInboxPayload ParseInboxPayload(ReadOnlyMemory<byte> utf8Json)
     {
         using JsonDocument document = ParseDocument(utf8Json);
+        if (document.RootElement.ValueKind == JsonValueKind.Null)
+        {
+            return new FirebaseRealtimeInboxPayload(
+                accessRevision: null,
+                new ReadOnlyDictionary<Guid, FirebaseRealtimeInboxRoom>(
+                    new Dictionary<Guid, FirebaseRealtimeInboxRoom>()));
+        }
+
         JsonElement root = RequireObject(document.RootElement);
         ValidateProperties(root, s_inboxProperties, s_noRequiredProperties);
         string? accessRevision = root.TryGetProperty("a", out JsonElement accessRevisionValue)

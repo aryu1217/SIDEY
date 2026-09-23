@@ -101,6 +101,75 @@ public sealed class FirebaseRealtimeListenerTests
     }
 
     [Fact]
+    public async Task MissingProductionInboxReachesReadyState()
+    {
+        var events = new List<BackendEvent>();
+        object eventGate = new();
+        await using var listener = new FirebaseRealtimeListener(
+            new FakeCredentialProvider(),
+            backendEvent =>
+            {
+                lock (eventGate)
+                {
+                    events.Add(backendEvent);
+                }
+            },
+            _ => CreateClient(
+                Task.Delay(Timeout.InfiniteTimeSpan),
+                RoomEvents(),
+                NullInboxEvents()));
+
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => listener.IsReady);
+
+        lock (eventGate)
+        {
+            Assert.Contains(events, item => item is BackendEvent.Diagnostic diagnostic
+                && diagnostic.Stage.StartsWith("firebase-listener-ready", StringComparison.Ordinal));
+            Assert.DoesNotContain(events, item => item is BackendEvent.Diagnostic diagnostic
+                && diagnostic.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task MalformedInboxDiagnosticIdentifiesFailedStreamWithoutPayload()
+    {
+        var events = new List<BackendEvent>();
+        object eventGate = new();
+        await using var listener = new FirebaseRealtimeListener(
+            new FakeCredentialProvider(),
+            backendEvent =>
+            {
+                lock (eventGate)
+                {
+                    events.Add(backendEvent);
+                }
+            },
+            _ => CreateClient(
+                Task.Delay(Timeout.InfiniteTimeSpan),
+                RoomEvents(),
+                MalformedInboxEvents()));
+
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() =>
+        {
+            lock (eventGate)
+            {
+                return events.OfType<BackendEvent.Diagnostic>().Any(diagnostic =>
+                    diagnostic.Stage == "firebase-listener-connect-failed kind=protocol stream=inbox");
+            }
+        });
+
+        lock (eventGate)
+        {
+            BackendEvent.Diagnostic failure = Assert.Single(events.OfType<BackendEvent.Diagnostic>());
+            Assert.Equal(
+                "firebase-listener-connect-failed kind=protocol stream=inbox",
+                failure.Stage);
+        }
+    }
+
+    [Fact]
     public async Task ReconnectsWhenEitherActiveStreamEnds()
     {
         var credentials = new FakeCredentialProvider();
@@ -204,6 +273,26 @@ public sealed class FirebaseRealtimeListenerTests
         {
             path = "/",
             data = new { a = "00000000000000000001" },
+        });
+        return $"event: put\ndata: {initial}\n\n";
+    }
+
+    private static string NullInboxEvents()
+    {
+        string initial = JsonSerializer.Serialize(new
+        {
+            path = "/",
+            data = (object?)null,
+        });
+        return $"event: put\ndata: {initial}\n\n";
+    }
+
+    private static string MalformedInboxEvents()
+    {
+        string initial = JsonSerializer.Serialize(new
+        {
+            path = "/",
+            data = false,
         });
         return $"event: put\ndata: {initial}\n\n";
     }

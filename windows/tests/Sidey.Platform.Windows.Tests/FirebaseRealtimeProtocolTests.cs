@@ -225,6 +225,15 @@ public sealed class FirebaseRealtimeProtocolTests
     }
 
     [Fact]
+    public void NullInboxIsEmptyLikeFirebaseSdkSnapshotSerialization()
+    {
+        FirebaseRealtimeInboxPayload inbox = ParseInbox("null");
+
+        Assert.Null(inbox.AccessRevision);
+        Assert.Empty(inbox.Rooms);
+    }
+
+    [Fact]
     public void InboxAcceptsProductionPartialHintShapes()
     {
         FirebaseRealtimeInboxPayload accessOnly = ParseInbox(
