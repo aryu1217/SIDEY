@@ -1,7 +1,8 @@
 # Firebase v2 혼합 버전 rollout
 
-- Status: Accepted
+- Status: Superseded
 - Decided: 2026-09-21 23:22 KST
+- Superseded by: [Firebase transient bridge와 legacy 지원 종료](20260923-firebase-transient-bridge.md)
 
 ## Context
 

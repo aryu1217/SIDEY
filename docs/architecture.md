@@ -39,31 +39,43 @@ asset 기여는 받지 않고, 공개 저장소는 재현 가능한 제품 bug �
 
 ## 데이터와 실시간 경계
 
-Postgres가 영구 메시지와 계정·방 상태의 원본이다. Presence는 연결 및 활동 상태,
-Broadcast는 SIDEY 입력창의 typing과 캐릭터 상호작용 같은 일시 이벤트에만 사용한다.
-클라이언트는 서버가 확인한 membership, rate limit, entitlement 및 equipped state를
-표현하며 이를 로컬 상태만으로 부여하지 않는다.
+Postgres가 영구 메시지와 계정·방 상태의 원본이다. Supabase Presence는 연결 및 활동
+상태를 계속 담당한다. Firebase v2는 SIDEY 입력창의 typing, 캐릭터 pulse·projectile과
+chat 전달 같은 실시간 event를 담당하며, Supabase Broadcast는 혼합 버전 동안 기존
+client를 지원하는 legacy 경로로만 유지한다. 클라이언트는 서버가 확인한 membership,
+rate limit, entitlement 및 equipped state를 표현하며 이를 로컬 상태만으로 부여하지
+않는다.
 
 Firebase Realtime Database의 `/v2` namespace는 서버가 만든 access snapshot, room
-revision과 최신 메시지 전달 event를 위한 파생 실시간 계층이다. 영구 메시지와 권한의
-원본을 대신하지 않으며 client가 access 또는 chat record를 직접 쓰지 않는다. Firebase
-Functions는 인증된 Supabase session을 Firebase custom token으로 교환하고, chat UUID를
-Postgres transaction에 먼저 저장한 뒤 전달 event를 발행한다. 응답 유실처럼 commit
-여부가 불명확한 전송은 같은 UUID를 조회해 조정하고 자동 재전송하지 않는다.
+revision, typing·pulse·projectile과 최신 메시지 전달 event를 위한 파생 실시간 계층이다.
+영구 메시지와 권한의 원본을 대신하지 않으며 client가 access 또는 chat record를 직접
+쓰지 않는다. V2 client는 Rules가 허용한 자신의 compact transient slot에만 쓴다.
+Firebase Functions는 인증된 Supabase session을 Firebase custom token으로 교환하고,
+chat UUID를 Postgres transaction에 먼저 저장한 뒤 전달 event를 발행한다. 응답 유실처럼
+commit 여부가 불명확한 전송은 같은 UUID를 조회해 조정하고 자동 재전송하지 않는다.
 
-혼합 버전 기간에는 기존 client가 Supabase Realtime을 그대로 사용한다. v2-capable
-client도 presence와 typing·pulse·projectile 같은 transient event는 Supabase 단일
-plane을 사용하여 구버전과 양방향으로 보이게 한다. 인증된 server rollout selector가
-명시적으로 허용한 session만 Firebase v2를 사용한다. Bootstrap도 현재 session의
-capability, frozen contract와 전역 kill-switch를 다시 확인하고 최대 5분의 server-enforced
-rollout lease를 custom token과 RTDB·callable 권한에 묶는다. Client는 lease 만료 전에
-selector를 다시 확인하고 token과 listener를 교체한다. 개별 session이나 cohort의 명시적인
-Selector OFF는 이 bounded refresh 안에 legacy transport로 전환한다. 이와 별도로 server-only
-Firebase 전역 emergency kill gate는 RTDB read와 callable write를 즉시 fail-closed로 막아,
-이미 발급한 lease가 남아 있어도 전체 v2 traffic을 중단한다. Selector·bootstrap·권한 확인
-실패를 legacy downgrade로 우회하지 않으며, 갱신하지 못한 lease는 서버와 client 양쪽에서
-fail-closed로 끝난다. 7일은 client rollout 뒤의 최소 관찰 기간이며 자동 cutover나 legacy
-schema·RPC·Broadcast 제거 시점이 아니다.
+혼합 버전 기간에는 기존 client가 chat·typing·pulse·projectile의 Supabase Realtime 경로를
+그대로 사용하고, selector가 허용한 v2 client는 같은 기능을 Firebase로만 발행·수신한다.
+Client는 선택된 transport 한 곳에만 발행하며 양쪽에 동시에 쓰지 않는다. 서버의 양방향
+compatibility bridge가 Firebase event를 legacy Supabase plane으로, legacy event와 message
+변경을 Firebase plane으로 전달해 업데이트 전후 client의 상호운용을 유지한다. Presence는
+두 버전 모두 Supabase에 남는다.
+
+인증된 server rollout selector가 명시적으로 허용한 session만 Firebase v2를 사용한다.
+Bootstrap도 현재 session의 capability, frozen contract와 전역 kill-switch를 다시 확인하고
+최대 5분의 server-enforced rollout lease를 custom token과 RTDB·callable 권한에 묶는다.
+Client는 lease 만료 전에 selector를 다시 확인하고 token과 listener를 교체한다. 개별
+session이나 cohort의 명시적인 Selector OFF는 legacy 지원 기간에 이 bounded refresh 안에
+legacy transport로 전환한다. 이와 별도로 server-only Firebase 전역 emergency kill gate는
+RTDB read와 callable write를 즉시 fail-closed로 막아, 이미 발급한 lease가 남아 있어도
+전체 v2 traffic을 중단한다. Selector·bootstrap·권한 확인 실패를 legacy downgrade로
+우회하지 않으며, 갱신하지 못한 lease는 서버와 client 양쪽에서 fail-closed로 끝난다.
+
+Legacy bridge는 서버 runtime switch로 제어한다. 7일은 client rollout 뒤의 최소 관찰
+기간일 뿐 자동 cutover나 제거 시점이 아니다. Adoption, old/new 상호운용, 오류와 비용을
+확인한 뒤 운영자가 명시적으로 지원 종료를 결정하면 bridge와 legacy transient 지원을
+비활성화할 수 있다. 이 전환은 새 client 재배포를 요구하지 않으며 Postgres 원본과
+Supabase Presence를 제거하지 않는다.
 
 클라이언트와 공개 웹에 필요한 계약만 이 저장소에 둔다. 비공개 schema, secret,
 운영 데이터 또는 backend 배포 절차를 공개 문서에 복제하지 않는다.
