@@ -208,6 +208,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
     public event Action<CoordinatorState>? StateChanged;
     public event Action? ComposerRequested;
+    public event Action<int>? CharacterClicked;
     public event Action? PulseRequested;
     public event Action<Guid?>? TreeMovementToggleRequested;
     public event Action<Guid>? CharacterThrowRequested;
@@ -1491,6 +1492,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
     public void RequestComposer() => ComposerRequested?.Invoke();
 
+    private void RequestCharacterClick(int clickCount) => CharacterClicked?.Invoke(clickCount);
+
     public void RequestCharacterPulse() => PulseRequested?.Invoke();
 
     public void RequestCharacterThrow(Guid targetUserId) =>
@@ -2177,7 +2180,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             _overlay = NativePixelWorldSession.Start(
                 _state.Preferences.OverlayRegion,
                 snapshot,
-                RequestComposer,
+                RequestCharacterClick,
                 RequestCharacterPulse,
                 RequestCharacterThrow,
                 _state.Preferences.RequiresRightClickToThrow,

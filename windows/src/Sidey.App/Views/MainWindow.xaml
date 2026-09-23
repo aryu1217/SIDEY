@@ -818,13 +818,21 @@
                               TextTrimming="CharacterEllipsis"
                               TextWrapping="Wrap"
                               ToolTipService.ToolTip="{Binding DisplayName}" />
-                          <TextBlock
-                              Grid.Row="2"
-                              AutomationProperties.AutomationId="StoreProductPrice"
-                              HorizontalAlignment="Center"
-                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                              FontSize="12"
-                              Text="{Binding FormattedPrice}" />
+                          <Grid Grid.Row="2" HorizontalAlignment="Center">
+                            <TextBlock
+                                AutomationProperties.AutomationId="StoreProductPrice"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                FontSize="12"
+                                Text="{Binding FormattedPrice}"
+                                Visibility="{Binding IsOwned, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                            <TextBlock
+                                AutomationProperties.AutomationId="StoreProductOwned"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Text="{Binding DetailStatusText}"
+                                Visibility="{Binding IsOwned, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                          </Grid>
                         </Grid>
                       </Button>
                     </DataTemplate>

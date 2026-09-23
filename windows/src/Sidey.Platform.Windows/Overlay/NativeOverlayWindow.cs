@@ -218,13 +218,6 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         [DllImport("user32.dll")]
         internal static extern uint GetDoubleClickTime();
 
-        [DllImport("user32.dll", SetLastError = true)]
-        internal static extern nuint SetTimer(nint window, nuint id, uint intervalMilliseconds, nint callback);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool KillTimer(nint window, nuint id);
-
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool IsWindow(nint window);
@@ -307,7 +300,6 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         {
             if (message == 0x0018 && wParam.Value == 0) // WM_SHOWWINDOW: hidden
             {
-                leftClick.Cancel(handleValue);
                 leftClick._ignoreRelease = false;
             }
             else if (message == 0x0201) // WM_LBUTTONDOWN: a new single-click sequence
@@ -316,30 +308,15 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             }
             else if (message == 0x0203) // WM_LBUTTONDBLCLK
             {
-                leftClick.Cancel(handleValue);
                 leftClick._ignoreRelease = true;
             }
             else if (message == PInvoke.WM_LBUTTONUP)
             {
-                // The first release cannot open the composer before Windows decides
-                // whether this gesture is a double-click. Its final release is ignored.
                 if (leftClick._ignoreRelease)
                 {
                     leftClick._ignoreRelease = false;
                     return default;
                 }
-                leftClick.Cancel(handleValue);
-                leftClick._timerId = NativeMethods.SetTimer(handleValue, ++leftClick._nextTimerId,
-                    NativeMethods.GetDoubleClickTime(), nint.Zero);
-                if (leftClick._timerId == 0)
-                {
-                    Trace.TraceError("SIDEY hotspot single-click timer failed: {0}", Marshal.GetLastPInvokeError());
-                }
-                return default;
-            }
-            else if (message == 0x0113 && leftClick._timerId != 0 && wParam.Value == leftClick._timerId) // WM_TIMER
-            {
-                leftClick.Cancel(handleValue);
                 InvokeActivation(handleValue);
                 return default;
             }
@@ -395,7 +372,7 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             s_doubleClickActivations.TryRemove(handle, out _);
             if (s_leftClicks.TryRemove(handle, out LeftClickState? pendingClick))
             {
-                pendingClick.Cancel(handle);
+                pendingClick._ignoreRelease = false;
             }
             s_rightClickActivations.TryRemove(handle, out _);
             if (s_ownerThreads.TryRemove(handle, out uint ownerThread))
@@ -433,18 +410,7 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
 
     private sealed class LeftClickState
     {
-        internal nuint _timerId;
-        internal nuint _nextTimerId;
         internal bool _ignoreRelease;
-
-        internal void Cancel(nint window)
-        {
-            if (_timerId != 0)
-            {
-                NativeMethods.KillTimer(window, _timerId);
-                _timerId = 0;
-            }
-        }
     }
 }
 

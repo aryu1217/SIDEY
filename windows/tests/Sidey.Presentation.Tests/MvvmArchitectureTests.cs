@@ -240,6 +240,31 @@ public sealed class MvvmArchitectureTests
     }
 
     [Fact]
+    public void StoreCardsReplaceThePriceWithOwnedStatusForOwnedProducts()
+    {
+        XDocument view = MainWindowView();
+        XElement button = Assert.Single(
+            view.Descendants(),
+            element => element.Name.LocalName == "Button"
+                && element.Attribute("Command")?.Value == "{Binding PreviewCommand}");
+        XElement price = Assert.Single(
+            button.Descendants(),
+            element => element.Attribute("AutomationProperties.AutomationId")?.Value == "StoreProductPrice");
+        XElement owned = Assert.Single(
+            button.Descendants(),
+            element => element.Attribute("AutomationProperties.AutomationId")?.Value == "StoreProductOwned");
+
+        Assert.Equal("{Binding FormattedPrice}", price.Attribute("Text")?.Value);
+        Assert.Equal(
+            "{Binding IsOwned, Converter={StaticResource InverseBooleanToVisibilityConverter}}",
+            price.Attribute("Visibility")?.Value);
+        Assert.Equal("{Binding DetailStatusText}", owned.Attribute("Text")?.Value);
+        Assert.Equal(
+            "{Binding IsOwned, Converter={StaticResource BooleanToVisibilityConverter}}",
+            owned.Attribute("Visibility")?.Value);
+    }
+
+    [Fact]
     public void GroupHeaderUsesAKeyboardAccessibleFullWidthHoverSurface()
     {
         XDocument view = MainWindowView();

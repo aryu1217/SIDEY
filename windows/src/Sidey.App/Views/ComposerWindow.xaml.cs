@@ -64,7 +64,10 @@ public sealed partial class ComposerWindow : Window
 
     public ComposerViewModel ViewModel { get; }
 
+    public bool IsVisible => _isVisible && !_isClosed;
+
     public event Action<ComposerPlacement>? PlacementChanged;
+    public event Action<bool>? ComposerVisibilityChanged;
 
     public void ApplyTheme(AppThemePreference theme)
     {
@@ -85,8 +88,13 @@ public sealed partial class ComposerWindow : Window
         _monitorIdentifier = monitorIdentifier;
         _placement = placement?.Normalize();
         RestorePlacement();
+        bool visibilityChanged = !_isVisible;
         _isVisible = true;
         AppWindow.Show();
+        if (visibilityChanged)
+        {
+            ComposerVisibilityChanged?.Invoke(true);
+        }
         Activate();
         SideyWindowActivation.BringToForeground(this);
         RequestMessageInputFocus();
@@ -111,6 +119,7 @@ public sealed partial class ComposerWindow : Window
             StartupDiagnostics.Stage("composer-hide-started");
             AppWindow.Hide();
             StartupDiagnostics.Stage("composer-hidden");
+            ComposerVisibilityChanged?.Invoke(false);
         }
         finally
         {

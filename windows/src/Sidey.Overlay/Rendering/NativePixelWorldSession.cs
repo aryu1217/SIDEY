@@ -101,7 +101,7 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
     public static NativePixelWorldSession Start(
         OverlayRegionPreference preference,
         WorldSnapshot initialSnapshot,
-        Action requestComposer,
+        Action<int> characterClicked,
         Action requestPulse,
         Action<Guid> requestThrow,
         bool requiresRightClickToThrow,
@@ -110,7 +110,7 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         NativePixelWorldSessionOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(initialSnapshot);
-        ArgumentNullException.ThrowIfNull(requestComposer);
+        ArgumentNullException.ThrowIfNull(characterClicked);
         ArgumentNullException.ThrowIfNull(requestPulse);
         ArgumentNullException.ThrowIfNull(requestThrow);
         ArgumentNullException.ThrowIfNull(renderingFailed);
@@ -189,8 +189,15 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
                     options.CharacterImpact);
                 return renderer;
             },
-            requestComposer,
-            () => { if (session?.IsSelfStunned != true) requestPulse(); },
+            () => characterClicked(1),
+            () =>
+            {
+                characterClicked(2);
+                if (session?.IsSelfStunned != true)
+                {
+                    requestPulse();
+                }
+            },
             isDoubleClick => session?.HandleRightClick(isDoubleClick),
             index => session?.ActivateTarget(index));
         session = new NativePixelWorldSession(
