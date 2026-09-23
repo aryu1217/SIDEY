@@ -6,8 +6,8 @@ using Sidey.Infrastructure.Authentication;
 namespace Sidey.Infrastructure.Realtime;
 
 /// <summary>
-/// Mixed-version transport. Presence and transient activity stay on the existing private
-/// Supabase socket while the server-side selector owns activation of Firebase chat/hints.
+/// Mixed-version transport. Presence stays on the existing private Supabase socket while
+/// Firebase v2 owns chat, typing, pulse, and projectile activity when selected.
 /// </summary>
 internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
 {
@@ -16,10 +16,16 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     private readonly IFirebaseRealtimeChatClient _chat;
     private readonly IFirebaseRealtimeCredentialProvider _credentials;
     private readonly IFirebaseRealtimeListener _firebase;
+    private readonly IFirebaseRealtimeTransientClient _transients;
     private readonly RealtimeEventQueue _events = new();
     private readonly SemaphoreSlim _selectionGate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Lock _stateGate = new();
+    private IReadOnlyDictionary<string, string> _throwableWireCodes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["patch_soft_ball"] = "0",
+        };
     private static readonly TimeSpan s_selectorFailureRetry = TimeSpan.FromSeconds(30);
     private Task? _legacyPump;
     private Task? _selectionLoop;
@@ -35,12 +41,14 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         IFirebaseRealtimeRolloutSelector selector,
         IFirebaseRealtimeChatClient chat,
         IFirebaseRealtimeCredentialProvider credentials,
-        Func<Action<BackendEvent>, IFirebaseRealtimeListener> createFirebase)
+        Func<Action<BackendEvent>, IFirebaseRealtimeListener> createFirebase,
+        IFirebaseRealtimeTransientClient? transients = null)
     {
         _legacy = legacy ?? throw new ArgumentNullException(nameof(legacy));
         _selector = selector ?? throw new ArgumentNullException(nameof(selector));
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
+        _transients = transients ?? new FirebaseRealtimeTransientClient(credentials);
         ArgumentNullException.ThrowIfNull(createFirebase);
         _firebase = createFirebase(OnFirebaseEvent)
             ?? throw new InvalidOperationException("Firebase listener factory returned null.");
@@ -126,6 +134,76 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
             roomId,
             body,
             linkedCancellation.Token).ConfigureAwait(false);
+    }
+
+    public Task PublishTypingAsync(
+        Guid roomId,
+        bool active,
+        CancellationToken cancellationToken) =>
+        PublishTransientAsync(
+            roomId,
+            token => _transients.PublishTypingAsync(roomId, active, token),
+            cancellationToken);
+
+    public Task PublishCharacterPulseAsync(
+        Guid roomId,
+        CancellationToken cancellationToken) =>
+        PublishTransientAsync(
+            roomId,
+            token => _transients.PublishCharacterPulseAsync(roomId, token),
+            cancellationToken);
+
+    public Task PublishCharacterThrowAsync(
+        Guid roomId,
+        Guid targetUserId,
+        string throwableCatalogItemId,
+        CancellationToken cancellationToken)
+    {
+        string wireCode;
+        lock (_stateGate)
+        {
+            if (!_throwableWireCodes.TryGetValue(throwableCatalogItemId, out wireCode!))
+            {
+                throw new InvalidOperationException("The equipped throwable has no Firebase wire code.");
+            }
+        }
+        return PublishTransientAsync(
+            roomId,
+            token => _transients.PublishCharacterThrowAsync(
+                roomId,
+                targetUserId,
+                wireCode,
+                token),
+            cancellationToken);
+    }
+
+    public void ConfigureThrowableWireCodes(
+        IReadOnlyDictionary<string, string> wireCodesByCatalogItemId)
+    {
+        ArgumentNullException.ThrowIfNull(wireCodesByCatalogItemId);
+        Dictionary<string, string> outbound = new(StringComparer.Ordinal)
+        {
+            ["patch_soft_ball"] = "0",
+        };
+        Dictionary<string, string> inbound = new(StringComparer.Ordinal)
+        {
+            ["0"] = "patch_soft_ball",
+        };
+        foreach ((string catalogItemId, string wireCode) in wireCodesByCatalogItemId)
+        {
+            if (string.IsNullOrWhiteSpace(catalogItemId)
+                || !IsCanonicalWireCode(wireCode)
+                || !outbound.TryAdd(catalogItemId, wireCode)
+                || !inbound.TryAdd(wireCode, catalogItemId))
+            {
+                throw new InvalidDataException("Firebase throwable wire mapping is invalid.");
+            }
+        }
+        lock (_stateGate)
+        {
+            _throwableWireCodes = outbound;
+        }
+        _firebase.ConfigureThrowableWireCodes(inbound);
     }
 
     public async Task ConvergeGrantAsync(
@@ -242,7 +320,11 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
             await foreach (BackendEvent backendEvent in _legacy.ReadEventsAsync(cancellationToken))
             {
                 if (UsesFirebaseChat
-                    && backendEvent is BackendEvent.MessageChanged or BackendEvent.MessagesInvalidated)
+                    && backendEvent is BackendEvent.MessageChanged
+                        or BackendEvent.MessagesInvalidated
+                        or BackendEvent.TypingChanged
+                        or BackendEvent.CharacterPulsed
+                        or BackendEvent.CharacterThrown)
                 {
                     continue;
                 }
@@ -359,6 +441,33 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     }
 
     private void Emit(BackendEvent backendEvent) => _events.TryWrite(backendEvent);
+
+    private async Task PublishTransientAsync(
+        Guid roomId,
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(
+            Volatile.Read(ref _sessionInvalidated) != 0,
+            this);
+        if (!UsesFirebaseChat
+            || Volatile.Read(ref _selectorFailedClosed) != 0
+            || !_firebase.IsReady
+            || _activeRoomId != roomId)
+        {
+            throw new InvalidOperationException("Firebase realtime transient transport is not ready.");
+        }
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _shutdown.Token);
+        await operation(linkedCancellation.Token).ConfigureAwait(false);
+    }
+
+    private static bool IsCanonicalWireCode(string value) =>
+        value.Length is > 0 and <= 6
+        && (value == "0"
+            || value[0] is >= '1' and <= '9'
+                && value.All(character => character is >= '0' and <= '9'));
 
     private static async Task IgnoreCancellationAsync(Task task)
     {

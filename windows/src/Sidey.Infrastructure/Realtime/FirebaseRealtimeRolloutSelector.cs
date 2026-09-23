@@ -70,7 +70,7 @@ internal sealed class FirebaseRealtimeRolloutException : Exception
 internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRolloutSelector
 {
     internal const string ContractHash =
-        "3c836b40cfc44437e9d069b84787cd3d8793026ce40de46d82b9ece79127b7e5";
+        "0f2845d033df248b1745c6526c8c7100b8d8fa6839b45f28c73b1023053fce2e";
 
     private const int ProtocolVersion = 2;
     private const int MaximumResponseBytes = 16 * 1024;

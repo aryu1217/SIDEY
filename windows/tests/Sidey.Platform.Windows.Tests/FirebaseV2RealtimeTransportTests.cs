@@ -157,6 +157,87 @@ public sealed class FirebaseV2RealtimeTransportTests
             () => pending.WaitAsync(TimeSpan.FromSeconds(5)));
     }
 
+    [Fact]
+    public async Task EnabledSelectionPublishesAllTransientActionsThroughFirebase()
+    {
+        var transients = new FakeTransientClient();
+        await using var transport = new FirebaseV2RealtimeTransport(
+            new FakeLegacyTransport(),
+            new FakeSelector(enabled: true),
+            new FakeChatClient(),
+            new FakeCredentialProvider(),
+            sink => new FakeFirebaseListener().WithSink(sink),
+            transients);
+        transport.ConfigureThrowableWireCodes(new Dictionary<string, string>
+        {
+            ["throwable_leaf"] = "18",
+        });
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [s_roomId] = 1 },
+            s_roomId,
+            PresenceState.Online,
+            CancellationToken.None);
+
+        await transport.PublishTypingAsync(s_roomId, active: true, CancellationToken.None);
+        await transport.PublishCharacterPulseAsync(s_roomId, CancellationToken.None);
+        await transport.PublishCharacterThrowAsync(
+            s_roomId,
+            s_userId,
+            "throwable_leaf",
+            CancellationToken.None);
+
+        Assert.Equal(1, transients.TypingCount);
+        Assert.Equal(1, transients.PulseCount);
+        Assert.Equal(1, transients.ThrowCount);
+        Assert.Equal("18", transients.LastWireCode);
+    }
+
+    [Fact]
+    public async Task EnabledSelectionDropsLegacyTransientMirrorEvents()
+    {
+        BackendEvent.Diagnostic sentinel = new("legacy-sentinel");
+        var legacy = new FakeLegacyTransport(
+        [
+            new BackendEvent.TypingChanged(s_roomId, s_userId, true),
+            new BackendEvent.CharacterPulsed(
+                new CharacterPulseEvent(Guid.NewGuid(), s_roomId, s_userId)),
+            new BackendEvent.CharacterThrown(new CharacterThrowEvent(
+                Guid.NewGuid(),
+                s_roomId,
+                s_userId,
+                Guid.NewGuid(),
+                "pixel_hamster")),
+            sentinel,
+        ]);
+        await using var transport = new FirebaseV2RealtimeTransport(
+            legacy,
+            new FakeSelector(enabled: true),
+            new FakeChatClient(),
+            new FakeCredentialProvider(),
+            sink => new FakeFirebaseListener().WithSink(sink),
+            new FakeTransientClient());
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [s_roomId] = 1 },
+            s_roomId,
+            PresenceState.Online,
+            CancellationToken.None);
+
+        List<BackendEvent> received = [];
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await foreach (BackendEvent backendEvent in transport.ReadEventsAsync(timeout.Token))
+        {
+            received.Add(backendEvent);
+            if (ReferenceEquals(backendEvent, sentinel))
+            {
+                break;
+            }
+        }
+
+        Assert.DoesNotContain(received, item => item is BackendEvent.TypingChanged
+            or BackendEvent.CharacterPulsed
+            or BackendEvent.CharacterThrown);
+    }
+
     private sealed class FakeSelector(bool enabled) : IFirebaseRealtimeRolloutSelector
     {
         public ValueTask<FirebaseRealtimeRolloutSelection> SelectAsync(
@@ -277,7 +358,42 @@ public sealed class FirebaseV2RealtimeTransportTests
         }
     }
 
-    private sealed class FakeLegacyTransport : IRealtimeTransport
+    private sealed class FakeTransientClient : IFirebaseRealtimeTransientClient
+    {
+        public int TypingCount { get; private set; }
+        public int PulseCount { get; private set; }
+        public int ThrowCount { get; private set; }
+        public string? LastWireCode { get; private set; }
+
+        public Task PublishTypingAsync(
+            Guid roomId,
+            bool active,
+            CancellationToken cancellationToken)
+        {
+            TypingCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task PublishCharacterPulseAsync(Guid roomId, CancellationToken cancellationToken)
+        {
+            PulseCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task PublishCharacterThrowAsync(
+            Guid roomId,
+            Guid targetUserId,
+            string wireCode,
+            CancellationToken cancellationToken)
+        {
+            ThrowCount++;
+            LastWireCode = wireCode;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeLegacyTransport(
+        IReadOnlyList<BackendEvent>? events = null) : IRealtimeTransport
     {
         public int SynchronizeCount { get; private set; }
         public RealtimeConnectionStatus ConnectionStatus { get; } = new(true, true, true);
@@ -286,6 +402,10 @@ public sealed class FirebaseV2RealtimeTransportTests
         public async IAsyncEnumerable<BackendEvent> ReadEventsAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            foreach (BackendEvent backendEvent in events ?? [])
+            {
+                yield return backendEvent;
+            }
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             yield break;
         }

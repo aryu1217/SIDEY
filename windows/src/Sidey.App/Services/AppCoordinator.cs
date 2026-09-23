@@ -1802,9 +1802,11 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                         Room? activeRoom = _state.ActiveRoomId is { } activeRoomId
                             ? _state.Rooms.FirstOrDefault(room => room.Id == activeRoomId)
                             : null;
+                        RoomMember? actor = activeRoom?.Members.FirstOrDefault(
+                            member => member.UserId == characterThrow.ActorUserId);
                         if (activeRoom?.Id == characterThrow.RoomId
                             && characterThrow.ActorUserId != characterThrow.TargetUserId
-                            && activeRoom.Members.Any(member => member.UserId == characterThrow.ActorUserId)
+                            && actor is not null
                             && activeRoom.Members.Any(member => member.UserId == characterThrow.TargetUserId)
                             && _throwCooldown.Accept(
                                 characterThrow.RoomId,
@@ -1812,7 +1814,10 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                                 TimeSpan.FromSeconds(
                                     Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency)))
                         {
-                            QueueThrowForWorld(characterThrow);
+                            QueueThrowForWorld(characterThrow with
+                            {
+                                SourceCharacterId = PixelCharacterCatalog.NormalizeId(actor.CharacterId),
+                            });
                         }
                         break;
                     case BackendEvent.ConnectionChanged connection:

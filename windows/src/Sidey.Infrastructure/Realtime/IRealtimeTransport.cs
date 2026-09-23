@@ -30,6 +30,29 @@ internal interface IRealtimeTransport : IAsyncDisposable
         Task.FromException<FirebaseRealtimeChatResult?>(
             new InvalidOperationException("Firebase realtime chat is not active."));
 
+    public Task PublishTypingAsync(
+        Guid roomId,
+        bool active,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new InvalidOperationException("Firebase realtime typing is not active."));
+
+    public Task PublishCharacterPulseAsync(
+        Guid roomId,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new InvalidOperationException("Firebase realtime pulse is not active."));
+
+    public Task PublishCharacterThrowAsync(
+        Guid roomId,
+        Guid targetUserId,
+        string throwableCatalogItemId,
+        CancellationToken cancellationToken) =>
+        Task.FromException(new InvalidOperationException("Firebase realtime throw is not active."));
+
+    public void ConfigureThrowableWireCodes(
+        IReadOnlyDictionary<string, string> wireCodesByCatalogItemId)
+    {
+    }
+
     public Task ConvergeGrantAsync(
         string minimumAccessRevision,
         CancellationToken cancellationToken) => Task.CompletedTask;

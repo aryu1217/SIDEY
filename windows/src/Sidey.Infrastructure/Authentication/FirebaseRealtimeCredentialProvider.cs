@@ -30,7 +30,8 @@ internal sealed class FirebaseRealtimeCredential
         string idToken,
         Uri databaseUrl,
         long generation,
-        CancellationToken lifetimeToken = default)
+        CancellationToken lifetimeToken = default,
+        IReadOnlyList<string>? wireItems = null)
     {
         UserId = userId;
         SessionId = sessionId;
@@ -38,6 +39,7 @@ internal sealed class FirebaseRealtimeCredential
         DatabaseUrl = databaseUrl;
         Generation = generation;
         LifetimeToken = lifetimeToken;
+        WireItems = wireItems ?? [];
     }
 
     public Guid UserId { get; }
@@ -46,6 +48,7 @@ internal sealed class FirebaseRealtimeCredential
     public Uri DatabaseUrl { get; }
     public long Generation { get; }
     public CancellationToken LifetimeToken { get; }
+    public IReadOnlyList<string> WireItems { get; }
 
     public override string ToString() =>
         $"FirebaseRealtimeCredential(UserId={UserId:D}, SessionId={SessionId:D}, Generation={Generation})";
@@ -960,7 +963,8 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
             IdToken,
             Bootstrap.DatabaseUrl,
             Generation,
-            LifetimeToken);
+            LifetimeToken,
+            Bootstrap.WireItems);
 
         public override string ToString() =>
             $"{nameof(TokenState)}(UserId={UserId:D}, SessionId={SessionId:D})";

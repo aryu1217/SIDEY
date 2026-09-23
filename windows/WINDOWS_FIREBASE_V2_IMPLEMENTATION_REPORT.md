@@ -7,7 +7,7 @@
 - Windows 기준 SHA: `92088b671cebd073623701d15442b1ba3c8638e8`
 - backend 기준 SHA: `82eb8af101aae5c5a489ce8c984bd32448802526`
 - frozen protocol: `2`
-- frozen contract SHA-256: `3c836b40cfc44437e9d069b84787cd3d8793026ce40de46d82b9ece79127b7e5`
+- frozen contract SHA-256: `0f2845d033df248b1745c6526c8c7100b8d8fa6839b45f28c73b1023053fce2e`
 - backend handoff: `sidey-backend/CLIENT_BACKEND_HANDOFF.md` (`BACKEND PUBLISHED — rollout OFF`)
 - production RTDB: `https://sidey.asia-southeast1.firebasedatabase.app`
 
@@ -16,17 +16,18 @@ backend, Firebase Rules/Functions, Supabase production, macOS는 이 Windows 작
 
 ## 최종 전송 구조
 
-현재 frozen 계약은 모든 이벤트를 Firebase로 보내는 구조가 아니다.
+현재 frozen 계약은 모든 저장소를 Firebase로 옮기는 구조가 아니다.
 
 - Supabase/Postgres: durable source of truth, 기존 인증, room/profile/commerce, 3일 chat history
-- Supabase private Realtime: Presence와 혼합버전 기간의 typing/pulse/throw
-- Firebase RTDB: active room의 server-owned latest chat event와 사용자 inbox hint
+- Supabase private Realtime: Presence와 authoritative reconciliation
+- Firebase RTDB: active room의 typing/pulse/throw, server-owned latest chat event와 사용자 inbox hint
 - Firebase callable: `sendRealtimeChat`
 - Supabase selector RPC: 세션별 `legacy_supabase` 또는 `firebase_v2` 선택
 
-`/v2/l/{room}/t|c|x`는 향후 전환용 예약 경로이며 현재 Rules가 client write를 거부한다. Windows도 해당
-경로를 발행하거나 소비하지 않는다. 따라서 구형 client와 새 client는 7일 이상 같은 Supabase
-Presence/transient plane에서 계속 통신한다.
+Firebase v2 선택 세션은 `/v2/l/{room}/t|c|x` compact path로 typing·pulse·projectile을
+발행·수신한다. 같은 세션에서는 bridge가 되돌려 보낸 legacy Supabase transient를 소비하지 않는다.
+Legacy client는 기존 Supabase transient를 계속 사용하며 서버 compatibility bridge가 두 세대 사이를
+연결한다. Presence와 authoritative reconciliation은 모든 세션에서 계속 Supabase를 사용한다.
 
 ## 구현 완료
 
@@ -50,7 +51,7 @@ Presence/transient plane에서 계속 통신한다.
 - mixed-version transport
   - 기존 Supabase socket과 Firebase listener를 한 adapter에서 조정
   - Firebase가 OFF이면 legacy만 사용
-  - Firebase가 ON이면 legacy Presence/transient는 유지하고 legacy chat notification은 중복 소비하지 않음
+  - Firebase가 ON이면 legacy Presence는 유지하되 legacy chat/transient mirror는 중복 소비하지 않음
 - callable chat
   - `{data:{b,i,r}}`와 `{result:{b,i,k?,n,t}}` strict contract
   - known non-commit와 commit-ambiguous 오류 분리, 자동 재전송 금지
@@ -77,28 +78,21 @@ dotnet test SIDEY.Windows.slnx --configuration Release --no-restore --no-build
 ```
 
 - Release build: PASS, warning 0, error 0
-- tests: PASS 1,044 / failed 0 / skipped 0
+- tests: PASS 1,059 / failed 0 / skipped 0
   - Core 234
-  - Presentation 176
-  - Platform.Windows 634
+  - Presentation 180
+  - Platform.Windows 645
 - Firebase selector/callable/bootstrap/protocol/REST/SSE/listener/hybrid adapter는 fake HTTP/SSE fixture로 검증
 - `git diff --check`: PASS
 
 ## 운영 및 설치 파일 상태
 
 - backend production publication: 완료
-- production selector: `enabled=false`, `killSwitch=true`, cohort `0`
-- Firebase emergency gate: false
+- production selector and Firebase emergency gate: server-owned per-session decision
 - T0와 7일 관찰: 미시작
 - production release/signing/store 배포: 수행하지 않음
 - Authenticode: 테스트 설치 파일은 서명하지 않음
-- final test installer:
-  - `build/windows/firebase-v2-final4-3c836b40/installer/SIDEY-Windows-x64-v2.0.0-Setup.exe`
-  - bytes: `72,818,264`
-  - SHA-256: `a5ab9a925eba47442e40bf71de9d13793767a54decbbe5ea670ca593f3e98dd0`
-  - self-contained payload: 668 files / 243,084,360 bytes
-  - installer transaction: 47 assertions PASS
-  - uninstall manifest: 661 files / 140 directories PASS
+- prior `3c836b40` and `5200805` installers predate Firebase transient cutover and are obsolete
 
 따라서 이 binary는 Firebase v2 기능이 통합된 client지만, 현재 production 서버가 OFF를 반환하므로 실제 사용자
 세션은 legacy Supabase를 사용한다. backend를 별도 승인 절차로 ON하면 설치 파일 교체 없이 선택된 세션부터

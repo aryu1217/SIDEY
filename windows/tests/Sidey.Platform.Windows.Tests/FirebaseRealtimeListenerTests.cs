@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Sidey.Core.Abstractions;
+using Sidey.Core.Domain;
 using Sidey.Infrastructure.Authentication;
 using Sidey.Infrastructure.Realtime;
 
@@ -86,10 +87,60 @@ public sealed class FirebaseRealtimeListenerTests
         await WaitUntilAsync(() => credentials.RequestCount >= 2);
     }
 
+    [Fact]
+    public async Task FreshFirebasePulseAndThrowSnapshotsEmitPeerActions()
+    {
+        var actorUserId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        var targetUserId = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
+        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var events = new List<BackendEvent>();
+        object eventGate = new();
+        await using var listener = new FirebaseRealtimeListener(
+            new FakeCredentialProvider(),
+            backendEvent =>
+            {
+                lock (eventGate)
+                {
+                    events.Add(backendEvent);
+                }
+            },
+            _ => CreateClient(
+                Task.Delay(Timeout.InfiniteTimeSpan),
+                RoomTransientEvents(actorUserId, targetUserId, now)));
+        listener.ConfigureThrowableWireCodes(new Dictionary<string, string>
+        {
+            ["18"] = "throwable_leaf",
+        });
+
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() =>
+        {
+            lock (eventGate)
+            {
+                return events.OfType<BackendEvent.CharacterPulsed>().Any()
+                    && events.OfType<BackendEvent.CharacterThrown>().Any();
+            }
+        });
+
+        lock (eventGate)
+        {
+            Assert.Equal(actorUserId, Assert.Single(
+                events.OfType<BackendEvent.CharacterPulsed>()).Pulse.UserId);
+            CharacterThrowEvent characterThrow = Assert.Single(
+                events.OfType<BackendEvent.CharacterThrown>()).Throw;
+            Assert.Equal(actorUserId, characterThrow.ActorUserId);
+            Assert.Equal(targetUserId, characterThrow.TargetUserId);
+            Assert.Equal("throwable_leaf", characterThrow.ThrowableId);
+        }
+    }
+
     private static FirebaseRtdbRestClient CreateClient()
         => CreateClient(Task.Delay(Timeout.InfiniteTimeSpan));
 
-    private static FirebaseRtdbRestClient CreateClient(Task roomEnd)
+    private static FirebaseRtdbRestClient CreateClient(Task roomEnd) =>
+        CreateClient(roomEnd, RoomEvents());
+
+    private static FirebaseRtdbRestClient CreateClient(Task roomEnd, string roomEvents)
     {
         var urls = new FirebaseRtdbUrlBuilder(
             new Uri("https://sidey.asia-southeast1.firebasedatabase.app"));
@@ -98,7 +149,7 @@ public sealed class FirebaseRealtimeListenerTests
             string path = request.RequestUri!.AbsolutePath;
             string content = path.Contains("/v2/n/", StringComparison.Ordinal)
                 ? InboxEvents()
-                : RoomEvents();
+                : roomEvents;
             Stream stream = path.Contains("/v2/n/", StringComparison.Ordinal)
                 ? new PrefixThenWaitStream(Encoding.UTF8.GetBytes(content))
                 : new PrefixThenSignalStream(Encoding.UTF8.GetBytes(content), roomEnd);
@@ -152,6 +203,37 @@ public sealed class FirebaseRealtimeListenerTests
             },
         });
         return $"event: put\ndata: {initial}\n\n";
+    }
+
+    private static string RoomTransientEvents(Guid actorUserId, Guid targetUserId, long now)
+    {
+        long baselineTimestamp = now - 1_000;
+        string actor = actorUserId.ToString("D");
+        string initial = JsonSerializer.Serialize(new
+        {
+            path = "/",
+            data = new
+            {
+                c = new Dictionary<string, long> { [actor] = baselineTimestamp },
+                x = new Dictionary<string, object>
+                {
+                    [actor] = new { u = targetUserId, k = "18", t = baselineTimestamp },
+                },
+            },
+        });
+        string pulse = JsonSerializer.Serialize(new
+        {
+            path = $"/c/{actor}",
+            data = now,
+        });
+        string characterThrow = JsonSerializer.Serialize(new
+        {
+            path = $"/x/{actor}",
+            data = new { u = targetUserId, k = "18", t = now },
+        });
+        return $"event: put\ndata: {initial}\n\n"
+            + $"event: put\ndata: {pulse}\n\n"
+            + $"event: put\ndata: {characterThrow}\n\n";
     }
 
     private static async Task WaitUntilAsync(Func<bool> predicate)

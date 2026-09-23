@@ -122,14 +122,16 @@ public sealed class FirebaseRealtimeProtocolTests
             Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()));
         string unknown = CreateBootstrapJson(root => root["sessionId"] = s_sessionId.ToString("D"));
         string badWireCode = CreateBootstrapJson(root => root["wireItems"] = new JsonArray("01"));
-        string missingWireCode = CreateBootstrapJson(root => root["wireItems"] = new JsonArray());
+        string duplicateWireCode = CreateBootstrapJson(root => root["wireItems"] = new JsonArray("7", "7"));
 
         Assert.Throws<InvalidDataException>(() => ParseBootstrap(duplicate));
         Assert.Throws<InvalidDataException>(() => ParseBootstrap(malformed));
         Assert.Throws<InvalidDataException>(() => ParseBootstrap(tooMany));
         Assert.Throws<InvalidDataException>(() => ParseBootstrap(unknown));
         Assert.Throws<InvalidDataException>(() => ParseBootstrap(badWireCode));
-        Assert.Throws<InvalidDataException>(() => ParseBootstrap(missingWireCode));
+        Assert.Throws<InvalidDataException>(() => ParseBootstrap(duplicateWireCode));
+        Assert.Empty(ParseBootstrap(
+            CreateBootstrapJson(root => root["wireItems"] = new JsonArray())).WireItems);
     }
 
     [Fact]
@@ -147,22 +149,29 @@ public sealed class FirebaseRealtimeProtocolTests
     }
 
     [Fact]
-    public void ReservedCompactTransientPathsAndWritesAreDisabled()
+    public void CompactTransientPathsAndWritesMatchFirebaseContract()
     {
         Assert.Equal($"v2/l/{s_roomId:D}", FirebaseRealtimeProtocol.RoomPath(s_roomId));
         Assert.Equal($"v2/n/{s_userId:D}", FirebaseRealtimeProtocol.InboxPath(s_userId));
         Assert.Equal($"v2/l/{s_roomId:D}/e", FirebaseRealtimeProtocol.ServerEventPath(s_roomId));
 
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Equal(
+            $"v2/l/{s_roomId:D}/t/{s_userId:D}/{s_sessionId:D}",
             FirebaseRealtimeProtocol.TypingPath(s_roomId, s_userId, s_sessionId));
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Equal(
+            $"v2/l/{s_roomId:D}/c/{s_userId:D}",
             FirebaseRealtimeProtocol.CharacterPulsePath(s_roomId, s_userId));
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Equal(
+            $"v2/l/{s_roomId:D}/x/{s_userId:D}",
             FirebaseRealtimeProtocol.CharacterThrowPath(s_roomId, s_userId));
-        Assert.Throws<NotSupportedException>(() =>
-            FirebaseRealtimeProtocol.CreateServerTimestampBody());
-        Assert.Throws<NotSupportedException>(() =>
-            FirebaseRealtimeProtocol.CreateCharacterThrowBody(s_userId, "0"));
+        Assert.Equal(
+            "{\".sv\":\"timestamp\"}",
+            Encoding.UTF8.GetString(FirebaseRealtimeProtocol.CreateServerTimestampBody()));
+        JsonNode throwBody = JsonNode.Parse(
+            FirebaseRealtimeProtocol.CreateCharacterThrowBody(s_userId, "0"))!;
+        Assert.Equal(s_userId.ToString("D"), throwBody["u"]!.GetValue<string>());
+        Assert.Equal("0", throwBody["k"]!.GetValue<string>());
+        Assert.Equal("timestamp", throwBody["t"]![".sv"]!.GetValue<string>());
     }
 
     [Fact]
@@ -173,9 +182,12 @@ public sealed class FirebaseRealtimeProtocolTests
 
         FirebaseRealtimeRoomPayload payload = ParseRoom(json);
 
-        Assert.Empty(payload.Typing);
-        Assert.Empty(payload.CharacterPulses);
-        Assert.Empty(payload.CharacterThrows);
+        Assert.Equal(1_800_000_000_000, payload.Typing[s_userId][s_sessionId]);
+        Assert.Equal(1_800_000_000_001, payload.CharacterPulses[s_userId]);
+        FirebaseRealtimeThrow characterThrow = payload.CharacterThrows[s_userId];
+        Assert.Equal(s_userId, characterThrow.TargetUserId);
+        Assert.Equal("123456", characterThrow.WireCode);
+        Assert.Equal(1_800_000_000_002, characterThrow.Timestamp);
         FirebaseRealtimeRoomEvent roomEvent = Assert.IsType<FirebaseRealtimeRoomEvent>(payload.ServerEvent);
         Assert.Equal(messageId, roomEvent.MessageId);
         Assert.Equal("secret message", roomEvent.Body);
@@ -193,15 +205,10 @@ public sealed class FirebaseRealtimeProtocolTests
     }
 
     [Fact]
-    public void ReservedCompactTransientPayloadsAreIgnoredWithoutConsumption()
+    public void MalformedCompactTransientPayloadsFailClosed()
     {
-        FirebaseRealtimeRoomPayload payload = ParseRoom(
-            "{\"t\":false,\"c\":\"reserved\",\"x\":[1,2,3]}");
-
-        Assert.Empty(payload.Typing);
-        Assert.Empty(payload.CharacterPulses);
-        Assert.Empty(payload.CharacterThrows);
-        Assert.Null(payload.ServerEvent);
+        Assert.Throws<InvalidDataException>(() => ParseRoom(
+            "{\"t\":false,\"c\":\"reserved\",\"x\":[1,2,3]}"));
     }
 
     [Fact]

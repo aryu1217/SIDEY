@@ -24,8 +24,11 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
     private readonly IRealtimeTransport _realtime;
+    private readonly SemaphoreSlim _firebaseWireCodeGate = new(1, 1);
     private IReadOnlyDictionary<Guid, long> _roomEpochs = new Dictionary<Guid, long>();
     private Guid? _activeRoomId;
+    private IReadOnlyDictionary<string, string>? _firebaseThrowableWireCodes;
+    private string _equippedThrowableId = "patch_soft_ball";
 
     public SupabaseBackendGateway(
         SupabaseRuntimeConfiguration configuration,
@@ -119,7 +122,7 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         IReadOnlySet<string> activeEntitlementKeys = PixelCharacterCatalog.ResolveActiveEntitlementKeys(
             await entitlementsTask.ConfigureAwait(false),
             profile?.CharacterId);
-        return new BackendSnapshot(
+        BackendSnapshot snapshot = new(
             profile is null
                 ? null
                 : new Profile(
@@ -139,6 +142,11 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             rooms,
             session.UserId,
             activeEntitlementKeys);
+        Volatile.Write(
+            ref _equippedThrowableId,
+            CosmeticCatalog.NormalizeThrowableId(snapshot.Profile?.EquippedThrowableId)
+                ?? "patch_soft_ball");
+        return snapshot;
     }
 
     /// <summary>
@@ -321,14 +329,18 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             await _realtime.ConvergeGrantAsync(
                 RequireAccessRevision(v2.AccessRevision),
                 CancellationToken.None).ConfigureAwait(false);
-            return MapProfile(v2.Profile);
+            Profile profile = MapProfile(v2.Profile);
+            UpdateEquippedThrowable(profile);
+            return profile;
         }
 
         DatabaseProfile row = await RpcSingleAsync<DatabaseProfile>(
             "set_equipped_cosmetic",
             parameters,
             cancellationToken).ConfigureAwait(false);
-        return MapProfile(row);
+        Profile legacyProfile = MapProfile(row);
+        UpdateEquippedThrowable(legacyProfile);
+        return legacyProfile;
     }
 
     public async Task<CreateRoomResult> CreateRoomAsync(
@@ -589,6 +601,12 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         bool keepalive,
         CancellationToken cancellationToken = default)
     {
+        if (_realtime.UsesFirebaseChat)
+        {
+            await _realtime.PublishTypingAsync(roomId, active, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
         _ = keepalive;
         await BroadcastRoomEventAsync(
             roomId,
@@ -602,6 +620,12 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
+        if (_realtime.UsesFirebaseChat)
+        {
+            await _realtime.PublishCharacterPulseAsync(roomId, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
         await BroadcastRoomEventAsync(
             roomId,
             "character_pulse",
@@ -615,6 +639,14 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         Guid targetUserId,
         CancellationToken cancellationToken = default)
     {
+        if (_realtime.UsesFirebaseChat)
+        {
+            return _realtime.PublishCharacterThrowAsync(
+                roomId,
+                targetUserId,
+                Volatile.Read(ref _equippedThrowableId),
+                cancellationToken);
+        }
         if (!_roomEpochs.TryGetValue(roomId, out long realtimeEpoch))
         {
             throw new InvalidOperationException(I18n.Get("backend.realtimeEpochMissing"));
@@ -641,6 +673,11 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         PresenceState localPresence,
         CancellationToken cancellationToken = default)
     {
+        if (_realtime is FirebaseV2RealtimeTransport)
+        {
+            _realtime.ConfigureThrowableWireCodes(
+                await LoadFirebaseThrowableWireCodesAsync(cancellationToken).ConfigureAwait(false));
+        }
         await _realtime.SynchronizeAsync(
             roomEpochs,
             activeRoomId,
@@ -684,6 +721,7 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _realtime.DisposeAsync().ConfigureAwait(false);
+        _firebaseWireCodeGate.Dispose();
         if (_ownsHttpClient)
         {
             _httpClient.Dispose();
@@ -1057,6 +1095,60 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         return await ReadRequiredAsync<T>(response, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task<IReadOnlyDictionary<string, string>> LoadFirebaseThrowableWireCodesAsync(
+        CancellationToken cancellationToken)
+    {
+        if (Volatile.Read(ref _firebaseThrowableWireCodes) is { } cached)
+        {
+            return cached;
+        }
+        await _firebaseWireCodeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_firebaseThrowableWireCodes is { } loaded)
+            {
+                return loaded;
+            }
+            using HttpRequestMessage request = await CreateRequestAsync(
+                HttpMethod.Post,
+                "/rest/v1/rpc/get_store_state_v2",
+                cancellationToken).ConfigureAwait(false);
+            request.Content = JsonContent.Create(new { }, options: s_jsonOptions);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+            DatabaseFirebaseWireItem[] rows = await ReadRequiredAsync<DatabaseFirebaseWireItem[]>(
+                response,
+                cancellationToken).ConfigureAwait(false);
+            Dictionary<string, string> result = new(StringComparer.Ordinal);
+            HashSet<string> wireCodes = new(StringComparer.Ordinal) { "0" };
+            foreach (DatabaseFirebaseWireItem row in rows)
+            {
+                if (!StringComparer.Ordinal.Equals(row.ProductKind, "throwable")
+                    || row.WireCode is null)
+                {
+                    continue;
+                }
+                if (!CosmeticCatalog.ThrowableIds.Contains(row.CatalogItemId)
+                    || row.WireCode is < 1 or > 999_999)
+                {
+                    throw new InvalidDataException("Firebase throwable wire catalog is invalid.");
+                }
+                string wireCode = row.WireCode.Value.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+                if (!result.TryAdd(row.CatalogItemId, wireCode) || !wireCodes.Add(wireCode))
+                {
+                    throw new InvalidDataException("Firebase throwable wire catalog has duplicates.");
+                }
+            }
+            Volatile.Write(ref _firebaseThrowableWireCodes, result);
+            return result;
+        }
+        finally
+        {
+            _firebaseWireCodeGate.Release();
+        }
+    }
+
     private static string FailureDiagnostic(Exception exception)
     {
         Exception current = exception;
@@ -1208,6 +1300,12 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         PostgresTimestampParser.Parse(row.CreatedAt),
         CosmeticCatalog.NormalizeBubbleStyleId(row.BubbleStyleId));
 
+    private void UpdateEquippedThrowable(Profile profile) =>
+        Volatile.Write(
+            ref _equippedThrowableId,
+            CosmeticCatalog.NormalizeThrowableId(profile.EquippedThrowableId)
+                ?? "patch_soft_ball");
+
     private static Profile MapProfile(DatabaseProfile row) => new(
         row.Id,
         row.Nickname,
@@ -1281,6 +1379,11 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         [property: JsonPropertyName("google_connected")] bool GoogleConnected,
         [property: JsonPropertyName("entitlement_status")] string? EntitlementStatus,
         [property: JsonPropertyName("latest_order_status")] string? LatestOrderStatus);
+
+    private sealed record DatabaseFirebaseWireItem(
+        [property: JsonPropertyName("product_kind")] string ProductKind,
+        [property: JsonPropertyName("catalog_item_id")] string CatalogItemId,
+        [property: JsonPropertyName("wireCode")] int? WireCode);
 
     private sealed record CommerceOrderResponse(
         [property: JsonPropertyName("order_id")] Guid OrderId,

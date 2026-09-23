@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using Sidey.Core.Abstractions;
+using Sidey.Core.Domain;
 using Sidey.Infrastructure.Authentication;
 
 namespace Sidey.Infrastructure.Realtime;
@@ -11,13 +12,15 @@ internal interface IFirebaseRealtimeListener : IAsyncDisposable
 
     public Task StartAsync(Guid? activeRoomId, CancellationToken cancellationToken);
     public Task StopAsync(CancellationToken cancellationToken);
+    public void ConfigureThrowableWireCodes(IReadOnlyDictionary<string, string> catalogItemIdsByWireCode)
+    {
+    }
     public void RequestReconnect();
 }
 
 /// <summary>
-/// Owns the two server-authoritative Firebase notification streams. Supabase remains the
-/// durable source and the mixed-version Presence/transient transport, so every Firebase
-/// notification is converted into an authoritative Supabase reconciliation request.
+/// Owns the Firebase inbox and active-room streams. Firebase delivers transient activity
+/// directly while durable chat and structural hints trigger authoritative reconciliation.
 /// </summary>
 internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
 {
@@ -29,6 +32,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
     private readonly IFirebaseRealtimeCredentialProvider _credentials;
     private readonly Func<Uri, FirebaseRtdbRestClient> _createClient;
     private readonly Action<BackendEvent> _emit;
+    private readonly TimeProvider _timeProvider;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly Lock _snapshotGate = new();
     private readonly CancellationTokenSource _shutdown = new();
@@ -38,21 +42,41 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
     private string? _accessRevision;
     private readonly Dictionary<Guid, string> _roomRevisions = [];
     private readonly Dictionary<Guid, long> _chatSequences = [];
+    private FirebaseRealtimeLiveReconciler _liveReconciler = new();
+    private IReadOnlyDictionary<string, string> _throwableCatalogItemIdsByWireCode =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["0"] = "patch_soft_ball",
+        };
+    private CancellationTokenSource? _typingExpiryCancellation;
     private int _ready;
     private long _generation;
 
     public FirebaseRealtimeListener(
         IFirebaseRealtimeCredentialProvider credentials,
         Action<BackendEvent> emit,
-        Func<Uri, FirebaseRtdbRestClient>? createClient = null)
+        Func<Uri, FirebaseRtdbRestClient>? createClient = null,
+        TimeProvider? timeProvider = null)
     {
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _emit = emit ?? throw new ArgumentNullException(nameof(emit));
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _createClient = createClient ?? (databaseUrl =>
             new FirebaseRtdbRestClient(new FirebaseRtdbUrlBuilder(databaseUrl)));
     }
 
     public bool IsReady => Volatile.Read(ref _ready) != 0;
+
+    public void ConfigureThrowableWireCodes(
+        IReadOnlyDictionary<string, string> catalogItemIdsByWireCode)
+    {
+        ArgumentNullException.ThrowIfNull(catalogItemIdsByWireCode);
+        lock (_snapshotGate)
+        {
+            _throwableCatalogItemIdsByWireCode =
+                new Dictionary<string, string>(catalogItemIdsByWireCode, StringComparer.Ordinal);
+        }
+    }
 
     public async Task StartAsync(Guid? activeRoomId, CancellationToken cancellationToken)
     {
@@ -66,8 +90,16 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                 return;
             }
 
+            bool activeRoomChanged = _activeRoomId != activeRoomId;
             await StopWithinGateAsync().ConfigureAwait(false);
             _activeRoomId = activeRoomId;
+            if (activeRoomChanged)
+            {
+                lock (_snapshotGate)
+                {
+                    _liveReconciler = new FirebaseRealtimeLiveReconciler();
+                }
+            }
             Volatile.Write(ref _ready, 0);
             var generationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                 _shutdown.Token);
@@ -274,7 +306,12 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             if (firebaseEvent.Kind is FirebaseSseEventKind.Put or FirebaseSseEventKind.Patch)
             {
                 snapshot.Apply(firebaseEvent.GetMutation());
-                ProcessSnapshot(roomId, snapshot.Value, initialMutation);
+                ProcessSnapshot(
+                    roomId,
+                    snapshot.Value,
+                    initialMutation,
+                    credential.UserId,
+                    generation);
                 if (initialMutation)
                 {
                     initialMutation = false;
@@ -290,12 +327,18 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         }
     }
 
-    private void ProcessSnapshot(Guid? roomId, JsonNode? value, bool initialMutation)
+    private void ProcessSnapshot(
+        Guid? roomId,
+        JsonNode? value,
+        bool initialMutation,
+        Guid localUserId,
+        long generation)
     {
         byte[] utf8 = Encoding.UTF8.GetBytes(value?.ToJsonString() ?? "null");
         if (roomId is { } activeRoomId)
         {
             FirebaseRealtimeRoomPayload payload = FirebaseRealtimeProtocol.ParseRoomPayload(utf8);
+            ProcessLiveActions(activeRoomId, localUserId, payload, generation);
             if (payload.ServerEvent is { } serverEvent)
             {
                 ObserveChatSequence(activeRoomId, serverEvent.Sequence, initialMutation);
@@ -347,6 +390,112 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         }
     }
 
+    private void ProcessLiveActions(
+        Guid roomId,
+        Guid localUserId,
+        FirebaseRealtimeRoomPayload payload,
+        long generation)
+    {
+        IReadOnlyList<FirebaseRealtimeLiveAction> actions;
+        IReadOnlyDictionary<string, string> throwableCatalogItemIds;
+        lock (_snapshotGate)
+        {
+            actions = _liveReconciler.Consume(
+                payload,
+                _timeProvider.GetUtcNow().ToUnixTimeMilliseconds());
+            throwableCatalogItemIds = _throwableCatalogItemIdsByWireCode;
+        }
+        foreach (FirebaseRealtimeLiveAction action in actions)
+        {
+            switch (action)
+            {
+                case FirebaseRealtimeLiveAction.Typing typing when typing.UserId != localUserId:
+                    _emit(new BackendEvent.TypingChanged(roomId, typing.UserId, typing.Active));
+                    break;
+                case FirebaseRealtimeLiveAction.Pulse pulse when pulse.UserId != localUserId:
+                    _emit(new BackendEvent.CharacterPulsed(
+                        new CharacterPulseEvent(Guid.NewGuid(), roomId, pulse.UserId)));
+                    break;
+                case FirebaseRealtimeLiveAction.Throw characterThrow
+                    when characterThrow.ActorUserId != localUserId
+                        && characterThrow.ActorUserId != characterThrow.Payload.TargetUserId
+                        && throwableCatalogItemIds.TryGetValue(
+                            characterThrow.Payload.WireCode,
+                            out string? throwableCatalogItemId):
+                    _emit(new BackendEvent.CharacterThrown(new CharacterThrowEvent(
+                        Guid.NewGuid(),
+                        roomId,
+                        characterThrow.ActorUserId,
+                        characterThrow.Payload.TargetUserId,
+                        PixelCharacterCatalog.FallbackId,
+                        throwableCatalogItemId)));
+                    break;
+            }
+        }
+        ScheduleTypingExpiry(roomId, localUserId, generation);
+    }
+
+    private void ScheduleTypingExpiry(Guid roomId, Guid localUserId, long generation)
+    {
+        CancellationTokenSource? replacement = null;
+        TimeSpan delay = TimeSpan.Zero;
+        lock (_snapshotGate)
+        {
+            _typingExpiryCancellation?.Cancel();
+            _typingExpiryCancellation?.Dispose();
+            _typingExpiryCancellation = null;
+            if (_liveReconciler.NextTypingExpiryMilliseconds is not { } deadline)
+            {
+                return;
+            }
+            long now = _timeProvider.GetUtcNow().ToUnixTimeMilliseconds();
+            delay = TimeSpan.FromMilliseconds(Math.Max(0, deadline - now));
+            replacement = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
+            _typingExpiryCancellation = replacement;
+        }
+        _ = ExpireTypingAfterDelayAsync(
+            roomId,
+            localUserId,
+            generation,
+            delay,
+            replacement);
+    }
+
+    private async Task ExpireTypingAfterDelayAsync(
+        Guid roomId,
+        Guid localUserId,
+        long generation,
+        TimeSpan delay,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await Task.Delay(delay, _timeProvider, cancellation.Token).ConfigureAwait(false);
+            IReadOnlyList<FirebaseRealtimeLiveAction.Typing> actions;
+            lock (_snapshotGate)
+            {
+                if (generation != Volatile.Read(ref _generation)
+                    || !ReferenceEquals(_typingExpiryCancellation, cancellation))
+                {
+                    return;
+                }
+                actions = _liveReconciler.ExpireTyping(
+                    _timeProvider.GetUtcNow().ToUnixTimeMilliseconds());
+            }
+            foreach (FirebaseRealtimeLiveAction.Typing typing in actions)
+            {
+                if (typing.UserId != localUserId)
+                {
+                    _emit(new BackendEvent.TypingChanged(roomId, typing.UserId, false));
+                }
+            }
+            ScheduleTypingExpiry(roomId, localUserId, generation);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+    }
+
     private void ObserveChatSequence(Guid roomId, long sequence, bool initialMutation)
     {
         bool emit;
@@ -373,6 +522,12 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
 
     private async Task StopWithinGateAsync()
     {
+        lock (_snapshotGate)
+        {
+            _typingExpiryCancellation?.Cancel();
+            _typingExpiryCancellation?.Dispose();
+            _typingExpiryCancellation = null;
+        }
         CancellationTokenSource? cancellation = Interlocked.Exchange(
             ref _generationCancellation,
             null);
