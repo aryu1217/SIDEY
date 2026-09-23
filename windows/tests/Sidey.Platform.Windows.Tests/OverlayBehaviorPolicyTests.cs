@@ -67,6 +67,24 @@ public sealed class OverlayBehaviorPolicyTests
     }
 
     [Theory]
+    [InlineData(OverlayEdge.Bottom, 2, 3, new byte[] { 1, 2, 3, 4, 5, 6 })]
+    [InlineData(OverlayEdge.Top, 2, 3, new byte[] { 6, 5, 4, 3, 2, 1 })]
+    [InlineData(OverlayEdge.Left, 3, 2, new byte[] { 5, 3, 1, 6, 4, 2 })]
+    [InlineData(OverlayEdge.Right, 3, 2, new byte[] { 2, 4, 6, 1, 3, 5 })]
+    public void NameplateFollowsCharacterRotation(
+        OverlayEdge edge,
+        int width,
+        int height,
+        byte[] expected)
+    {
+        PremultipliedVisual oriented = PixelVisualOrientation.ApplyToNameplate(Visual(2, 3), edge);
+
+        Assert.Equal(width, oriented.Width);
+        Assert.Equal(height, oriented.Height);
+        Assert.Equal(expected, BlueValues(oriented));
+    }
+
+    [Theory]
     [InlineData(OverlayEdge.Top)]
     [InlineData(OverlayEdge.Left)]
     [InlineData(OverlayEdge.Right)]

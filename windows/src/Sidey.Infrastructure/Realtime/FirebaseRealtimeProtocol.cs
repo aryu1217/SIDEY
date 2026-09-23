@@ -50,7 +50,7 @@ internal sealed class FirebaseRealtimeRoomEvent(
         $"FirebaseRealtimeRoomEvent {{ MessageId = {MessageId:D}, SenderId = {SenderId:D}, Body = <redacted>, Timestamp = {Timestamp}, Sequence = {Sequence}, BubbleWireCode = {BubbleWireCode ?? "<none>"} }}";
 }
 
-internal sealed record FirebaseRealtimeInboxRoom(string Revision, long ChatSequence);
+internal sealed record FirebaseRealtimeInboxRoom(string? Revision, long? ChatSequence);
 
 internal sealed class FirebaseRealtimeRoomPayload(
     IReadOnlyDictionary<Guid, IReadOnlyDictionary<Guid, long>> typing,
@@ -68,10 +68,10 @@ internal sealed class FirebaseRealtimeRoomPayload(
 }
 
 internal sealed class FirebaseRealtimeInboxPayload(
-    string accessRevision,
+    string? accessRevision,
     IReadOnlyDictionary<Guid, FirebaseRealtimeInboxRoom> rooms)
 {
-    public string AccessRevision { get; } = accessRevision;
+    public string? AccessRevision { get; } = accessRevision;
     public IReadOnlyDictionary<Guid, FirebaseRealtimeInboxRoom> Rooms { get; } = rooms;
 }
 
@@ -97,6 +97,7 @@ internal static class FirebaseRealtimeProtocol
     private static readonly HashSet<string> s_eventRequiredProperties = ["i", "s", "b", "t", "n"];
     private static readonly HashSet<string> s_inboxProperties = ["a", "r"];
     private static readonly HashSet<string> s_inboxRoomProperties = ["v", "n"];
+    private static readonly HashSet<string> s_noRequiredProperties = [];
 
     public static byte[] CreateBootstrapRequestBody(string? minimumAccessRevision = null)
     {
@@ -231,10 +232,19 @@ internal static class FirebaseRealtimeProtocol
     {
         using JsonDocument document = ParseDocument(utf8Json);
         JsonElement root = RequireObject(document.RootElement);
-        ValidateProperties(root, s_inboxProperties, s_inboxProperties);
-        string accessRevision = GetRevision(root, "a");
-        JsonElement roomsValue = RequireObject(GetRequiredProperty(root, "r"));
+        ValidateProperties(root, s_inboxProperties, s_noRequiredProperties);
+        string? accessRevision = root.TryGetProperty("a", out JsonElement accessRevisionValue)
+            ? GetRevision(accessRevisionValue)
+            : null;
         Dictionary<Guid, FirebaseRealtimeInboxRoom> rooms = [];
+        if (!root.TryGetProperty("r", out JsonElement roomsProperty))
+        {
+            return new FirebaseRealtimeInboxPayload(
+                accessRevision,
+                new ReadOnlyDictionary<Guid, FirebaseRealtimeInboxRoom>(rooms));
+        }
+
+        JsonElement roomsValue = RequireObject(roomsProperty);
         HashSet<string> names = [];
         foreach (JsonProperty property in roomsValue.EnumerateObject())
         {
@@ -244,10 +254,14 @@ internal static class FirebaseRealtimeProtocol
             }
             Guid roomId = ParseGuid(property.Name);
             JsonElement roomValue = RequireObject(property.Value);
-            ValidateProperties(roomValue, s_inboxRoomProperties, s_inboxRoomProperties);
+            ValidateProperties(roomValue, s_inboxRoomProperties, s_noRequiredProperties);
             var room = new FirebaseRealtimeInboxRoom(
-                GetRevision(roomValue, "v"),
-                GetPositiveSafeInteger(roomValue, "n"));
+                roomValue.TryGetProperty("v", out JsonElement revisionValue)
+                    ? GetRevision(revisionValue)
+                    : null,
+                roomValue.TryGetProperty("n", out JsonElement sequenceValue)
+                    ? GetPositiveSafeInteger(sequenceValue)
+                    : null);
             if (!rooms.TryAdd(roomId, room))
             {
                 throw InvalidPayload();
@@ -472,6 +486,16 @@ internal static class FirebaseRealtimeProtocol
     {
         string revision = GetString(value, propertyName, 20);
         if (revision.Length != 20 || revision.Any(character => character is < '0' or > '9'))
+        {
+            throw InvalidPayload();
+        }
+        return revision;
+    }
+
+    private static string GetRevision(JsonElement value)
+    {
+        string revision = GetString(value, 20);
+        if (!IsRevision(revision))
         {
             throw InvalidPayload();
         }

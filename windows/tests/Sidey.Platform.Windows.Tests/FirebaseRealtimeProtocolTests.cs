@@ -224,6 +224,30 @@ public sealed class FirebaseRealtimeProtocolTests
         Assert.Equal(9, inbox.Rooms[s_roomId].ChatSequence);
     }
 
+    [Fact]
+    public void InboxAcceptsProductionPartialHintShapes()
+    {
+        FirebaseRealtimeInboxPayload accessOnly = ParseInbox(
+            "{\"a\":\"00000000000000000042\"}");
+        Assert.Equal("00000000000000000042", accessOnly.AccessRevision);
+        Assert.Empty(accessOnly.Rooms);
+
+        FirebaseRealtimeInboxPayload partialRooms = ParseInbox(
+            $$"""
+            {
+              "r": {
+                "{{s_roomId:D}}": { "v": "00000000000000000123" },
+                "8e0f24a2-7e1b-4fdb-b8bd-7fe85efc40fb": { "n": 9 }
+              }
+            }
+            """);
+        Assert.Null(partialRooms.AccessRevision);
+        Assert.Equal("00000000000000000123", partialRooms.Rooms[s_roomId].Revision);
+        Assert.Null(partialRooms.Rooms[s_roomId].ChatSequence);
+        Assert.Null(partialRooms.Rooms[Guid.Parse("8e0f24a2-7e1b-4fdb-b8bd-7fe85efc40fb")].Revision);
+        Assert.Equal(9, partialRooms.Rooms[Guid.Parse("8e0f24a2-7e1b-4fdb-b8bd-7fe85efc40fb")].ChatSequence);
+    }
+
     [Theory]
     [InlineData("{\"a\":42,\"r\":{}}")]
     [InlineData("{\"a\":\"0000000000000000042\",\"r\":{}}")]

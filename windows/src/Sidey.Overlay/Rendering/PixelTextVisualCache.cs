@@ -210,7 +210,7 @@ internal sealed class PixelTextVisualCache : IDisposable
 
     private PixelMemberVisuals Build(VisualKey key)
     {
-        PremultipliedVisual nameplate = PixelVisualOrientation.Apply(RasterizeNameplate(
+        PremultipliedVisual nameplate = PixelVisualOrientation.ApplyToNameplate(RasterizeNameplate(
             key.Name,
             StatusColor(key.Presence)), _edge);
 

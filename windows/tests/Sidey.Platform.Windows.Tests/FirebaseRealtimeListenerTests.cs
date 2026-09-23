@@ -70,6 +70,37 @@ public sealed class FirebaseRealtimeListenerTests
     }
 
     [Fact]
+    public async Task ProductionAccessOnlyInboxReachesReadyState()
+    {
+        var events = new List<BackendEvent>();
+        object eventGate = new();
+        await using var listener = new FirebaseRealtimeListener(
+            new FakeCredentialProvider(),
+            backendEvent =>
+            {
+                lock (eventGate)
+                {
+                    events.Add(backendEvent);
+                }
+            },
+            _ => CreateClient(
+                Task.Delay(Timeout.InfiniteTimeSpan),
+                RoomEvents(),
+                AccessOnlyInboxEvents()));
+
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => listener.IsReady);
+
+        lock (eventGate)
+        {
+            Assert.Contains(events, item => item is BackendEvent.Diagnostic diagnostic
+                && diagnostic.Stage.StartsWith("firebase-listener-ready", StringComparison.Ordinal));
+            Assert.DoesNotContain(events, item => item is BackendEvent.Diagnostic diagnostic
+                && diagnostic.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
     public async Task ReconnectsWhenEitherActiveStreamEnds()
     {
         var credentials = new FakeCredentialProvider();
@@ -141,6 +172,12 @@ public sealed class FirebaseRealtimeListenerTests
         CreateClient(roomEnd, RoomEvents());
 
     private static FirebaseRtdbRestClient CreateClient(Task roomEnd, string roomEvents)
+        => CreateClient(roomEnd, roomEvents, InboxEvents());
+
+    private static FirebaseRtdbRestClient CreateClient(
+        Task roomEnd,
+        string roomEvents,
+        string inboxEvents)
     {
         var urls = new FirebaseRtdbUrlBuilder(
             new Uri("https://sidey.asia-southeast1.firebasedatabase.app"));
@@ -148,7 +185,7 @@ public sealed class FirebaseRealtimeListenerTests
         {
             string path = request.RequestUri!.AbsolutePath;
             string content = path.Contains("/v2/n/", StringComparison.Ordinal)
-                ? InboxEvents()
+                ? inboxEvents
                 : roomEvents;
             Stream stream = path.Contains("/v2/n/", StringComparison.Ordinal)
                 ? new PrefixThenWaitStream(Encoding.UTF8.GetBytes(content))
@@ -159,6 +196,16 @@ public sealed class FirebaseRealtimeListenerTests
             };
             return Task.FromResult(response);
         });
+    }
+
+    private static string AccessOnlyInboxEvents()
+    {
+        string initial = JsonSerializer.Serialize(new
+        {
+            path = "/",
+            data = new { a = "00000000000000000001" },
+        });
+        return $"event: put\ndata: {initial}\n\n";
     }
 
     private static string InboxEvents()

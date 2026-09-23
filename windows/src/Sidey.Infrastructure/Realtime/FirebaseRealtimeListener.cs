@@ -351,33 +351,40 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         lock (_snapshotGate)
         {
             bool baseline = _accessRevision is null && initialMutation;
-            if (_accessRevision is not null
-                && StringComparer.Ordinal.Compare(inbox.AccessRevision, _accessRevision) > 0
+            if (inbox.AccessRevision is { } accessRevision
+                && _accessRevision is not null
+                && StringComparer.Ordinal.Compare(accessRevision, _accessRevision) > 0
                 && !baseline)
             {
                 pending.Add(new BackendEvent.ReconciliationRequired());
             }
-            if (_accessRevision is null
-                || StringComparer.Ordinal.Compare(inbox.AccessRevision, _accessRevision) > 0)
+            if (inbox.AccessRevision is { } nextAccessRevision
+                && (_accessRevision is null
+                    || StringComparer.Ordinal.Compare(nextAccessRevision, _accessRevision) > 0))
             {
-                _accessRevision = inbox.AccessRevision;
+                _accessRevision = nextAccessRevision;
             }
 
             foreach ((Guid id, FirebaseRealtimeInboxRoom room) in inbox.Rooms)
             {
-                if (_roomRevisions.TryGetValue(id, out string? revision)
-                    && StringComparer.Ordinal.Compare(room.Revision, revision) > 0
-                    && !baseline)
+                if (room.Revision is { } roomRevision)
                 {
-                    pending.Add(new BackendEvent.RoomStructureChanged(id));
-                }
-                if (!_roomRevisions.TryGetValue(id, out revision)
-                    || StringComparer.Ordinal.Compare(room.Revision, revision) > 0)
-                {
-                    _roomRevisions[id] = room.Revision;
+                    if (_roomRevisions.TryGetValue(id, out string? revision)
+                        && StringComparer.Ordinal.Compare(roomRevision, revision) > 0
+                        && !baseline)
+                    {
+                        pending.Add(new BackendEvent.RoomStructureChanged(id));
+                    }
+                    if (!_roomRevisions.TryGetValue(id, out revision)
+                        || StringComparer.Ordinal.Compare(roomRevision, revision) > 0)
+                    {
+                        _roomRevisions[id] = roomRevision;
+                    }
                 }
 
-                if (AdvanceSequenceWithinLock(id, room.ChatSequence) && !baseline)
+                if (room.ChatSequence is { } chatSequence
+                    && AdvanceSequenceWithinLock(id, chatSequence)
+                    && !baseline)
                 {
                     pending.Add(new BackendEvent.MessagesInvalidated(id));
                 }
