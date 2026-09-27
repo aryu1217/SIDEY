@@ -75,11 +75,19 @@
     <Style x:Key="SideySettingsRowTitleStyle" TargetType="TextBlock">
       <Setter Property="FontWeight" Value="Normal" />
     </Style>
-    <Style x:Key="SideySettingsRowDescriptionStyle" TargetType="TextBlock">
+    <x:Double x:Key="SideySettingsDescriptionFontSize">12</x:Double>
+    <Style x:Key="SideySettingsRowDescriptionStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
       <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontSize" Value="{StaticResource SideySettingsDescriptionFontSize}" />
+      <Setter Property="CharacterSpacing" Value="0" />
       <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
       <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="SideySettingsDescriptionLinkStyle" TargetType="HyperlinkButton" BasedOn="{StaticResource DefaultHyperlinkButtonStyle}">
+      <Setter Property="FontSize" Value="{StaticResource SideySettingsDescriptionFontSize}" />
+      <Setter Property="CharacterSpacing" Value="0" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="0" />
     </Style>
   </UserControl.Resources>
   <Grid Background="Transparent">
@@ -1240,8 +1248,7 @@
                     <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.title}, Mode=OneWay}" />
                     <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.description}, Mode=OneWay}" TextWrapping="Wrap" />
                     <HyperlinkButton
-                        Padding="0"
-                        FontSize="13"
+                        Style="{StaticResource SideySettingsDescriptionLinkStyle}"
                         HorizontalAlignment="Left"
                         Command="{Binding OpenExternalLinkCommand}"
                         CommandParameter="ms-settings:colors"
@@ -1279,7 +1286,7 @@
                         <TextBlock VerticalAlignment="Center" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding UpdateActivityText}" />
                       </StackPanel>
                     </Grid>
-                    <HyperlinkButton HorizontalAlignment="Left" Padding="0" FontSize="13" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
+                    <HyperlinkButton HorizontalAlignment="Left" Style="{StaticResource SideySettingsDescriptionLinkStyle}" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
                   </StackPanel>
                   <Button Grid.Column="2" Command="{Binding CheckForUpdatesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.check.action}, Mode=OneWay}" VerticalAlignment="Center" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.update.check_now.tooltip}, Mode=OneWay}" />
                 </Grid>

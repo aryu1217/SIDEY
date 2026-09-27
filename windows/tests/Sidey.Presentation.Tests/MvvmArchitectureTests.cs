@@ -370,10 +370,18 @@ public sealed class MvvmArchitectureTests
                 && element.Attributes().Any(attribute =>
                     attribute.Name.LocalName == "Key"
                     && attribute.Value == "SideySettingsRowDescriptionStyle"));
-        Assert.Contains(descriptionStyle.Elements(), element =>
-            element.Name.LocalName == "Setter"
-                && element.Attribute("Property")?.Value == "FontSize"
-                && element.Attribute("Value")?.Value == "13");
+        Assert.Equal(
+            "{StaticResource SideySettingsDescriptionFontSize}",
+            descriptionStyle.Elements().Single(element =>
+                element.Name.LocalName == "Setter"
+                    && element.Attribute("Property")?.Value == "FontSize")
+                .Attribute("Value")?.Value);
+        XElement fontSize = Assert.Single(view.Descendants(), element =>
+            element.Name.LocalName == "Double"
+                && element.Attributes().Any(attribute =>
+                    attribute.Name.LocalName == "Key"
+                    && attribute.Value == "SideySettingsDescriptionFontSize"));
+        Assert.Equal("12", fontSize.Value);
         Assert.Equal("0", layout.Attribute("RowSpacing")?.Value);
 
         XElement narrow = Assert.Single(
