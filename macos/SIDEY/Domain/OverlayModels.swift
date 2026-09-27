@@ -47,20 +47,15 @@ enum OverlayEdge: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The top-edge world rotates characters by 180 degrees so their feet
-    /// meet the screen edge. Counter-rotate readable UI at its own anchor.
+    /// Characters rotate toward the screen edge. Keep readable UI upright
+    /// by counter-rotating it at its own anchor.
     var readableContentCounterRotation: CGFloat {
-        self == .top ? -presentationRotation : 0
+        -presentationRotation
     }
 
-    /// Side-edge characters stay rotated toward the display edge, while
-    /// speech bubbles remain aligned with the display so their complete
-    /// presentation (body, decoration, and text) stays readable.
+    /// Keep the complete speech bubble upright, including its decoration.
     var bubbleCounterRotation: CGFloat {
-        switch self {
-        case .left, .right: -presentationRotation
-        case .bottom, .top: 0
-        }
+        -presentationRotation
     }
 }
 

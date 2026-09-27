@@ -1783,6 +1783,11 @@ class PixelBubbleNode: SKNode {
                 path.move(to: CGPoint(x: baseCenter - halfBase, y: rect.minY + 1))
                 path.addLine(to: layout.tailTip)
                 path.addLine(to: CGPoint(x: baseCenter + halfBase, y: rect.minY + 1))
+            case .top:
+                let baseCenter = min(max(layout.tailTip.x, rect.minX + 10), rect.maxX - 10)
+                path.move(to: CGPoint(x: baseCenter + halfBase, y: rect.maxY - 1))
+                path.addLine(to: layout.tailTip)
+                path.addLine(to: CGPoint(x: baseCenter - halfBase, y: rect.maxY - 1))
             case .left:
                 let baseCenter = min(max(layout.tailTip.y, rect.minY + 10), rect.maxY - 10)
                 path.move(to: CGPoint(x: rect.minX + 1, y: baseCenter - halfBase))

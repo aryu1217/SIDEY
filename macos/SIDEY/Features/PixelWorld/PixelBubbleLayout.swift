@@ -2,6 +2,7 @@ import AppKit
 
 enum PixelBubbleTailAttachment: Equatable, Sendable {
     case bottom
+    case top
     case left
     case right
 }
@@ -98,13 +99,14 @@ struct PixelBubbleLayout: Equatable, Sendable {
         let tailAttachment: PixelBubbleTailAttachment = switch edge {
         case .left: .left
         case .right: .right
-        case .bottom, .top: .bottom
+        case .bottom: .bottom
+        case .top: .top
         }
         return Self(
             size: size,
             nodePosition: nodePosition,
             nodeRotation: nodeRotation,
-            labelRotation: edge.readableContentCounterRotation,
+            labelRotation: 0,
             tailTip: tailTip,
             tailAttachment: tailAttachment,
             bodyFrame: bodyFrame,

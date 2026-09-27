@@ -226,14 +226,10 @@ final class WindowPolicyTests: XCTestCase {
         XCTAssertEqual(OverlayEdge.left.presentationRotation, -.pi / 2, accuracy: 0.001)
         XCTAssertEqual(OverlayEdge.right.presentationRotation, .pi / 2, accuracy: 0.001)
         XCTAssertEqual(abs(OverlayEdge.top.presentationRotation), .pi, accuracy: 0.001)
-        XCTAssertEqual(OverlayEdge.bottom.readableContentCounterRotation, 0, accuracy: 0.001)
-        XCTAssertEqual(OverlayEdge.left.readableContentCounterRotation, 0, accuracy: 0.001)
-        XCTAssertEqual(OverlayEdge.right.readableContentCounterRotation, 0, accuracy: 0.001)
-        XCTAssertEqual(
-            OverlayEdge.top.presentationRotation + OverlayEdge.top.readableContentCounterRotation,
-            0,
-            accuracy: 0.001
-        )
+        for edge in OverlayEdge.allCases {
+            XCTAssertEqual(edge.presentationRotation + edge.readableContentCounterRotation, 0, accuracy: 0.001)
+            XCTAssertEqual(edge.presentationRotation + edge.bubbleCounterRotation, 0, accuracy: 0.001)
+        }
     }
 
     func testOnboardingWindowTransitionsToFullSettingsOnGroupPage() {

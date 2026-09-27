@@ -865,6 +865,22 @@ final class PixelWorldTests: XCTestCase {
         }
     }
 
+    func testTopEdgeBubbleKeepsTailOnCharacterSideOfUprightBody() {
+        let layout = PixelBubbleLayout.make(
+            text: "상단에서도 바로 읽어요",
+            isTyping: false,
+            tangentPosition: 200,
+            tangentLength: 400,
+            edge: .top
+        )
+
+        XCTAssertEqual(OverlayEdge.top.presentationRotation + layout.nodeRotation, 0, accuracy: 0.001)
+        XCTAssertEqual(layout.labelRotation, 0, accuracy: 0.001)
+        XCTAssertEqual(layout.tailAttachment, .top)
+        XCTAssertGreaterThan(layout.tailTip.y, layout.size.height / 2)
+        XCTAssertEqual(layout.tailTipInPresentation.y, 44, accuracy: 0.001)
+    }
+
     func testDecoratedSideTypingBubbleUsesItsUprightVisualFrameForBoundaryClamp() throws {
         let member = PixelWorldMember(
             id: UUID(),
@@ -1184,7 +1200,7 @@ final class PixelWorldTests: XCTestCase {
         XCTAssertEqual(PixelCharacterThrowStyle.maximumActiveProjectiles, 32)
     }
 
-    func testSideEdgesKeepCompleteMessageAndTypingBubblesUpright() throws {
+    func testAllEdgesKeepNicknameAndCompleteMessageAndTypingBubblesUpright() throws {
         let member = makeMember()
         let bubble = ActiveBubble(
             senderID: member.id,
@@ -1193,24 +1209,19 @@ final class PixelWorldTests: XCTestCase {
             expiresAt: .distantFuture
         )
         let scene = PixelWorldScene(size: CGSize(width: 720, height: 360))
+        let roomID = UUID()
 
         for edge in OverlayEdge.allCases {
             scene.apply(
-                roomID: UUID(),
+                roomID: roomID,
                 members: [member],
                 bubbles: [bubble],
                 edge: edge,
                 installationSeed: 1
             )
-            let expectedNicknameRotation = edge.presentationRotation
-                + edge.readableContentCounterRotation
-            let expectedBubbleRotation: CGFloat = switch edge {
-            case .left, .right: 0
-            case .bottom, .top: edge.presentationRotation
-            }
             XCTAssertEqual(
                 try XCTUnwrap(scene.renderedNicknameWorldRotation(for: member.id)),
-                expectedNicknameRotation,
+                0,
                 accuracy: 0.001,
                 "\(edge)"
             )
@@ -1222,10 +1233,11 @@ final class PixelWorldTests: XCTestCase {
             )
             XCTAssertEqual(
                 try XCTUnwrap(scene.renderedBubbleWorldRotations(for: member.id).first),
-                expectedBubbleRotation,
+                0,
                 accuracy: 0.001,
                 "\(edge)"
             )
+            XCTAssertEqual(scene.renderedBubbleBody(for: member.id), bubble.body)
         }
 
         let typingMember = PixelWorldMember(
@@ -1238,7 +1250,7 @@ final class PixelWorldTests: XCTestCase {
         )
         for edge in OverlayEdge.allCases {
             scene.apply(
-                roomID: UUID(),
+                roomID: roomID,
                 members: [typingMember],
                 bubbles: [],
                 edge: edge,
@@ -1250,13 +1262,9 @@ final class PixelWorldTests: XCTestCase {
                 accuracy: 0.001,
                 "\(edge)"
             )
-            let expectedBubbleRotation: CGFloat = switch edge {
-            case .left, .right: 0
-            case .bottom, .top: edge.presentationRotation
-            }
             XCTAssertEqual(
                 try XCTUnwrap(scene.renderedBubbleWorldRotations(for: member.id).first),
-                expectedBubbleRotation,
+                0,
                 accuracy: 0.001,
                 "\(edge)"
             )
