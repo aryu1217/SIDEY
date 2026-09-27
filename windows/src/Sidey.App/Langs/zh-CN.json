@@ -302,14 +302,14 @@
       "label": "群组名称"
     },
     "state": {
-      "active": "当前"
+      "active": "当前群组"
     },
     "summary": {
       "invite_ready": "{0}/12 人 · 邀请码 {1}",
       "invite_rotation_required": "{0}/12 人 · 需要生成新邀请码"
     },
     "switch": {
-      "action": "切换到此群组",
+      "action": "加入",
       "in_progress": "正在连接…",
       "success": "当前群组已更改。",
       "tooltip": "在屏幕上显示此群组。"
@@ -453,7 +453,7 @@
   "profile": {
     "applying": "正在应用",
     "character": {
-      "description": "选择在好友屏幕上代表你的像素角色。",
+      "description": "选择在像素世界中代表你的像素角色。",
       "label": "角色",
       "save": {
         "success": "角色已更改。"
@@ -462,7 +462,7 @@
     "cosmetics": {
       "bubble": {
         "default": "默认消息气泡",
-        "description": "选择已拥有的气泡，所有群组都会立即应用。",
+        "description": "选择在像素世界中展示你的消息的气泡。",
         "title": "消息气泡"
       },
       "equipped": "使用中",
@@ -471,7 +471,7 @@
       },
       "throwable": {
         "default": "默认软球",
-        "description": "选择已拥有的投掷玩具，所有群组都会立即应用。",
+        "description": "选择你的角色在像素世界中向好友角色投掷的玩具。",
         "title": "投掷玩具"
       }
     },
@@ -480,7 +480,7 @@
       "notice": "可以和好友使用相同的昵称或角色。"
     },
     "nickname": {
-      "description": "显示在好友屏幕和消息中的名字 · 2–8 个字符",
+      "description": "此名称会显示在像素世界和消息中。请输入 2 至 8 个字符。",
       "label": "昵称",
       "placeholder": "2–8 个字符",
       "save": {
@@ -497,18 +497,18 @@
     "display": {
       "description": "调整好友状态和消息的显示方式。",
       "offline_members": {
-        "description": "将离线好友显示为睡着的角色，并带有红色状态点。",
+        "description": "在像素世界中也显示离线好友的角色。",
         "title": "显示离线成员",
         "tooltip": "切换离线成员显示状态"
       },
       "quiet_mode": {
-        "description": "隐藏消息气泡和输入状态指示，保留未读数。",
+        "description": "隐藏消息气泡和正在输入提示。连接状态不会改变。",
         "title": "隐藏消息",
         "tooltip": "隐藏或显示消息"
       },
       "throw_guard": {
-        "description": "关闭时可左键单击好友角色直接投掷。开启时，先在自己的角色上双击鼠标右键，再于 10 秒内左键单击好友角色即可投掷。",
-        "title": "双击鼠标右键后投掷",
+        "description": "关闭时，左键单击好友角色即可立即投掷。开启时，先在自己的角色上双击鼠标右键，再于 10 秒内左键单击好友角色即可投掷。",
+        "title": "投掷前先双击鼠标右键",
         "tooltip": "投掷前，需要在自己的角色上双击鼠标右键"
       }
     },
@@ -516,12 +516,12 @@
       "description": "设置默认显示和启动方式。"
     },
     "language": {
-      "description": "选择应用所使用的语言，更改会立即生效。",
+      "description": "选择应用使用的语言。",
       "title": "语言/Language"
     },
     "navigation_label": "设置",
     "overlay": {
-      "description": "在所选屏幕边缘显示好友的像素世界。",
+      "description": "在所选屏幕位置显示像素世界。",
       "title": "显示像素世界",
       "tooltip": "切换像素世界显示状态"
     },
@@ -529,26 +529,28 @@
       "description": "选择角色显示的位置。",
       "edge": {
         "bottom": "底部",
-        "description": "选择角色行走的屏幕边缘。",
+        "description": "选择角色在屏幕上走动的位置。",
         "left": "左侧",
         "right": "右侧",
-        "title": "屏幕边缘",
+        "title": "位置",
         "tooltip": "像素世界所在的屏幕边缘",
         "top": "顶部"
       },
       "monitor": {
         "description": "选择显示像素世界和消息输入框的显示器。",
+        "display_name": "第{0}台显示器",
+        "display_name_friendly": "第{0}台显示器 · {1}",
         "title": "显示器",
         "tooltip": "像素世界和消息输入框所在的显示器",
         "unavailable": "没有可用的显示器。"
       },
       "span": {
-        "description": "选择角色可在屏幕边缘活动的范围。",
+        "description": "选择像素世界占用的屏幕范围。",
         "full": "整个边缘",
         "title": "活动范围",
         "tooltip": "像素世界占用的屏幕范围"
       },
-      "title": "角色位置"
+      "title": "屏幕布局"
     },
     "save": {
       "failed": "无法保存设置: {0}"
@@ -568,7 +570,7 @@
       "action": {
         "composer": "打开或关闭消息输入框",
         "history": "打开或关闭最近记录",
-        "overlay": "切换悬浮层显示",
+        "overlay": "切换像素世界显示",
         "quiet_mode": "隐藏或显示消息"
       },
       "description": "选择快捷键后，按下想要设置的组合键。若该组合已被使用，两个快捷键会互换。",
@@ -590,7 +592,7 @@
     },
     "sound": {
       "character_effects": {
-        "description": "当前群组中的角色被投掷玩具击中时播放音效。",
+        "description": "角色被投掷的玩具击中时播放音效。",
         "title": "角色音效"
       },
       "description": "设置角色音效。",
@@ -608,11 +610,11 @@
     },
     "theme": {
       "dark": "深色",
-      "description": "选择应用的浅色、深色或系统主题。",
+      "description": "选择应用主题。",
       "light": "浅色",
       "system": "跟随 Windows",
       "system_colors": {
-        "action": "打开颜色设置"
+        "action": "打开系统颜色设置"
       },
       "title": "主题"
     },
@@ -843,7 +845,7 @@
   },
   "support": {
     "diagnostics": {
-      "description": "日志文件将压缩并保存到桌面。与我们分享这些文件可帮助修复错误。",
+      "description": "将日志文件压缩并保存到桌面。提交反馈时附上这些文件，有助于排查问题。",
       "export": {
         "action": "导出",
         "failed": "无法导出诊断数据。",
@@ -881,7 +883,7 @@
       "compose": "编写消息…"
     },
     "overlay": {
-      "hide": "隐藏浮层"
+      "hide": "隐藏像素世界"
     },
     "quiet_mode": {
       "toggle": "隐藏消息"

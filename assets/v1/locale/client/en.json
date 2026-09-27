@@ -1095,14 +1095,14 @@
           "tooltip": "Rename the group."
         },
         "state": {
-          "active": "Active"
+          "active": "Current group"
         },
         "summary": {
           "invite_ready": "{0}/12 members · Invite code {1}",
           "invite_rotation_required": "{0}/12 members · New invite code required"
         },
         "switch": {
-          "action": "Switch to group",
+          "action": "Join",
           "in_progress": "Connecting…",
           "success": "Active group changed.",
           "tooltip": "Show this group on your screen."
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "Choose the pixel character that represents you on your friends’ screens.",
+          "description": "Choose the pixel character that represents you in the pixel world.",
           "save": {
             "success": "Character changed."
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Default speech bubble",
-            "description": "Choose a bubble you own. It will be used in all your groups.",
+            "description": "Choose the bubble for your messages in the pixel world.",
             "title": "Speech bubble"
           },
           "equipped": "Equipped",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "Default soft ball",
-            "description": "Choose a tossable toy you own. It will be used in all your groups.",
+            "description": "Choose the toy your character throws at friends in the pixel world.",
             "title": "Tossable toy"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "It's fine to use the same name or character as a friend."
         },
         "nickname": {
-          "description": "The name your friends see on screen and in messages · 2–8 characters",
+          "description": "The name shown in the pixel world and messages. Enter 2–8 characters.",
           "save": {
             "action": "Change nickname",
             "tooltip": "Save the changed nickname."
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "Adjust how friend status and messages appear.",
           "offline_members": {
-            "description": "Show offline friends as sleeping characters with a red status dot.",
+            "description": "Show offline friends’ characters in the pixel world.",
             "title": "Show offline members",
             "tooltip": "Toggle offline members"
           },
           "quiet_mode": {
-            "description": "Hide message bubbles and typing indicators while keeping unread counts.",
+            "description": "Hide message bubbles and typing indicators. Connection status and unread counts stay the same.",
             "tooltip": "Toggle quiet mode"
           },
           "throw_guard": {
-            "description": "When off, click a friend to throw. When on, double right-click your character to enable throwing for 10 seconds.",
-            "title": "Double right-click to throw",
+            "description": "When off, left-click a friend’s character to throw immediately. When on, double right-click your character, then left-click a friend’s character within 10 seconds to throw.",
+            "title": "Double right-click before throwing",
             "tooltip": "Require a double right-click on your character before throwing"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "Choose how the app appears and when it starts."
         },
         "language": {
-          "description": "Choose the language used in the app. Changes take effect immediately.",
+          "description": "Choose the language used in the app.",
           "title": "Language"
         },
         "navigation_label": "Settings",
         "overlay": {
-          "description": "Show your friends’ pixel world along the selected screen edge.",
+          "description": "Show the pixel world at the selected position.",
           "tooltip": "Toggle the pixel world"
         },
         "placement": {
           "description": "Choose where your characters appear.",
           "edge": {
-            "description": "Choose the screen edge where characters walk.",
-            "title": "Edge",
+            "description": "Choose where on the screen characters walk.",
+            "title": "Position",
             "tooltip": "Screen edge for the pixel world"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Choose the display for the pixel world and message input.",
             "title": "Monitor",
             "tooltip": "Monitor for the pixel world and message input",
             "unavailable": "No display is available."
           },
           "span": {
-            "description": "Choose how much of the screen edge your characters can explore.",
+            "description": "Choose how much of the screen edge the pixel world occupies.",
             "full": "Entire edge",
             "title": "Roaming area",
             "tooltip": "Screen range occupied by the pixel world"
           },
-          "title": "Character placement"
+          "title": "Screen placement"
         },
         "save": {
           "failed": "Couldn’t save your settings. Try again. ({0})"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "Open or close message input",
             "history": "Open or close recent messages",
-            "overlay": "Toggle overlay",
+            "overlay": "Toggle pixel world visibility",
             "quiet_mode": "Toggle quiet mode"
           },
           "description": "Select a shortcut, then press the key combination you want. Assigning a combination already in use swaps the two shortcuts.",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Play sound effects when characters in the current group are hit.",
+            "description": "Play a sound when a character is hit by a tossable toy.",
             "title": "Character sound effects"
           },
           "description": "Adjust character sound effects.",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "Dark",
-          "description": "Choose the app’s light, dark, or system theme.",
+          "description": "Choose the app theme.",
           "light": "Light",
           "system": "Windows default",
           "system_colors": {
-            "action": "Open Color settings"
+            "action": "Open system color settings"
           },
           "title": "Theme"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Log files are compressed and saved to your Desktop. Sharing them with us can help us fix errors.",
+          "description": "Compress log files and save them to your Desktop. Attach them to feedback to help troubleshoot problems.",
           "export": {
             "action": "Export",
             "failed": "Couldn’t export diagnostic data.",
@@ -1505,7 +1507,7 @@
           "compose": "Compose message…"
         },
         "overlay": {
-          "hide": "Hide overlay"
+          "hide": "Hide pixel world"
         },
         "quiet_mode": {
           "toggle": "Quiet mode"

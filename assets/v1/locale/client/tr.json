@@ -1095,14 +1095,14 @@
           "tooltip": "Grubu yeniden adlandırın."
         },
         "state": {
-          "active": "Kullanımda"
+          "active": "Geçerli grup"
         },
         "summary": {
           "invite_ready": "{0}/12 üye · Davet kodu {1}",
           "invite_rotation_required": "{0}/12 üye · Yeni davet kodu gerekli"
         },
         "switch": {
-          "action": "Gruba geç",
+          "action": "Katıl",
           "in_progress": "Grup değiştiriliyor…",
           "success": "Etkin grup değiştirildi.",
           "tooltip": "Bu grubu ekranınızda gösterin."
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "Arkadaşlarınızın ekranında sizi temsil edecek piksel karakteri seçin.",
+          "description": "Piksel dünyasında sizi temsil edecek piksel karakteri seçin.",
           "save": {
             "success": "Karakter değiştirildi."
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Varsayılan sohbet balonu",
-            "description": "Sahip olduğunuz bir balonu seçin. Bu balon tüm gruplarınızda kullanılır.",
+            "description": "Piksel dünyasında mesajlarınızın görüneceği konuşma balonunu seçin.",
             "title": "Sohbet balonu"
           },
           "equipped": "Kullanımda",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "Varsayılan yumuşak top",
-            "description": "Sahip olduğunuz bir oyuncağı seçin. Bu oyuncak tüm gruplarınızda kullanılır.",
+            "description": "Karakterinizin piksel dünyasında arkadaşlarınızın karakterlerine fırlatacağı oyuncağı seçin.",
             "title": "Fırlatılabilir oyuncak"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "Bir arkadaşınızla aynı adı veya karakteri kullanmanızda sakınca yok."
         },
         "nickname": {
-          "description": "Arkadaşlarınızın ekranda ve mesajlarda gördüğü ad · 2–8 karakter",
+          "description": "Bu ad piksel dünyasında ve mesajlarda görünür. 2 ila 8 karakter girin.",
           "save": {
             "action": "Takma adı değiştir",
             "tooltip": "Değiştirilen takma adı kaydedin."
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "Arkadaşlarınızın durumunun ve mesajların nasıl görüneceğini ayarlayın.",
           "offline_members": {
-            "description": "Çevrimdışı arkadaşları kırmızı durum noktalı, uyuyan karakterler olarak gösterin.",
+            "description": "Çevrimdışı arkadaşlarınızın karakterlerini de piksel dünyasında gösterin.",
             "title": "Çevrimdışı üyeleri göster",
             "tooltip": "Çevrimdışı üyeleri aç veya kapat"
           },
           "quiet_mode": {
-            "description": "Bağlantı durumunu ve okunmamış mesaj sayılarını koruyup mesaj balonlarını ve yazıyor göstergelerini gizleyin.",
+            "description": "Mesaj balonlarını ve yazıyor göstergesini gizleyin. Bağlantı durumu değişmez.",
             "tooltip": "Mesajları gizle veya göster"
           },
           "throw_guard": {
-            "description": "Kapalıyken fırlatmak için bir arkadaşınızın karakterine farenin sol düğmesiyle tıklayın. Açıkken önce kendi karakterinize farenin sağ düğmesiyle iki kez tıklayın; ardından 10 saniye boyunca arkadaşlarınızın karakterlerini sol tıklayarak fırlatabilirsiniz.",
-            "title": "Fırlatmak için sağ düğmeyle iki kez tıkla",
+            "description": "Bu seçenek kapalıyken hemen fırlatmak için arkadaşınızın karakterine sol tıklayın. Açıkken önce kendi karakterinize iki kez sağ tıklayın, ardından 10 saniye içinde arkadaşınızın karakterine sol tıklayarak fırlatın.",
+            "title": "Fırlatmadan önce iki kez sağ tıkla",
             "tooltip": "Fırlatmadan önce kendi karakterinize sağ düğmeyle iki kez tıklamayı gerektir"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "Uygulamanın görünümünü ve ne zaman başlayacağını seçin."
         },
         "language": {
-          "description": "Uygulamada kullanılan dili seçin. Değişiklikler hemen uygulanır.",
+          "description": "Uygulamanın dilini seçin.",
           "title": "Dil / Language"
         },
         "navigation_label": "Ayarlar",
         "overlay": {
-          "description": "Arkadaşlarınızın piksel dünyasını seçilen ekran kenarı boyunca gösterin.",
+          "description": "Piksel dünyasını ekranda seçilen konumda gösterin.",
           "tooltip": "Piksel dünyasını aç veya kapat"
         },
         "placement": {
           "description": "Karakterlerinizin nerede görüneceğini seçin.",
           "edge": {
-            "description": "Karakterlerin yürüyeceği ekran kenarını seçin.",
-            "title": "Kenar",
+            "description": "Karakterlerin yürüyeceği ekran konumunu seçin.",
+            "title": "Konum",
             "tooltip": "Piksel dünyasının ekran kenarı"
           },
           "monitor": {
+            "display_name": "Monitör {0}",
+            "display_name_friendly": "Monitör {0} · {1}",
             "description": "Piksel dünyasının ve mesaj girişinin gösterileceği ekranı seçin.",
             "title": "Monitör",
             "tooltip": "Piksel dünyası ve mesaj girişi için monitör",
             "unavailable": "Kullanılabilir monitör yok. Bir monitör bağlayıp yeniden deneyin."
           },
           "span": {
-            "description": "Piksel dünyasının seçilen ekran kenarında kaplayacağı alanı seçin.",
+            "description": "Piksel dünyasının kaplayacağı ekran alanını seçin.",
             "full": "Kenarın tamamı",
             "title": "Alan uzunluğu",
             "tooltip": "Piksel dünyasının kapladığı ekran aralığı"
           },
-          "title": "Dünya yerleşimi"
+          "title": "Ekran yerleşimi"
         },
         "save": {
           "failed": "Ayarlarınız kaydedilemedi. Yeniden deneyin. ({0})"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "Mesaj girişini aç veya kapat",
             "history": "Son geçmişi aç veya kapat",
-            "overlay": "Kaplamayı aç veya kapat",
+            "overlay": "Piksel dünyasını göster veya gizle",
             "quiet_mode": "Mesajları gizle veya göster"
           },
           "description": "Bir kısayol seçip istediğiniz tuş birleşimine basın. Kullanımda olan bir birleşimi atarsanız iki kısayol yer değiştirir.",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Geçerli gruptaki karakterlere vurulduğunda ses efekti çalın.",
+            "description": "Fırlatılan bir oyuncak karaktere çarptığında ses efekti çalın.",
             "title": "Karakter ses efektleri"
           },
           "description": "Karakter ses efektlerini ayarlayın.",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "Koyu",
-          "description": "Uygulama için açık, koyu veya sistem temasını seçin.",
+          "description": "Uygulamaya uygulanacak temayı seçin.",
           "light": "Açık",
           "system": "Windows varsayılanı",
           "system_colors": {
-            "action": "Renk ayarlarını açma"
+            "action": "Sistem renk ayarlarını aç"
           },
           "title": "Tema"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Günlük dosyaları sıkıştırılıp Masaüstünüze kaydedilir. Bunları bizimle paylaşmanız hataları düzeltmemize yardımcı olabilir.",
+          "description": "Günlük dosyalarını sıkıştırıp Masaüstüne kaydedin. Geri bildirim gönderirken eklemek sorunun çözülmesine yardımcı olabilir.",
           "export": {
             "action": "Dışarı aktar",
             "failed": "Tanılama verileri dışarı aktarılamadı.",
@@ -1505,7 +1507,7 @@
           "compose": "Mesaj oluştur…"
         },
         "overlay": {
-          "hide": "Kaplamayı gizle"
+          "hide": "Piksel dünyasını gizle"
         },
         "quiet_mode": {
           "toggle": "Mesajları gizle"

@@ -302,14 +302,14 @@
       "label": "Nome del gruppo"
     },
     "state": {
-      "active": "Attivo"
+      "active": "Gruppo attuale"
     },
     "summary": {
       "invite_ready": "{0}/12 partecipanti · Codice di invito {1}",
       "invite_rotation_required": "{0}/12 partecipanti · Nuovo codice di invito necessario"
     },
     "switch": {
-      "action": "Passa al gruppo",
+      "action": "Partecipa",
       "in_progress": "Connessione in corso…",
       "success": "Gruppo attivo cambiato.",
       "tooltip": "Mostra questo gruppo sullo schermo."
@@ -453,7 +453,7 @@
   "profile": {
     "applying": "Applicazione in corso",
     "character": {
-      "description": "Scegli il personaggio pixel che ti rappresenta sugli schermi dei tuoi amici.",
+      "description": "Scegli il personaggio pixel che ti rappresenterà nel mondo pixel.",
       "label": "Personaggio",
       "save": {
         "success": "Personaggio cambiato."
@@ -462,7 +462,7 @@
     "cosmetics": {
       "bubble": {
         "default": "Fumetto predefinito",
-        "description": "Scegli un fumetto che possiedi. Verrà usato in tutti i tuoi gruppi.",
+        "description": "Scegli il fumetto in cui appariranno i tuoi messaggi nel mondo pixel.",
         "title": "Fumetto"
       },
       "equipped": "In uso",
@@ -471,7 +471,7 @@
       },
       "throwable": {
         "default": "Pallina morbida predefinita",
-        "description": "Scegli un giocattolo che possiedi. Verrà usato in tutti i tuoi gruppi.",
+        "description": "Scegli il giocattolo che il tuo personaggio lancerà ai personaggi dei tuoi amici nel mondo pixel.",
         "title": "Giocattolo da lanciare"
       }
     },
@@ -480,7 +480,7 @@
       "notice": "Puoi usare lo stesso nome o personaggio di un amico."
     },
     "nickname": {
-      "description": "Il nome che gli amici vedono sullo schermo e nei messaggi · Da 2 a 8 caratteri",
+      "description": "Questo nome compare nel mondo pixel e nei tuoi messaggi. Inserisci da 2 a 8 caratteri.",
       "label": "Nickname",
       "placeholder": "Da 2 a 8 caratteri",
       "save": {
@@ -497,18 +497,18 @@
     "display": {
       "description": "Modifica la visualizzazione dello stato degli amici e dei messaggi.",
       "offline_members": {
-        "description": "Mostra gli amici offline come personaggi addormentati con un punto di stato rosso.",
+        "description": "Mostra nel mondo pixel anche i personaggi degli amici offline.",
         "title": "Mostra partecipanti offline",
         "tooltip": "Attiva o disattiva i partecipanti offline"
       },
       "quiet_mode": {
-        "description": "Nascondi i fumetti dei messaggi e gli indicatori di digitazione, mantenendo il conteggio dei messaggi non letti.",
+        "description": "Nasconde i fumetti dei messaggi e gli indicatori di digitazione. Lo stato della connessione non cambia.",
         "title": "Modalità discreta",
         "tooltip": "Attiva o disattiva la modalità discreta"
       },
       "throw_guard": {
-        "description": "Se l'opzione è disattivata, fai clic su un amico per lanciare. Se è attivata, fai doppio clic con il pulsante destro sul tuo personaggio per abilitare i lanci per 10 secondi.",
-        "title": "Fai doppio clic con il pulsante destro per lanciare",
+        "description": "Se l’opzione è disattivata, fai clic con il pulsante sinistro sul personaggio di un amico per lanciare subito. Se è attivata, fai doppio clic con il pulsante destro sul tuo personaggio, poi fai clic con il pulsante sinistro sul personaggio di un amico entro 10 secondi per lanciare.",
+        "title": "Fai doppio clic con il pulsante destro prima di lanciare",
         "tooltip": "Richiedi un doppio clic con il pulsante destro sul tuo personaggio prima di lanciare"
       }
     },
@@ -516,12 +516,12 @@
       "description": "Scegli l'aspetto dell'app e quando avviarla."
     },
     "language": {
-      "description": "Scegli la lingua dell'app. Le modifiche vengono applicate immediatamente.",
+      "description": "Scegli la lingua dell’app.",
       "title": "Lingua"
     },
     "navigation_label": "Impostazioni",
     "overlay": {
-      "description": "Mostra il mondo pixel dei tuoi amici lungo il bordo dello schermo selezionato.",
+      "description": "Mostra il mondo pixel nella posizione scelta.",
       "title": "Mostra mondo pixel",
       "tooltip": "Attiva o disattiva il mondo pixel"
     },
@@ -529,26 +529,28 @@
       "description": "Scegli dove visualizzare i personaggi.",
       "edge": {
         "bottom": "In basso",
-        "description": "Scegli il bordo dello schermo su cui camminano i personaggi.",
+        "description": "Scegli dove cammineranno i personaggi sullo schermo.",
         "left": "A sinistra",
         "right": "A destra",
-        "title": "Bordo",
+        "title": "Posizione",
         "tooltip": "Bordo dello schermo per il mondo pixel",
         "top": "In alto"
       },
       "monitor": {
         "description": "Scegli lo schermo per il mondo pixel e la finestra di composizione.",
+        "display_name": "Monitor {0}",
+        "display_name_friendly": "Monitor {0} · {1}",
         "title": "Schermo",
         "tooltip": "Schermo per il mondo pixel e la finestra di composizione",
         "unavailable": "Nessuno schermo disponibile."
       },
       "span": {
-        "description": "Scegli quanto bordo dello schermo possono esplorare i personaggi.",
+        "description": "Scegli quale parte dello schermo sarà occupata dal mondo pixel.",
         "full": "Bordo intero",
         "title": "Area di movimento",
         "tooltip": "Intervallo dello schermo occupato dal mondo pixel"
       },
-      "title": "Posizione dei personaggi"
+      "title": "Posizione sullo schermo"
     },
     "save": {
       "failed": "Non è stato possibile salvare le impostazioni. Riprova. ({0})"
@@ -568,7 +570,7 @@
       "action": {
         "composer": "Apri o chiudi l'immissione del messaggio",
         "history": "Apri o chiudi la cronologia recente",
-        "overlay": "Attiva o disattiva la sovrimpressione",
+        "overlay": "Mostra o nascondi il mondo pixel",
         "quiet_mode": "Attiva o disattiva la modalità discreta"
       },
       "description": "Seleziona una scelta rapida, quindi premi la combinazione di tasti desiderata. Se assegni una combinazione già in uso, le due scelte rapide verranno scambiate.",
@@ -590,7 +592,7 @@
     },
     "sound": {
       "character_effects": {
-        "description": "Riproduci effetti sonori quando i personaggi del gruppo corrente vengono colpiti.",
+        "description": "Riproduce un effetto sonoro quando un giocattolo lanciato colpisce un personaggio.",
         "title": "Effetti sonori dei personaggi"
       },
       "description": "Regola gli effetti sonori dei personaggi.",
@@ -608,11 +610,11 @@
     },
     "theme": {
       "dark": "Scuro",
-      "description": "Scegli per l'app il tema chiaro, scuro o di sistema.",
+      "description": "Scegli il tema dell’app.",
       "light": "Chiaro",
       "system": "Predefinito di Windows",
       "system_colors": {
-        "action": "Apri le impostazioni colore"
+        "action": "Apri le impostazioni colore del sistema"
       },
       "title": "Tema"
     },
@@ -843,7 +845,7 @@
   },
   "support": {
     "diagnostics": {
-      "description": "I file di log vengono compressi e salvati sul Desktop. Condividerli con noi può aiutarci a risolvere gli errori.",
+      "description": "Comprime i file di log e li salva sul desktop. Allegali al feedback per aiutarci a risolvere il problema.",
       "export": {
         "action": "Esporta",
         "failed": "Non è stato possibile esportare i dati di diagnostica.",
@@ -881,7 +883,7 @@
       "compose": "Scrivi messaggio…"
     },
     "overlay": {
-      "hide": "Nascondi sovrimpressione"
+      "hide": "Nascondi il mondo pixel"
     },
     "quiet_mode": {
       "toggle": "Modalità discreta"

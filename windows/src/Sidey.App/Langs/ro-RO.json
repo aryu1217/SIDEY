@@ -302,14 +302,14 @@
       "label": "Numele grupului"
     },
     "state": {
-      "active": "Activ"
+      "active": "Grupul curent"
     },
     "summary": {
       "invite_ready": "{0}/12 membri · cod de invitație {1}",
       "invite_rotation_required": "{0}/12 membri · este necesar un cod de invitație nou"
     },
     "switch": {
-      "action": "Comutați grupul",
+      "action": "Alătură-te",
       "in_progress": "Se comută grupul…",
       "success": "Grupul activ a fost schimbat.",
       "tooltip": "Comutați la acest grup."
@@ -453,7 +453,7 @@
   "profile": {
     "applying": "Se aplică…",
     "character": {
-      "description": "Alegeți un personaj pixelat care să vă reprezinte pe ecranele prietenilor.",
+      "description": "Alegeți personajul pixelat care vă reprezintă în lumea pixelată.",
       "label": "Personaj",
       "save": {
         "success": "Personajul a fost schimbat."
@@ -462,7 +462,7 @@
     "cosmetics": {
       "bubble": {
         "default": "Bulă implicită",
-        "description": "Alegeți o bulă pe care o dețineți. Va fi aplicată imediat în toate grupurile.",
+        "description": "Alegeți balonul în care apar mesajele dvs. în lumea pixelată.",
         "title": "Bule"
       },
       "equipped": "Echipat",
@@ -471,7 +471,7 @@
       },
       "throwable": {
         "default": "Minge moale implicită",
-        "description": "Alegeți o jucărie de aruncat pe care o dețineți. Va fi folosită imediat în toate grupurile.",
+        "description": "Alegeți jucăria pe care personajul dvs. o aruncă spre personajele prietenilor în lumea pixelată.",
         "title": "Jucării de aruncat"
       }
     },
@@ -480,7 +480,7 @@
       "notice": "Membrii grupului pot folosi același personaj sau același pseudonim."
     },
     "nickname": {
-      "description": "Acest nume apare în lumea pixelată și în mesajele prietenilor. Introduceți 2–8 caractere.",
+      "description": "Acest nume apare în lumea pixelată și în mesaje. Introduceți între 2 și 8 caractere.",
       "label": "Pseudonim",
       "placeholder": "2–8 caractere",
       "save": {
@@ -497,18 +497,18 @@
     "display": {
       "description": "Configurați modul în care starea și mesajele prietenilor apar pe ecran.",
       "offline_members": {
-        "description": "Afișați și prietenii offline ca personaje adormite, cu un punct roșu de stare.",
+        "description": "Afișați în lumea pixelată și personajele prietenilor care nu sunt conectați.",
         "title": "Afișați membrii offline",
         "tooltip": "Afișați membrii offline"
       },
       "quiet_mode": {
-        "description": "Ascundeți bulele de mesaje și indicatorii de tastare, dar păstrați starea conexiunii și numărul de mesaje necitite.",
+        "description": "Ascundeți baloanele mesajelor și indicatorul de tastare. Starea conexiunii nu se schimbă.",
         "title": "Ascundere mesaje",
         "tooltip": "Ascundeți sau afișați mesajele"
       },
       "throw_guard": {
-        "description": "Când opțiunea este dezactivată, faceți clic stânga pe personajul unui prieten pentru a arunca imediat. Când este activată, faceți mai întâi dublu clic dreapta pe propriul personaj, apoi faceți clic stânga pe un prieten în următoarele 10 secunde pentru a arunca.",
-        "title": "Aruncați după ce faceți dublu clic dreapta pe personajul meu",
+        "description": "Când opțiunea este dezactivată, faceți clic stânga pe personajul unui prieten pentru a arunca imediat. Când este activată, faceți dublu clic dreapta pe propriul personaj, apoi faceți clic stânga pe personajul unui prieten în următoarele 10 secunde pentru a arunca.",
+        "title": "Faceți dublu clic dreapta înainte de a arunca",
         "tooltip": "Solicitați dublu clic dreapta pe personajul meu înainte de aruncare"
       }
     },
@@ -516,12 +516,12 @@
       "description": "Configurați afișarea și pornirea implicite."
     },
     "language": {
-      "description": "Alegeți limba aplicației. Schimbarea se aplică imediat.",
+      "description": "Alegeți limba aplicației.",
       "title": "Limbă / Language"
     },
     "navigation_label": "Setări",
     "overlay": {
-      "description": "Afișați lumea pixelată a prietenilor de-a lungul marginii selectate a ecranului.",
+      "description": "Afișați lumea pixelată în poziția aleasă pe ecran.",
       "title": "Afișați lumea pixelată",
       "tooltip": "Afișați lumea pixelată"
     },
@@ -529,26 +529,28 @@
       "description": "Alegeți ecranul și poziția personajelor pixelate.",
       "edge": {
         "bottom": "Jos",
-        "description": "Alegeți marginea ecranului pe care se deplasează personajele.",
+        "description": "Alegeți locul de pe ecran în care se vor deplasa personajele.",
         "left": "Stânga",
         "right": "Dreapta",
-        "title": "Marginea ecranului",
+        "title": "Poziție",
         "tooltip": "Marginea ecranului pentru lumea pixelată",
         "top": "Sus"
       },
       "monitor": {
         "description": "Alegeți ecranul pe care apar lumea pixelată și fereastra de mesaje.",
+        "display_name": "Monitorul {0}",
+        "display_name_friendly": "Monitorul {0} · {1}",
         "title": "Monitor",
         "tooltip": "Monitor pentru lumea pixelată și fereastra de mesaje",
         "unavailable": "Nu este disponibil niciun monitor. Conectați un monitor și încercați din nou."
       },
       "span": {
-        "description": "Alegeți cât spațiu ocupă lumea de-a lungul marginii selectate.",
+        "description": "Alegeți zona de pe ecran ocupată de lumea pixelată.",
         "full": "Complet",
         "title": "Lungimea zonei",
         "tooltip": "Zona ecranului ocupată de lumea pixelată"
       },
-      "title": "Poziționarea lumii"
+      "title": "Poziționare pe ecran"
     },
     "save": {
       "failed": "Setările nu au putut fi salvate. Încercați din nou. ({0})"
@@ -568,7 +570,7 @@
       "action": {
         "composer": "Deschideți/închideți fereastra de mesaje",
         "history": "Deschideți/închideți istoricul recent",
-        "overlay": "Afișați/ascundeți suprapunerea",
+        "overlay": "Afișați/ascundeți lumea pixelată",
         "quiet_mode": "Ascundeți sau afișați mesajele"
       },
       "description": "Selectați o comandă rapidă, apoi apăsați combinația dorită. Dacă alegeți o combinație deja utilizată, cele două comenzi rapide își vor schimba între ele atribuirile.",
@@ -590,7 +592,7 @@
     },
     "sound": {
       "character_effects": {
-        "description": "Redați un efect sonor când o jucărie aruncată lovește un personaj din grupul curent.",
+        "description": "Redați un efect sonor când un personaj este lovit de o jucărie aruncată.",
         "title": "Efecte sonore ale personajelor"
       },
       "description": "Configurați efectele sonore ale personajelor.",
@@ -608,11 +610,11 @@
     },
     "theme": {
       "dark": "Întunecat",
-      "description": "Alegeți tema deschisă, închisă sau a sistemului pentru aplicație.",
+      "description": "Alegeți tema aplicației.",
       "light": "Luminos",
       "system": "După setarea Windows",
       "system_colors": {
-        "action": "Deschideți setările pentru culori"
+        "action": "Deschideți setările de culoare ale sistemului"
       },
       "title": "Temă"
     },
@@ -843,7 +845,7 @@
   },
   "support": {
     "diagnostics": {
-      "description": "Comprimați fișierele jurnal și salvați-le pe desktop. Distribuiți-le echipei de asistență pentru a ajuta la rezolvarea problemei.",
+      "description": "Comprimați fișierele jurnal și salvați-le pe desktop. Atașarea lor la mesajul de feedback poate ajuta la rezolvarea problemei.",
       "export": {
         "action": "Exportați",
         "failed": "Datele de diagnosticare nu au putut fi exportate. Încercați din nou.",
@@ -881,7 +883,7 @@
       "compose": "Compuneți un mesaj…"
     },
     "overlay": {
-      "hide": "Ascundeți suprapunerea"
+      "hide": "Ascundeți lumea pixelată"
     },
     "quiet_mode": {
       "toggle": "Ascundere mesaje"

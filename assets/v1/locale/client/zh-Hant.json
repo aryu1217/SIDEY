@@ -1095,14 +1095,14 @@
           "tooltip": "變更群組名稱。"
         },
         "state": {
-          "active": "使用中"
+          "active": "目前群組"
         },
         "summary": {
           "invite_ready": "{0}/12 人 · 邀請碼 {1}",
           "invite_rotation_required": "{0}/12 人 · 需要產生新邀請碼"
         },
         "switch": {
-          "action": "切換至此群組",
+          "action": "加入",
           "in_progress": "正在連線…",
           "success": "目前群組已變更。",
           "tooltip": "在螢幕上顯示此群組。"
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "選擇在朋友螢幕上代表你的像素角色。",
+          "description": "選擇在像素世界中代表你的像素角色。",
           "save": {
             "success": "角色已變更。"
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "預設訊息泡泡",
-            "description": "選擇已擁有的泡泡，所有群組都會立即套用。",
+            "description": "選擇在像素世界中顯示你訊息的對話泡泡。",
             "title": "訊息泡泡"
           },
           "equipped": "使用中",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "預設軟球",
-            "description": "選擇已擁有的投擲玩具，所有群組都會立即套用。",
+            "description": "選擇你的角色在像素世界中向朋友角色投擲的玩具。",
             "title": "投擲玩具"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "可以和朋友使用相同的暱稱或角色。"
         },
         "nickname": {
-          "description": "顯示在朋友螢幕和訊息中的名稱 · 2–8 個字元",
+          "description": "此名稱會顯示在像素世界和訊息中。請輸入 2 至 8 個字元。",
           "save": {
             "action": "變更暱稱",
             "tooltip": "儲存新暱稱。"
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "調整朋友狀態和訊息的顯示方式。",
           "offline_members": {
-            "description": "將離線朋友顯示為睡著的角色，並加上紅色狀態點。",
+            "description": "在像素世界中也顯示離線朋友的角色。",
             "title": "顯示離線成員",
             "tooltip": "切換離線成員顯示狀態"
           },
           "quiet_mode": {
-            "description": "隱藏訊息泡泡和輸入狀態指示，保留未讀數。",
+            "description": "隱藏訊息泡泡和輸入中提示。連線狀態不會改變。",
             "tooltip": "隱藏或顯示訊息"
           },
           "throw_guard": {
-            "description": "關閉時，在朋友角色上按一下滑鼠左鍵即可直接投擲。開啟時，先在自己的角色上按兩下滑鼠右鍵，再於 10 秒內在朋友角色上按一下滑鼠左鍵即可投擲。",
-            "title": "按兩下滑鼠右鍵後投擲",
+            "description": "關閉時，在朋友角色上按一下滑鼠左鍵即可立即投擲。開啟時，先在自己的角色上按兩下滑鼠右鍵，再於 10 秒內在朋友角色上按一下滑鼠左鍵即可投擲。",
+            "title": "投擲前先按兩下滑鼠右鍵",
             "tooltip": "投擲前，需要在自己的角色上按兩下滑鼠右鍵"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "設定預設顯示和啟動方式。"
         },
         "language": {
-          "description": "選擇應用程式使用的語言，變更會立即套用。",
+          "description": "選擇應用程式使用的語言。",
           "title": "語言/Language"
         },
         "navigation_label": "設定",
         "overlay": {
-          "description": "在所選螢幕邊緣顯示朋友的像素世界。",
+          "description": "在所選螢幕位置顯示像素世界。",
           "tooltip": "切換像素世界顯示狀態"
         },
         "placement": {
           "description": "選擇角色顯示的位置。",
           "edge": {
-            "description": "選擇角色行走的螢幕邊緣。",
-            "title": "螢幕邊緣",
+            "description": "選擇角色在螢幕上走動的位置。",
+            "title": "位置",
             "tooltip": "像素世界所在的螢幕邊緣"
           },
           "monitor": {
+            "display_name": "第{0}台顯示器",
+            "display_name_friendly": "第{0}台顯示器 · {1}",
             "description": "選擇顯示像素世界和訊息輸入框的顯示器。",
             "title": "顯示器",
             "tooltip": "像素世界和訊息輸入框所在的顯示器",
             "unavailable": "沒有可用的顯示器。"
           },
           "span": {
-            "description": "選擇角色可在螢幕邊緣活動的範圍。",
+            "description": "選擇像素世界佔用的螢幕範圍。",
             "full": "整個邊緣",
             "title": "活動範圍",
             "tooltip": "像素世界占用的螢幕範圍"
           },
-          "title": "角色位置"
+          "title": "畫面配置"
         },
         "save": {
           "failed": "無法儲存設定: {0}"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "開啟或關閉訊息輸入框",
             "history": "開啟或關閉最近記錄",
-            "overlay": "切換懸浮層顯示",
+            "overlay": "切換像素世界顯示",
             "quiet_mode": "隱藏或顯示訊息"
           },
           "description": "選取快速鍵後，按下想設定的按鍵組合。若該組合已被使用，兩個快速鍵會互換。",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "目前群組中的角色被投擲玩具擊中時播放音效。",
+            "description": "角色被投擲玩具擊中時播放音效。",
             "title": "角色音效"
           },
           "description": "設定角色音效。",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "深色",
-          "description": "選擇 App 的淺色、深色或系統主題。",
+          "description": "選擇應用程式的主題。",
           "light": "淺色",
           "system": "跟隨 Windows",
           "system_colors": {
-            "action": "開放色彩設定"
+            "action": "開啟系統色彩設定"
           },
           "title": "主題"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "記錄檔會壓縮並儲存到桌面。與我們分享這些檔案有助於修正錯誤。",
+          "description": "將記錄檔壓縮並儲存到桌面。提供意見回饋時附上這些檔案，有助於解決問題。",
           "export": {
             "action": "匯出",
             "failed": "無法匯出診斷資料。",
@@ -1505,7 +1507,7 @@
           "compose": "撰寫訊息…"
         },
         "overlay": {
-          "hide": "隱藏浮動層"
+          "hide": "隱藏像素世界"
         },
         "quiet_mode": {
           "toggle": "隱藏訊息"

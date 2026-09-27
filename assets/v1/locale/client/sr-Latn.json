@@ -1095,14 +1095,14 @@
           "tooltip": "Preimenujte grupu."
         },
         "state": {
-          "active": "Aktivna"
+          "active": "Trenutna grupa"
         },
         "summary": {
           "invite_ready": "{0}/12 članova · Kôd pozivnice {1}",
           "invite_rotation_required": "{0}/12 članova · Potreban je novi kôd pozivnice"
         },
         "switch": {
-          "action": "Prebaci na grupu",
+          "action": "Pridruži se",
           "in_progress": "Povezivanje…",
           "success": "Aktivna grupa je promenjena.",
           "tooltip": "Prikažite ovu grupu na ekranu."
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "Izaberite pikselizovanog lika koji će vas predstavljati na ekranima prijatelja.",
+          "description": "Izaberite pikselskog lika koji će vas predstavljati u pikselskom svetu.",
           "save": {
             "success": "Lik je promenjen."
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Podrazumevani oblačić za ćaskanje",
-            "description": "Izaberite oblačić koji posedujete. Koristiće se u svim vašim grupama.",
+            "description": "Izaberite oblačić za svoje poruke u pikselskom svetu.",
             "title": "Oblačić za ćaskanje"
           },
           "equipped": "Koristi se",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "Podrazumevana mekana loptica",
-            "description": "Izaberite igračku koju posedujete. Koristiće se u svim vašim grupama.",
+            "description": "Izaberite igračku koju će vaš lik bacati na likove prijatelja u pikselskom svetu.",
             "title": "Igračka za bacanje"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "Možete da koristite isto ime ili lik kao prijatelj."
         },
         "nickname": {
-          "description": "Ime koje prijatelji vide na ekranu i u porukama · 2–8 znakova",
+          "description": "Ovo ime se prikazuje u pikselskom svetu i porukama. Unesite od 2 do 8 znakova.",
           "save": {
             "action": "Promeni nadimak",
             "tooltip": "Sačuvajte promenjeni nadimak."
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "Podesite kako se prikazuju status prijatelja i poruke.",
           "offline_members": {
-            "description": "Prikažite prijatelje koji su van mreže kao uspavane likove s crvenom tačkom statusa.",
+            "description": "Prikažite u pikselskom svetu i likove prijatelja koji nisu na mreži.",
             "title": "Prikaži članove van mreže",
             "tooltip": "Uključi ili isključi članove van mreže"
           },
           "quiet_mode": {
-            "description": "Sakrijte oblačiće poruka i pokazatelje kucanja, ali zadržite broj nepročitanih poruka.",
+            "description": "Sakrijte oblačiće poruka i pokazatelj kucanja. Status veze se ne menja.",
             "tooltip": "Sakrij ili prikaži poruke"
           },
           "throw_guard": {
-            "description": "Kada je opcija isključena, kliknite levim tasterom na prijatelja da biste bacili igračku. Kada je uključena, dvaput kliknite desnim tasterom miša na svoj lik, pa u narednih 10 sekundi kliknite levim tasterom na prijatelja da biste bacili igračku.",
-            "title": "Dvaput kliknite desnim tasterom za bacanje",
+            "description": "Kada je opcija isključena, kliknite levim tasterom na lik prijatelja da odmah bacite igračku. Kada je uključena, dvaput kliknite desnim tasterom na svoj lik, a zatim u roku od 10 sekundi kliknite levim tasterom na lik prijatelja da bacite igračku.",
+            "title": "Dvaput kliknite desnim tasterom pre bacanja",
             "tooltip": "Zahtevaj dvostruki klik desnim tasterom na svoj lik pre bacanja"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "Izaberite izgled aplikacije i kada se pokreće."
         },
         "language": {
-          "description": "Izaberite jezik aplikacije. Promene se primenjuju odmah.",
+          "description": "Izaberite jezik aplikacije.",
           "title": "Jezik"
         },
         "navigation_label": "Podešavanja",
         "overlay": {
-          "description": "Prikažite svet piksela svojih prijatelja duž izabrane ivice ekrana.",
+          "description": "Prikažite pikselski svet na izabranom mestu na ekranu.",
           "tooltip": "Uključi ili isključi svet piksela"
         },
         "placement": {
           "description": "Izaberite gde će se likovi prikazivati.",
           "edge": {
-            "description": "Izaberite ivicu ekrana po kojoj će likovi hodati.",
-            "title": "Ivica",
+            "description": "Izaberite mesto na ekranu na kom će se likovi kretati.",
+            "title": "Položaj",
             "tooltip": "Ivica ekrana za svet piksela"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Izaberite ekran za svet piksela i polje za poruke.",
             "title": "Monitor",
             "tooltip": "Monitor za svet piksela i polje za poruke",
             "unavailable": "Nema dostupnog ekrana."
           },
           "span": {
-            "description": "Izaberite koliko ivice ekrana likovi mogu da istraže.",
+            "description": "Izaberite deo ekrana koji zauzima pikselski svet.",
             "full": "Cela ivica",
             "title": "Oblast kretanja",
             "tooltip": "Opseg ekrana koji zauzima svet piksela"
           },
-          "title": "Položaj likova"
+          "title": "Položaj na ekranu"
         },
         "save": {
           "failed": "Podešavanja nisu sačuvana. Pokušajte ponovo. ({0})"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "Otvori ili zatvori unos poruke",
             "history": "Otvori ili zatvori nedavnu istoriju",
-            "overlay": "Uključi ili isključi preklop",
+            "overlay": "Prikaži ili sakrij pikselski svet",
             "quiet_mode": "Sakrij ili prikaži poruke"
           },
           "description": "Izaberite prečicu, pa pritisnite željenu kombinaciju tastera. Ako dodelite kombinaciju koja se već koristi, dve prečice će zameniti mesta.",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Reprodukujte zvučne efekte kada su likovi u trenutnoj grupi pogođeni.",
+            "description": "Reprodukujte zvučni efekat kada bačena igračka pogodi lika.",
             "title": "Zvučni efekti likova"
           },
           "description": "Podesite zvučne efekte likova.",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "Tamna",
-          "description": "Izaberite svetlu, tamnu ili sistemsku temu aplikacije.",
+          "description": "Izaberite temu aplikacije.",
           "light": "Svetla",
           "system": "Kao u sistemu Windows",
           "system_colors": {
-            "action": "Otvori postavke boja"
+            "action": "Otvori sistemska podešavanja boja"
           },
           "title": "Tema"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Datoteke evidencije biće komprimovane i sačuvane na radnoj površini. Ako ih podelite s nama, možete nam pomoći da otklonimo greške.",
+          "description": "Komprimujte datoteke evidencije i sačuvajte ih na radnoj površini. Priložite ih uz povratne informacije da biste pomogli u rešavanju problema.",
           "export": {
             "action": "Izvezi",
             "failed": "Dijagnostički podaci nisu izvezeni.",
@@ -1505,7 +1507,7 @@
           "compose": "Napiši poruku…"
         },
         "overlay": {
-          "hide": "Sakrij preklop"
+          "hide": "Sakrij pikselski svet"
         },
         "quiet_mode": {
           "toggle": "Sakrivanje poruka"

@@ -302,14 +302,14 @@
       "label": "Nazwa grupy"
     },
     "state": {
-      "active": "Aktywna"
+      "active": "Bieżąca grupa"
     },
     "summary": {
       "invite_ready": "Członkowie: {0}/12 · Kod zaproszenia: {1}",
       "invite_rotation_required": "Członkowie: {0}/12 · Wymagany nowy kod zaproszenia"
     },
     "switch": {
-      "action": "Przełącz na grupę",
+      "action": "Dołącz",
       "in_progress": "Łączenie…",
       "success": "Zmieniono aktywną grupę.",
       "tooltip": "Pokaż tę grupę na ekranie."
@@ -453,7 +453,7 @@
   "profile": {
     "applying": "Stosowanie",
     "character": {
-      "description": "Wybierz pikselową postać, która będzie cię reprezentować na ekranach znajomych.",
+      "description": "Wybierz pikselową postać, która będzie cię reprezentować w pikselowym świecie.",
       "label": "Postać",
       "save": {
         "success": "Zmieniono postać."
@@ -462,7 +462,7 @@
     "cosmetics": {
       "bubble": {
         "default": "Domyślna chmurka czatu",
-        "description": "Wybierz posiadaną chmurkę. Będzie używana we wszystkich twoich grupach.",
+        "description": "Wybierz dymek dla swoich wiadomości w pikselowym świecie.",
         "title": "Chmurka czatu"
       },
       "equipped": "Używane",
@@ -471,7 +471,7 @@
       },
       "throwable": {
         "default": "Domyślna miękka piłeczka",
-        "description": "Wybierz posiadaną zabawkę. Będzie używana we wszystkich twoich grupach.",
+        "description": "Wybierz zabawkę, którą twoja postać będzie rzucać w postacie znajomych w pikselowym świecie.",
         "title": "Zabawka do rzucania"
       }
     },
@@ -480,7 +480,7 @@
       "notice": "Możesz używać takiej samej nazwy lub postaci jak znajomy."
     },
     "nickname": {
-      "description": "Nazwa widoczna dla znajomych na ekranie i w wiadomościach · od 2 do 8 znaków",
+      "description": "Ta nazwa będzie widoczna w pikselowym świecie i wiadomościach. Wpisz od 2 do 8 znaków.",
       "label": "Pseudonim",
       "placeholder": "Od 2 do 8 znaków",
       "save": {
@@ -497,18 +497,18 @@
     "display": {
       "description": "Dostosuj sposób wyświetlania stanu znajomych i wiadomości.",
       "offline_members": {
-        "description": "Pokazuj znajomych offline jako śpiące postacie z czerwoną kropką stanu.",
+        "description": "Wyświetlaj w pikselowym świecie również postacie znajomych, którzy są offline.",
         "title": "Pokaż członków offline",
         "tooltip": "Przełącz wyświetlanie członków offline"
       },
       "quiet_mode": {
-        "description": "Ukrywaj chmurki wiadomości i wskaźniki pisania, ale zachowaj liczniki nieprzeczytanych wiadomości.",
+        "description": "Ukryj dymki wiadomości i wskaźnik pisania. Stan połączenia się nie zmieni.",
         "title": "Tryb dyskretny",
         "tooltip": "Przełącz tryb dyskretny"
       },
       "throw_guard": {
-        "description": "Gdy ta opcja jest wyłączona, kliknij znajomego, aby rzucić. Gdy jest włączona, kliknij dwukrotnie prawym przyciskiem swoją postać, aby włączyć rzucanie na 10 sekund.",
-        "title": "Kliknij dwukrotnie prawym przyciskiem, aby rzucić",
+        "description": "Gdy opcja jest wyłączona, kliknij postać znajomego lewym przyciskiem myszy, aby od razu rzucić zabawkę. Gdy jest włączona, kliknij dwukrotnie swoją postać prawym przyciskiem, a następnie w ciągu 10 sekund kliknij postać znajomego lewym przyciskiem, aby rzucić.",
+        "title": "Kliknij dwukrotnie prawym przyciskiem przed rzutem",
         "tooltip": "Wymagaj dwukrotnego kliknięcia prawym przyciskiem swojej postaci przed rzuceniem"
       }
     },
@@ -516,12 +516,12 @@
       "description": "Wybierz wygląd aplikacji i określ, kiedy ma się uruchamiać."
     },
     "language": {
-      "description": "Wybierz język aplikacji. Zmiany zostaną zastosowane od razu.",
+      "description": "Wybierz język aplikacji.",
       "title": "Język"
     },
     "navigation_label": "Ustawienia",
     "overlay": {
-      "description": "Pokaż pikselowy świat znajomych wzdłuż wybranej krawędzi ekranu.",
+      "description": "Wyświetl pikselowy świat w wybranym miejscu na ekranie.",
       "title": "Pokaż pikselowy świat",
       "tooltip": "Przełącz pikselowy świat"
     },
@@ -529,26 +529,28 @@
       "description": "Wybierz miejsce wyświetlania postaci.",
       "edge": {
         "bottom": "Dół",
-        "description": "Wybierz krawędź ekranu, wzdłuż której będą chodzić postacie.",
+        "description": "Wybierz miejsce na ekranie, w którym będą poruszać się postacie.",
         "left": "Lewa",
         "right": "Prawa",
-        "title": "Krawędź",
+        "title": "Położenie",
         "tooltip": "Krawędź ekranu dla pikselowego świata",
         "top": "Góra"
       },
       "monitor": {
         "description": "Wybierz ekran dla pikselowego świata i pola wiadomości.",
+        "display_name": "Monitor {0}",
+        "display_name_friendly": "Monitor {0} · {1}",
         "title": "Monitor",
         "tooltip": "Monitor dla pikselowego świata i pola wiadomości",
         "unavailable": "Żaden ekran nie jest dostępny."
       },
       "span": {
-        "description": "Wybierz, jak dużą część krawędzi ekranu mogą przemierzać postacie.",
+        "description": "Wybierz obszar ekranu zajmowany przez pikselowy świat.",
         "full": "Cała krawędź",
         "title": "Obszar poruszania się",
         "tooltip": "Zakres ekranu zajmowany przez pikselowy świat"
       },
-      "title": "Położenie postaci"
+      "title": "Położenie na ekranie"
     },
     "save": {
       "failed": "Nie udało się zapisać ustawień. Spróbuj ponownie. ({0})"
@@ -568,7 +570,7 @@
       "action": {
         "composer": "Otwórz lub zamknij pole wiadomości",
         "history": "Otwórz lub zamknij ostatnią historię",
-        "overlay": "Przełącz nakładkę",
+        "overlay": "Przełącz widoczność pikselowego świata",
         "quiet_mode": "Przełącz tryb dyskretny"
       },
       "description": "Wybierz skrót, a następnie naciśnij wybraną kombinację klawiszy. Przypisanie używanej już kombinacji spowoduje zamianę obu skrótów.",
@@ -590,7 +592,7 @@
     },
     "sound": {
       "character_effects": {
-        "description": "Odtwarzaj efekty dźwiękowe, gdy postacie w bieżącej grupie zostaną trafione.",
+        "description": "Odtwarzaj dźwięk, gdy postać zostanie trafiona rzuconą zabawką.",
         "title": "Efekty dźwiękowe postaci"
       },
       "description": "Dostosuj efekty dźwiękowe postaci.",
@@ -608,11 +610,11 @@
     },
     "theme": {
       "dark": "Ciemny",
-      "description": "Wybierz jasny, ciemny lub systemowy motyw aplikacji.",
+      "description": "Wybierz motyw aplikacji.",
       "light": "Jasny",
       "system": "Domyślny systemu Windows",
       "system_colors": {
-        "action": "Otwieranie ustawień koloru"
+        "action": "Otwórz systemowe ustawienia kolorów"
       },
       "title": "Motyw"
     },
@@ -843,7 +845,7 @@
   },
   "support": {
     "diagnostics": {
-      "description": "Pliki dziennika zostaną skompresowane i zapisane na pulpicie. Udostępnienie ich nam może pomóc w naprawie błędów.",
+      "description": "Skompresuj pliki dziennika i zapisz je na pulpicie. Dołączenie ich do opinii może pomóc w rozwiązaniu problemu.",
       "export": {
         "action": "Eksportuj",
         "failed": "Nie udało się wyeksportować danych diagnostycznych.",
@@ -881,7 +883,7 @@
       "compose": "Napisz wiadomość…"
     },
     "overlay": {
-      "hide": "Ukryj nakładkę"
+      "hide": "Ukryj pikselowy świat"
     },
     "quiet_mode": {
       "toggle": "Tryb dyskretny"

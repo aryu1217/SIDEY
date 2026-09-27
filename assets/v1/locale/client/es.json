@@ -310,14 +310,14 @@
           "tooltip": "Cambia el nombre del grupo."
         },
         "state": {
-          "active": "Activo"
+          "active": "Grupo actual"
         },
         "summary": {
           "invite_ready": "{0}/12 participantes · Código de invitación {1}",
           "invite_rotation_required": "{0}/12 participantes · Se necesita un código de invitación nuevo"
         },
         "switch": {
-          "action": "Cambiar de grupo",
+          "action": "Unirse",
           "in_progress": "Conectando…",
           "success": "Grupo activo cambiado.",
           "tooltip": "Muestra este grupo en tu pantalla."
@@ -444,7 +444,7 @@
       },
       "profile": {
         "character": {
-          "description": "Elige el personaje de píxeles que te representará en las pantallas de tus amigos.",
+          "description": "Elige el personaje de píxeles que te representará en el mundo de píxeles.",
           "save": {
             "success": "Personaje cambiado."
           }
@@ -452,7 +452,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Bocadillo predeterminado",
-            "description": "Elige un bocadillo que tengas. Se usará en todos tus grupos.",
+            "description": "Elige el bocadillo en el que aparecerán tus mensajes en el mundo de píxeles.",
             "title": "Bocadillo"
           },
           "equipped": "Equipado",
@@ -461,7 +461,7 @@
           },
           "throwable": {
             "default": "Pelota blanda predeterminada",
-            "description": "Elige uno de tus juguetes para lanzar. Se usará en todos tus grupos.",
+            "description": "Elige el juguete que tu personaje lanzará a los personajes de tus amigos en el mundo de píxeles.",
             "title": "Juguete para lanzar"
           }
         },
@@ -470,7 +470,7 @@
           "notice": "Puedes usar el mismo nombre o personaje que un amigo."
         },
         "nickname": {
-          "description": "El nombre que ven tus amigos en la pantalla y en los mensajes · De 2 a 8 caracteres",
+          "description": "Este nombre aparece en el mundo de píxeles y en tus mensajes. Escribe entre 2 y 8 caracteres.",
           "save": {
             "action": "Cambiar alias",
             "tooltip": "Guarda el alias cambiado."
@@ -484,17 +484,17 @@
         "display": {
           "description": "Ajusta cómo aparecen el estado de tus amigos y los mensajes.",
           "offline_members": {
-            "description": "Muestra a los amigos sin conexión como personajes dormidos con un punto de estado rojo.",
+            "description": "Muestra también en el mundo de píxeles a los personajes de los amigos sin conexión.",
             "title": "Mostrar participantes sin conexión",
             "tooltip": "Alternar participantes sin conexión"
           },
           "quiet_mode": {
-            "description": "Oculta los bocadillos y los indicadores de escritura, pero conserva el recuento de mensajes no leídos.",
+            "description": "Oculta los bocadillos de los mensajes y los indicadores de escritura. El estado de conexión no cambia.",
             "tooltip": "Alternar el modo discreto"
           },
           "throw_guard": {
-            "description": "Si está desactivado, haz clic en un amigo para lanzar. Si está activado, haz doble clic con el botón derecho en tu personaje para habilitar los lanzamientos durante 10 segundos.",
-            "title": "Doble clic con el botón derecho para lanzar",
+            "description": "Si está desactivado, haz clic con el botón izquierdo en el personaje de un amigo para lanzar al instante. Si está activado, haz doble clic con el botón derecho en tu personaje y, durante los siguientes 10 segundos, haz clic con el botón izquierdo en el personaje de un amigo para lanzar.",
+            "title": "Haz doble clic con el botón derecho antes de lanzar",
             "tooltip": "Exige hacer doble clic con el botón derecho en tu personaje antes de lanzar"
           }
         },
@@ -502,34 +502,36 @@
           "description": "Elige el aspecto de la aplicación y cuándo se inicia."
         },
         "language": {
-          "description": "Elige el idioma de la aplicación. Los cambios se aplican inmediatamente.",
+          "description": "Elige el idioma de la aplicación.",
           "title": "Idioma"
         },
         "navigation_label": "Configuración",
         "overlay": {
-          "description": "Muestra el mundo de píxeles de tus amigos a lo largo del borde de pantalla seleccionado.",
+          "description": "Muestra el mundo de píxeles en la posición seleccionada.",
           "tooltip": "Alternar el mundo de píxeles"
         },
         "placement": {
           "description": "Elige dónde aparecen los personajes.",
           "edge": {
-            "description": "Elige el borde de la pantalla por el que caminarán los personajes.",
-            "title": "Borde",
+            "description": "Elige dónde caminarán los personajes en la pantalla.",
+            "title": "Posición",
             "tooltip": "Borde de pantalla del mundo de píxeles"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Elige la pantalla para el mundo de píxeles y el editor de mensajes.",
             "title": "Monitor",
             "tooltip": "Monitor para el mundo de píxeles y el editor de mensajes",
             "unavailable": "No hay ninguna pantalla disponible."
           },
           "span": {
-            "description": "Elige cuánto espacio del borde pueden explorar los personajes.",
+            "description": "Elige qué parte de la pantalla ocupará el mundo de píxeles.",
             "full": "Todo el borde",
             "title": "Zona de movimiento",
             "tooltip": "Intervalo de pantalla ocupado por el mundo de píxeles"
           },
-          "title": "Ubicación de los personajes"
+          "title": "Ubicación en pantalla"
         },
         "save": {
           "failed": "No se pudo guardar la configuración. Inténtalo de nuevo. ({0})"
@@ -538,7 +540,7 @@
           "action": {
             "composer": "Abrir o cerrar la entrada de mensajes",
             "history": "Abrir o cerrar el historial reciente",
-            "overlay": "Alternar superposición",
+            "overlay": "Mostrar u ocultar el mundo de píxeles",
             "quiet_mode": "Alternar el modo discreto"
           },
           "description": "Selecciona un método abreviado y pulsa la combinación de teclas que quieras. Si asignas una combinación que ya está en uso, se intercambiarán los dos métodos abreviados.",
@@ -560,7 +562,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Reproduce efectos de sonido cuando se golpea a los personajes del grupo actual.",
+            "description": "Reproduce un efecto de sonido cuando un juguete lanzado golpea a un personaje.",
             "title": "Efectos de sonido de los personajes"
           },
           "description": "Ajusta los efectos de sonido de los personajes.",
@@ -574,11 +576,11 @@
         },
         "theme": {
           "dark": "Oscuro",
-          "description": "Elige el tema claro, oscuro o del sistema para la aplicación.",
+          "description": "Elige el tema de la aplicación.",
           "light": "Claro",
           "system": "Valor predeterminado de Windows",
           "system_colors": {
-            "action": "Abrir la configuración de Color"
+            "action": "Abrir la configuración de colores del sistema"
           },
           "title": "Tema"
         },
@@ -682,7 +684,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Los archivos de registro se comprimen y guardan en el Escritorio. Si los compartes con nosotros, podremos solucionar mejor los errores.",
+          "description": "Comprime los archivos de registro y los guarda en el escritorio. Adjúntalos al enviar comentarios para ayudarnos a resolver el problema.",
           "export": {
             "action": "Exportar",
             "failed": "No se pudieron exportar los datos de diagnóstico.",
@@ -720,7 +722,7 @@
           "compose": "Redactar mensaje…"
         },
         "overlay": {
-          "hide": "Ocultar superposición"
+          "hide": "Ocultar el mundo de píxeles"
         },
         "quiet_mode": {
           "toggle": "Modo discreto"

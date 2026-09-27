@@ -302,14 +302,14 @@
       "label": "Groepsnaam"
     },
     "state": {
-      "active": "Actief"
+      "active": "Huidige groep"
     },
     "summary": {
       "invite_ready": "{0}/12 leden · uitnodigingscode {1}",
       "invite_rotation_required": "{0}/12 leden · nieuwe uitnodigingscode vereist"
     },
     "switch": {
-      "action": "Van groep wisselen",
+      "action": "Deelnemen",
       "in_progress": "Wisselen van groep…",
       "success": "De actieve groep is gewijzigd.",
       "tooltip": "Naar deze groep wisselen."
@@ -453,7 +453,7 @@
   "profile": {
     "applying": "Toepassen…",
     "character": {
-      "description": "Kies een pixelpersonage dat jou op de schermen van vrienden voorstelt.",
+      "description": "Kies het pixelpersonage dat jou in de pixelwereld vertegenwoordigt.",
       "label": "Personage",
       "save": {
         "success": "Personage gewijzigd."
@@ -462,7 +462,7 @@
     "cosmetics": {
       "bubble": {
         "default": "Standaardballon",
-        "description": "Kies een ballon die je bezit. De ballon wordt direct in alle groepen gebruikt.",
+        "description": "Kies de berichtballon waarin je berichten in de pixelwereld verschijnen.",
         "title": "Ballonnen"
       },
       "equipped": "In gebruik",
@@ -471,7 +471,7 @@
       },
       "throwable": {
         "default": "Standaard zachte bal",
-        "description": "Kies werpspeelgoed dat je hebt. Het wordt direct in al je groepen gebruikt.",
+        "description": "Kies het speelgoed dat jouw personage in de pixelwereld naar de personages van vrienden gooit.",
         "title": "Werpspeelgoed"
       }
     },
@@ -480,7 +480,7 @@
       "notice": "Groepsleden mogen hetzelfde personage of dezelfde bijnaam gebruiken."
     },
     "nickname": {
-      "description": "Deze naam verschijnt in de pixelwereld en berichten van je vrienden. Gebruik 2–8 tekens.",
+      "description": "Deze naam verschijnt in de pixelwereld en bij je berichten. Voer 2 tot 8 tekens in.",
       "label": "Bijnaam",
       "placeholder": "2–8 tekens",
       "save": {
@@ -497,18 +497,18 @@
     "display": {
       "description": "Stel in hoe de status en berichten van vrienden op het scherm verschijnen.",
       "offline_members": {
-        "description": "Toon ook offline vrienden als slapende personages met een rode statusstip.",
+        "description": "Toont ook de personages van offline vrienden in de pixelwereld.",
         "title": "Offlineleden weergeven",
         "tooltip": "Offlineleden weergeven"
       },
       "quiet_mode": {
-        "description": "Verberg berichtballonnen en typindicatoren, maar behoud de verbindingsstatus en het aantal ongelezen berichten.",
+        "description": "Verbergt berichtballonnen en typindicatoren. De verbindingsstatus blijft hetzelfde.",
         "title": "Discrete modus",
         "tooltip": "Discrete modus in- of uitschakelen"
       },
       "throw_guard": {
-        "description": "Als dit is uitgeschakeld, klik je met de linkermuisknop op het personage van een vriend om meteen te gooien. Als dit is ingeschakeld, dubbelklik je eerst met de rechtermuisknop op je eigen personage. Daarna kun je 10 seconden met de linkermuisknop op een vriend klikken om te gooien.",
-        "title": "Pas gooien na dubbelklikken met de rechtermuisknop op mijn personage",
+        "description": "Als dit uitstaat, klik je met de linkermuisknop op het personage van een vriend om meteen te gooien. Als dit aanstaat, dubbelklik je met de rechtermuisknop op je eigen personage en klik je binnen 10 seconden met de linkermuisknop op het personage van een vriend om te gooien.",
+        "title": "Rechts dubbelklikken voordat je gooit",
         "tooltip": "Vereis een dubbele klik met de rechtermuisknop op mijn personage voordat ik gooi"
       }
     },
@@ -516,12 +516,12 @@
       "description": "Stel de standaardweergave en het opstartgedrag in."
     },
     "language": {
-      "description": "Kies de taal voor de app. De wijziging wordt direct toegepast.",
+      "description": "Kies de taal die de app gebruikt.",
       "title": "Taal / Language"
     },
     "navigation_label": "Instellingen",
     "overlay": {
-      "description": "Toon de pixelwereld van je vrienden langs de gekozen schermrand.",
+      "description": "Toont de pixelwereld op de gekozen plek.",
       "title": "Pixelwereld weergeven",
       "tooltip": "Pixelwereld weergeven"
     },
@@ -529,26 +529,28 @@
       "description": "Kies het scherm en de positie van de pixelpersonages.",
       "edge": {
         "bottom": "Onder",
-        "description": "Kies de schermrand waar de personages rondlopen.",
+        "description": "Kies de plek op het scherm waar de personages rondlopen.",
         "left": "Links",
         "right": "Rechts",
-        "title": "Schermrand",
+        "title": "Positie",
         "tooltip": "Schermrand voor de pixelwereld",
         "top": "Boven"
       },
       "monitor": {
         "description": "Kies het scherm waarop de pixelwereld en het berichtvenster verschijnen.",
+        "display_name": "Beeldscherm {0}",
+        "display_name_friendly": "Beeldscherm {0} · {1}",
         "title": "Beeldscherm",
         "tooltip": "Beeldscherm voor de pixelwereld en het berichtvenster",
         "unavailable": "Er is geen beeldscherm beschikbaar. Sluit een beeldscherm aan en probeer het opnieuw."
       },
       "span": {
-        "description": "Kies hoeveel ruimte de wereld langs de gekozen rand inneemt.",
+        "description": "Kies hoeveel ruimte de pixelwereld op het scherm inneemt.",
         "full": "Volledig",
         "title": "Lengte van gebied",
         "tooltip": "Schermgebied dat de pixelwereld inneemt"
       },
-      "title": "Plaatsing van wereld"
+      "title": "Plaatsing op het scherm"
     },
     "save": {
       "failed": "De instellingen kunnen niet worden opgeslagen. Probeer het opnieuw. ({0})"
@@ -568,7 +570,7 @@
       "action": {
         "composer": "Berichtvenster openen/sluiten",
         "history": "Recente geschiedenis openen/sluiten",
-        "overlay": "Overlay weergeven/verbergen",
+        "overlay": "Pixelwereld weergeven of verbergen",
         "quiet_mode": "Discrete modus in- of uitschakelen"
       },
       "description": "Selecteer een sneltoets en druk op de gewenste toetsencombinatie. Als je een combinatie kiest die al in gebruik is, wisselen de twee sneltoetsen om.",
@@ -590,7 +592,7 @@
     },
     "sound": {
       "character_effects": {
-        "description": "Speel een geluid af wanneer werpspeelgoed in de huidige groep een personage raakt.",
+        "description": "Speelt een geluid af wanneer gegooid speelgoed een personage raakt.",
         "title": "Geluidseffecten van personages"
       },
       "description": "Stel de geluidseffecten van personages in.",
@@ -608,11 +610,11 @@
     },
     "theme": {
       "dark": "Donker",
-      "description": "Kies voor de app een licht, donker of systeemthema.",
+      "description": "Kies een thema voor de app.",
       "light": "Licht",
       "system": "Windows-standaard",
       "system_colors": {
-        "action": "Kleurinstellingen openen"
+        "action": "Systeemkleurinstellingen openen"
       },
       "title": "Thema"
     },
@@ -843,7 +845,7 @@
   },
   "support": {
     "diagnostics": {
-      "description": "Comprimeer de logboekbestanden en sla ze op het bureaublad op. Deel ze met ondersteuning om een probleem op te lossen.",
+      "description": "Comprimeert de logbestanden en slaat ze op het bureaublad op. Voeg ze bij je feedback om ons te helpen het probleem op te lossen.",
       "export": {
         "action": "Exporteren",
         "failed": "Diagnostische gegevens kunnen niet worden geëxporteerd. Probeer het opnieuw.",
@@ -881,7 +883,7 @@
       "compose": "Bericht opstellen…"
     },
     "overlay": {
-      "hide": "Overlay verbergen"
+      "hide": "Pixelwereld verbergen"
     },
     "quiet_mode": {
       "toggle": "Discrete modus"

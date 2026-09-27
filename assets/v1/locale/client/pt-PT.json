@@ -1148,14 +1148,14 @@
           "tooltip": "Mude o nome do grupo."
         },
         "state": {
-          "active": "Ativo"
+          "active": "Grupo atual"
         },
         "summary": {
           "invite_ready": "{0}/12 membros · Código de convite {1}",
           "invite_rotation_required": "{0}/12 membros · É necessário um novo código de convite"
         },
         "switch": {
-          "action": "Mudar para o grupo",
+          "action": "Participar",
           "in_progress": "A ligar…",
           "success": "O grupo ativo foi alterado.",
           "tooltip": "Mostre este grupo no ecrã."
@@ -1282,7 +1282,7 @@
       },
       "profile": {
         "character": {
-          "description": "Escolha a personagem em píxeis que o representa nos ecrãs dos seus amigos.",
+          "description": "Escolha a personagem em píxeis que o representa no mundo de píxeis.",
           "save": {
             "success": "A personagem foi alterada."
           }
@@ -1290,7 +1290,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Balão de conversa predefinido",
-            "description": "Escolha um dos seus balões. Será utilizado em todos os seus grupos.",
+            "description": "Escolha o balão que apresenta as suas mensagens no mundo de píxeis.",
             "title": "Balão de conversa"
           },
           "equipped": "Equipado",
@@ -1299,7 +1299,7 @@
           },
           "throwable": {
             "default": "Bola macia predefinida",
-            "description": "Escolha um dos seus brinquedos. Será utilizado em todos os seus grupos.",
+            "description": "Escolha o brinquedo que a sua personagem atira às personagens dos seus amigos no mundo de píxeis.",
             "title": "Brinquedo para atirar"
           }
         },
@@ -1308,7 +1308,7 @@
           "notice": "Pode utilizar o mesmo nome ou personagem que um amigo."
         },
         "nickname": {
-          "description": "O nome que os seus amigos veem no ecrã e nas mensagens · 2–8 carateres",
+          "description": "Este nome aparece no mundo de píxeis e nas mensagens. Introduza entre 2 e 8 carateres.",
           "save": {
             "action": "Alterar alcunha",
             "tooltip": "Guardar a alcunha alterada."
@@ -1322,17 +1322,17 @@
         "display": {
           "description": "Ajuste a forma como o estado dos amigos e as mensagens são apresentados.",
           "offline_members": {
-            "description": "Mostre os amigos offline como personagens a dormir com um ponto de estado vermelho.",
+            "description": "Mostre também as personagens dos amigos offline no mundo de píxeis.",
             "title": "Mostrar membros offline",
             "tooltip": "Mostrar ou ocultar membros offline"
           },
           "quiet_mode": {
-            "description": "Oculte os balões de mensagens e os indicadores de escrita, mantendo a contagem de mensagens não lidas.",
+            "description": "Oculte os balões de mensagens e o indicador de escrita. O estado da ligação não muda.",
             "tooltip": "Ativar ou desativar o modo discreto"
           },
           "throw_guard": {
-            "description": "Quando estiver desativado, clique num amigo para atirar. Quando estiver ativado, faça duplo clique com o botão direito do rato na sua personagem para permitir lançamentos durante 10 segundos.",
-            "title": "Duplo clique com o botão direito para atirar",
+            "description": "Com esta opção desligada, clique com o botão esquerdo na personagem de um amigo para atirar imediatamente. Com a opção ligada, faça duplo clique com o botão direito na sua personagem e, nos 10 segundos seguintes, clique com o botão esquerdo na personagem de um amigo para atirar.",
+            "title": "Faça duplo clique com o botão direito antes de atirar",
             "tooltip": "Exigir um duplo clique com o botão direito do rato na sua personagem antes de atirar"
           }
         },
@@ -1340,34 +1340,36 @@
           "description": "Escolha o aspeto da aplicação e quando é iniciada."
         },
         "language": {
-          "description": "Escolha o idioma utilizado na aplicação. As alterações são aplicadas imediatamente.",
+          "description": "Escolha o idioma da aplicação.",
           "title": "Idioma"
         },
         "navigation_label": "Definições",
         "overlay": {
-          "description": "Mostre o mundo de píxeis dos seus amigos ao longo da margem selecionada do ecrã.",
+          "description": "Mostre o mundo de píxeis na posição escolhida no ecrã.",
           "tooltip": "Mostrar ou ocultar o mundo de píxeis"
         },
         "placement": {
           "description": "Escolha onde as personagens são apresentadas.",
           "edge": {
-            "description": "Escolha a margem do ecrã por onde as personagens caminham.",
-            "title": "Margem",
+            "description": "Escolha a posição no ecrã onde as personagens vão andar.",
+            "title": "Posição",
             "tooltip": "Margem do ecrã para o mundo de píxeis"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Escolha o ecrã para o mundo de píxeis e a composição de mensagens.",
             "title": "Monitor",
             "tooltip": "Monitor para o mundo de píxeis e a composição de mensagens",
             "unavailable": "Não há nenhum ecrã disponível."
           },
           "span": {
-            "description": "Escolha quanto da margem do ecrã as personagens podem explorar.",
+            "description": "Escolha a área do ecrã ocupada pelo mundo de píxeis.",
             "full": "Margem completa",
             "title": "Área de movimento",
             "tooltip": "Intervalo do ecrã ocupado pelo mundo de píxeis"
           },
-          "title": "Posição das personagens"
+          "title": "Posição no ecrã"
         },
         "save": {
           "failed": "Não foi possível guardar as definições. Tente novamente. ({0})"
@@ -1376,7 +1378,7 @@
           "action": {
             "composer": "Abrir ou fechar a introdução de mensagens",
             "history": "Abrir ou fechar o histórico recente",
-            "overlay": "Ativar ou desativar a sobreposição",
+            "overlay": "Alternar visibilidade do mundo de píxeis",
             "quiet_mode": "Ativar ou desativar o modo discreto"
           },
           "description": "Selecione um atalho e prima a combinação de teclas pretendida. Se atribuir uma combinação já utilizada, os dois atalhos trocam de posição.",
@@ -1398,7 +1400,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Reproduza efeitos sonoros quando as personagens do grupo atual são atingidas.",
+            "description": "Reproduza um efeito sonoro quando uma personagem for atingida por um brinquedo atirado.",
             "title": "Efeitos sonoros das personagens"
           },
           "description": "Ajuste os efeitos sonoros das personagens.",
@@ -1412,11 +1414,11 @@
         },
         "theme": {
           "dark": "Escuro",
-          "description": "Escolha o tema claro, escuro ou do sistema para a aplicação.",
+          "description": "Escolha o tema da aplicação.",
           "light": "Claro",
           "system": "Predefinição do Windows",
           "system_colors": {
-            "action": "Abrir definições de Cor"
+            "action": "Abrir definições de cores do sistema"
           },
           "title": "Tema"
         },
@@ -1520,7 +1522,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Os ficheiros de registo são comprimidos e guardados no Ambiente de Trabalho. Partilhá-los connosco pode ajudar-nos a corrigir erros.",
+          "description": "Comprima os ficheiros de registo e guarde-os no Ambiente de Trabalho. Anexá-los ao enviar comentários pode ajudar a resolver o problema.",
           "export": {
             "action": "Exportar",
             "failed": "Não foi possível exportar os dados de diagnóstico.",
@@ -1558,7 +1560,7 @@
           "compose": "Escrever mensagem…"
         },
         "overlay": {
-          "hide": "Ocultar sobreposição"
+          "hide": "Ocultar mundo de píxeis"
         },
         "quiet_mode": {
           "toggle": "Modo discreto"

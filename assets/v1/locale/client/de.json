@@ -1095,14 +1095,14 @@
           "tooltip": "Benennt die Gruppe um."
         },
         "state": {
-          "active": "Aktiv"
+          "active": "Aktuelle Gruppe"
         },
         "summary": {
           "invite_ready": "{0}/12 Mitglieder · Einladungscode {1}",
           "invite_rotation_required": "{0}/12 Mitglieder · Neuer Einladungscode erforderlich"
         },
         "switch": {
-          "action": "Zur Gruppe wechseln",
+          "action": "Beitreten",
           "in_progress": "Verbindung wird hergestellt…",
           "success": "Aktive Gruppe geändert.",
           "tooltip": "Zeigt diese Gruppe auf deinem Bildschirm an."
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "Wähle die Pixelfigur aus, die dich auf den Bildschirmen deiner Freunde darstellt.",
+          "description": "Wähle die Pixelfigur aus, die dich in der Pixelwelt darstellt.",
           "save": {
             "success": "Figur geändert."
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Standardsprechblase",
-            "description": "Wähle eine Sprechblase aus, die du hast. Die Auswahl wird in allen deinen Gruppen verwendet.",
+            "description": "Wähle die Sprechblase für deine Nachrichten in der Pixelwelt aus.",
             "title": "Sprechblase"
           },
           "equipped": "Ausgerüstet",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "Weicher Standardball",
-            "description": "Wähle ein Spielzeug aus, das du hast. Es wird in allen deinen Gruppen verwendet.",
+            "description": "Wähle das Spielzeug aus, das deine Figur in der Pixelwelt auf die Figuren deiner Freunde wirft.",
             "title": "Wurfspielzeug"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "Du kannst denselben Namen oder dieselbe Figur wie ein Freund verwenden."
         },
         "nickname": {
-          "description": "Der Name, den deine Freunde auf dem Bildschirm und in Nachrichten sehen · 2–8 Zeichen",
+          "description": "Dieser Name erscheint in der Pixelwelt und in deinen Nachrichten. Gib 2 bis 8 Zeichen ein.",
           "save": {
             "action": "Spitznamen ändern",
             "tooltip": "Geänderten Spitznamen speichern."
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "Passe an, wie der Status deiner Freunde und Nachrichten angezeigt werden.",
           "offline_members": {
-            "description": "Offlinefreunde als schlafende Figuren mit einem roten Statuspunkt anzeigen.",
+            "description": "Zeigt auch die Figuren von Freunden, die offline sind, in der Pixelwelt an.",
             "title": "Offlinemitglieder anzeigen",
             "tooltip": "Offlinemitglieder ein- oder ausblenden"
           },
           "quiet_mode": {
-            "description": "Nachrichtensprechblasen und Eingabeanzeigen ausblenden, aber die Anzahl ungelesener Nachrichten beibehalten.",
+            "description": "Blendet Nachrichtensprechblasen und Tippanzeigen aus. Der Verbindungsstatus bleibt unverändert.",
             "tooltip": "Diskreten Modus ein- oder ausschalten"
           },
           "throw_guard": {
-            "description": "Wenn diese Option deaktiviert ist, klicke zum Werfen auf einen Freund. Wenn sie aktiviert ist, doppelklicke mit der rechten Maustaste auf deine Figur, um das Werfen für 10 Sekunden zu aktivieren.",
-            "title": "Zum Werfen mit der rechten Maustaste doppelklicken",
+            "description": "Wenn diese Option aus ist, klicke mit der linken Maustaste auf die Figur eines Freundes, um sofort zu werfen. Wenn sie an ist, doppelklicke mit der rechten Maustaste auf deine Figur und klicke dann innerhalb von 10 Sekunden mit der linken Maustaste auf die Figur eines Freundes.",
+            "title": "Vor dem Werfen rechts doppelklicken",
             "tooltip": "Vor dem Werfen einen Doppelklick mit der rechten Maustaste auf die eigene Figur verlangen"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "Wähle aus, wie die App angezeigt und wann sie gestartet wird."
         },
         "language": {
-          "description": "Wähle die in der App verwendete Sprache aus. Änderungen werden sofort wirksam.",
+          "description": "Wähle die Sprache für die App aus.",
           "title": "Sprache"
         },
         "navigation_label": "Einstellungen",
         "overlay": {
-          "description": "Die Pixelwelt deiner Freunde am ausgewählten Bildschirmrand anzeigen.",
+          "description": "Zeigt die Pixelwelt an der ausgewählten Position an.",
           "tooltip": "Pixelwelt ein- oder ausblenden"
         },
         "placement": {
           "description": "Wähle aus, wo deine Figuren angezeigt werden.",
           "edge": {
-            "description": "Wähle den Bildschirmrand aus, an dem die Figuren entlanglaufen.",
-            "title": "Rand",
+            "description": "Wähle die Position auf dem Bildschirm, an der die Figuren umherlaufen.",
+            "title": "Position",
             "tooltip": "Bildschirmrand für die Pixelwelt"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Wähle den Bildschirm für die Pixelwelt und die Nachrichteneingabe aus.",
             "title": "Bildschirm",
             "tooltip": "Bildschirm für die Pixelwelt und die Nachrichteneingabe",
             "unavailable": "Kein Bildschirm verfügbar."
           },
           "span": {
-            "description": "Wähle aus, wie viel vom Bildschirmrand deine Figuren erkunden können.",
+            "description": "Wähle aus, wie viel Platz die Pixelwelt auf dem Bildschirm einnimmt.",
             "full": "Gesamter Rand",
             "title": "Bewegungsbereich",
             "tooltip": "Von der Pixelwelt belegter Bildschirmbereich"
           },
-          "title": "Figurenposition"
+          "title": "Position auf dem Bildschirm"
         },
         "save": {
           "failed": "Deine Einstellungen konnten nicht gespeichert werden. Versuche es erneut. ({0})"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "Nachrichteneingabe öffnen oder schließen",
             "history": "Aktuellen Verlauf öffnen oder schließen",
-            "overlay": "Overlay ein- oder ausschalten",
+            "overlay": "Pixelwelt ein- oder ausblenden",
             "quiet_mode": "Diskreten Modus ein- oder ausschalten"
           },
           "description": "Wähle einen Tastaturkurzbefehl aus, und drücke dann die gewünschte Tastenkombination. Wenn du eine bereits verwendete Kombination zuweist, werden die beiden Kurzbefehle getauscht.",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Soundeffekte wiedergeben, wenn Figuren in der aktuellen Gruppe getroffen werden.",
+            "description": "Spielt einen Soundeffekt ab, wenn eine Figur von einem Wurfspielzeug getroffen wird.",
             "title": "Figurensoundeffekte"
           },
           "description": "Figurensoundeffekte anpassen.",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "Dunkel",
-          "description": "Wähle für die App ein helles, dunkles oder systemabhängiges Design.",
+          "description": "Wähle ein Design für die App aus.",
           "light": "Hell",
           "system": "Windows-Standard",
           "system_colors": {
-            "action": "Farbeinstellungen öffnen"
+            "action": "Systemfarbeinstellungen öffnen"
           },
           "title": "Design"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Protokolldateien werden komprimiert und auf deinem Desktop gespeichert. Wenn du sie mit uns teilst, können wir Fehler leichter beheben.",
+          "description": "Komprimiert die Protokolldateien und speichert sie auf dem Desktop. Hänge sie an dein Feedback an, damit wir das Problem leichter beheben können.",
           "export": {
             "action": "Exportieren",
             "failed": "Diagnosedaten konnten nicht exportiert werden.",
@@ -1505,7 +1507,7 @@
           "compose": "Nachricht verfassen…"
         },
         "overlay": {
-          "hide": "Overlay ausblenden"
+          "hide": "Pixelwelt ausblenden"
         },
         "quiet_mode": {
           "toggle": "Diskreter Modus"

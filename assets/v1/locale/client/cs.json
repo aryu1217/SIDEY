@@ -1095,14 +1095,14 @@
           "tooltip": "Přejmenovat skupinu."
         },
         "state": {
-          "active": "Aktivní"
+          "active": "Aktuální skupina"
         },
         "summary": {
           "invite_ready": "Členové: {0}/12 · Kód pozvánky {1}",
           "invite_rotation_required": "Členové: {0}/12 · Je potřeba nový kód pozvánky"
         },
         "switch": {
-          "action": "Přepnout na skupinu",
+          "action": "Připojit se",
           "in_progress": "Připojování…",
           "success": "Aktivní skupina byla změněna.",
           "tooltip": "Zobrazit tuto skupinu na obrazovce."
@@ -1229,7 +1229,7 @@
       },
       "profile": {
         "character": {
-          "description": "Vyberte pixelovou postavičku, která vás bude představovat na obrazovkách přátel.",
+          "description": "Vyberte pixelovou postavičku, která vás bude představovat v pixelovém světě.",
           "save": {
             "success": "Postavička byla změněna."
           }
@@ -1237,7 +1237,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Výchozí bublina zprávy",
-            "description": "Vyberte bublinu zprávy, kterou máte. Použije se ve všech vašich skupinách.",
+            "description": "Vyberte bublinu, ve které se budou v pixelovém světě zobrazovat vaše zprávy.",
             "title": "Bublina zprávy"
           },
           "equipped": "Používá se",
@@ -1246,7 +1246,7 @@
           },
           "throwable": {
             "default": "Výchozí měkký míček",
-            "description": "Vyberte házecí hračku, kterou máte. Použije se ve všech vašich skupinách.",
+            "description": "Vyberte hračku, kterou bude vaše postavička v pixelovém světě házet po postavičkách přátel.",
             "title": "Házecí hračka"
           }
         },
@@ -1255,7 +1255,7 @@
           "notice": "Nevadí, když používáte stejné jméno nebo postavičku jako někdo z přátel."
         },
         "nickname": {
-          "description": "Jméno, které přátelé uvidí na obrazovce a ve zprávách · 2–8 znaků",
+          "description": "Toto jméno se zobrazuje v pixelovém světě a ve vašich zprávách. Zadejte 2 až 8 znaků.",
           "save": {
             "action": "Změnit přezdívku",
             "tooltip": "Uložit změněnou přezdívku."
@@ -1269,17 +1269,17 @@
         "display": {
           "description": "Nastavte, jak se zobrazují stav přátel a zprávy.",
           "offline_members": {
-            "description": "Zobrazit offline přátele jako spící postavičky s červeným stavovým bodem.",
+            "description": "Zobrazí v pixelovém světě i postavičky přátel, kteří nejsou online.",
             "title": "Zobrazovat offline členy",
             "tooltip": "Přepnout zobrazení offline členů"
           },
           "quiet_mode": {
-            "description": "Skrýt bubliny zpráv a indikátory psaní, ale zachovat počet nepřečtených zpráv.",
+            "description": "Skryje bubliny zpráv a indikátory psaní. Stav připojení se nezmění.",
             "tooltip": "Přepnout tichý režim"
           },
           "throw_guard": {
-            "description": "Když je tato možnost vypnutá, kliknutím na postavičku přítele hned hodíte hračku. Když je zapnutá, dvakrát klikněte pravým tlačítkem na svou postavičku a potom do 10 sekund na postavičku přítele.",
-            "title": "Házet po dvojitém kliknutí pravým tlačítkem",
+            "description": "Když je možnost vypnutá, můžete hned házet kliknutím levým tlačítkem na postavičku přítele. Když je zapnutá, dvakrát klikněte pravým tlačítkem na svou postavičku a pak do 10 sekund klikněte levým tlačítkem na postavičku přítele.",
+            "title": "Před házením dvakrát kliknout pravým tlačítkem",
             "tooltip": "Před házením vyžadovat dvojité kliknutí pravým tlačítkem na vlastní postavičku"
           }
         },
@@ -1287,34 +1287,36 @@
           "description": "Nastavte vzhled aplikace a její spouštění."
         },
         "language": {
-          "description": "Zvolte jazyk aplikace. Změna se projeví okamžitě.",
+          "description": "Zvolte jazyk aplikace.",
           "title": "Jazyk"
         },
         "navigation_label": "Nastavení",
         "overlay": {
-          "description": "Zobrazit pixelový svět přátel podél vybraného okraje obrazovky.",
+          "description": "Zobrazí pixelový svět na zvoleném místě.",
           "tooltip": "Přepnout pixelový svět"
         },
         "placement": {
           "description": "Zvolte, kde se postavičky zobrazí.",
           "edge": {
-            "description": "Zvolte okraj obrazovky, podél kterého budou postavičky chodit.",
-            "title": "Okraj",
+            "description": "Zvolte místo na obrazovce, kde se budou postavičky procházet.",
+            "title": "Umístění",
             "tooltip": "Okraj obrazovky pro pixelový svět"
           },
           "monitor": {
+            "display_name": "Monitor {0}",
+            "display_name_friendly": "Monitor {0} · {1}",
             "description": "Zvolte monitor pro pixelový svět a pole zprávy.",
             "title": "Monitor",
             "tooltip": "Monitor pro pixelový svět a pole zprávy",
             "unavailable": "Není dostupný žádný monitor."
           },
           "span": {
-            "description": "Zvolte, jak velkou část okraje obrazovky mohou postavičky procházet.",
+            "description": "Zvolte, jakou část obrazovky bude pixelový svět zabírat.",
             "full": "Celý okraj",
             "title": "Oblast pohybu",
             "tooltip": "Část obrazovky, kterou zabírá pixelový svět"
           },
-          "title": "Umístění postaviček"
+          "title": "Umístění na obrazovce"
         },
         "save": {
           "failed": "Nastavení se nepodařilo uložit. Zkuste to znovu. ({0})"
@@ -1323,7 +1325,7 @@
           "action": {
             "composer": "Otevřít nebo zavřít pole zprávy",
             "history": "Otevřít nebo zavřít nedávné zprávy",
-            "overlay": "Zobrazit nebo skrýt překryvnou vrstvu",
+            "overlay": "Zobrazit nebo skrýt pixelový svět",
             "quiet_mode": "Přepnout tichý režim"
           },
           "description": "Vyberte zkratku a stiskněte požadovanou kombinaci kláves. Pokud je kombinace už přiřazená, zkratky si ji vymění.",
@@ -1345,7 +1347,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Přehrát zvukový efekt, když házecí hračka zasáhne postavičku v aktuální skupině.",
+            "description": "Přehraje zvukový efekt, když házecí hračka zasáhne postavičku.",
             "title": "Zvukové efekty postaviček"
           },
           "description": "Nastavte zvukové efekty postaviček.",
@@ -1359,11 +1361,11 @@
         },
         "theme": {
           "dark": "Tmavý",
-          "description": "Zvolte světlý, tmavý nebo systémový motiv aplikace.",
+          "description": "Zvolte motiv aplikace.",
           "light": "Světlý",
           "system": "Výchozí nastavení Windows",
           "system_colors": {
-            "action": "Otevřít nastavení barev"
+            "action": "Otevřít systémová nastavení barev"
           },
           "title": "Motiv"
         },
@@ -1467,7 +1469,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Soubory protokolu se zkomprimují a uloží na plochu. Když nám je pošlete, pomůžou nám chyby opravit.",
+          "description": "Zkomprimuje soubory protokolu a uloží je na plochu. Přiložte je ke zpětné vazbě, pomůže nám to problém vyřešit.",
           "export": {
             "action": "Exportovat",
             "failed": "Diagnostická data se nepodařilo exportovat.",
@@ -1505,7 +1507,7 @@
           "compose": "Napsat zprávu…"
         },
         "overlay": {
-          "hide": "Skrýt překryvnou vrstvu"
+          "hide": "Skrýt pixelový svět"
         },
         "quiet_mode": {
           "toggle": "Tichý režim"

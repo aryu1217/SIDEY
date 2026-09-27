@@ -310,14 +310,14 @@
           "tooltip": "Renommez le groupe."
         },
         "state": {
-          "active": "Actif"
+          "active": "Groupe actuel"
         },
         "summary": {
           "invite_ready": "{0}/12 participants · Code d’invitation {1}",
           "invite_rotation_required": "{0}/12 participants · Nouveau code d’invitation requis"
         },
         "switch": {
-          "action": "Changer de groupe",
+          "action": "Rejoindre",
           "in_progress": "Connexion…",
           "success": "Groupe actif modifié.",
           "tooltip": "Affichez ce groupe sur votre écran."
@@ -444,7 +444,7 @@
       },
       "profile": {
         "character": {
-          "description": "Choisissez le personnage pixel qui vous représente sur l’écran de vos amis.",
+          "description": "Choisissez le personnage pixel qui vous représentera dans le monde pixel.",
           "save": {
             "success": "Personnage modifié."
           }
@@ -452,7 +452,7 @@
         "cosmetics": {
           "bubble": {
             "default": "Bulle par défaut",
-            "description": "Choisissez une bulle que vous possédez. Elle sera utilisée dans tous vos groupes.",
+            "description": "Choisissez la bulle qui affichera vos messages dans le monde pixel.",
             "title": "Bulle de discussion"
           },
           "equipped": "Équipé",
@@ -461,7 +461,7 @@
           },
           "throwable": {
             "default": "Balle souple par défaut",
-            "description": "Choisissez un jouet que vous possédez. Il sera utilisé dans tous vos groupes.",
+            "description": "Choisissez le jouet que votre personnage lancera sur les personnages de vos amis dans le monde pixel.",
             "title": "Jouet à lancer"
           }
         },
@@ -470,7 +470,7 @@
           "notice": "Vous pouvez utiliser le même nom ou personnage qu’un ami."
         },
         "nickname": {
-          "description": "Le nom que vos amis voient à l’écran et dans les messages · 2 à 8 caractères",
+          "description": "Ce nom apparaît dans le monde pixel et dans vos messages. Saisissez entre 2 et 8 caractères.",
           "save": {
             "action": "Modifier le pseudo",
             "tooltip": "Enregistrez le nouveau pseudo."
@@ -484,17 +484,17 @@
         "display": {
           "description": "Réglez l’affichage du statut de vos amis et des messages.",
           "offline_members": {
-            "description": "Affichez les amis hors connexion comme des personnages endormis avec un point d’état rouge.",
+            "description": "Affiche aussi dans le monde pixel les personnages des amis hors connexion.",
             "title": "Afficher les participants hors connexion",
             "tooltip": "Afficher ou masquer les participants hors connexion"
           },
           "quiet_mode": {
-            "description": "Masquez les bulles de message et les indicateurs de saisie tout en conservant le nombre de messages non lus.",
+            "description": "Masque les bulles de message et les indicateurs de saisie. L’état de la connexion ne change pas.",
             "tooltip": "Activer ou désactiver le mode discret"
           },
           "throw_guard": {
-            "description": "Lorsque cette option est désactivée, cliquez sur un ami pour lancer. Lorsqu’elle est activée, double-cliquez avec le bouton droit sur votre personnage pour autoriser les lancers pendant 10 secondes.",
-            "title": "Double-cliquer avec le bouton droit pour lancer",
+            "description": "Si cette option est désactivée, cliquez avec le bouton gauche sur le personnage d’un ami pour lancer immédiatement. Si elle est activée, double-cliquez avec le bouton droit sur votre personnage, puis cliquez avec le bouton gauche sur celui d’un ami dans les 10 secondes pour lancer.",
+            "title": "Double-cliquer avec le bouton droit avant de lancer",
             "tooltip": "Exiger un double-clic droit sur votre personnage avant de lancer"
           }
         },
@@ -502,34 +502,36 @@
           "description": "Choisissez l’apparence de l’application et son mode de démarrage."
         },
         "language": {
-          "description": "Choisissez la langue de l’application. Les modifications prennent effet immédiatement.",
+          "description": "Choisissez la langue de l’application.",
           "title": "Langue"
         },
         "navigation_label": "Paramètres",
         "overlay": {
-          "description": "Affichez le monde pixel de vos amis le long du bord d’écran sélectionné.",
+          "description": "Affiche le monde pixel à l’emplacement choisi.",
           "tooltip": "Afficher ou masquer le monde pixel"
         },
         "placement": {
           "description": "Choisissez où afficher vos personnages.",
           "edge": {
-            "description": "Choisissez le bord de l’écran le long duquel les personnages marchent.",
-            "title": "Bord",
+            "description": "Choisissez où les personnages se promèneront à l’écran.",
+            "title": "Position",
             "tooltip": "Bord de l’écran du monde pixel"
           },
           "monitor": {
+            "display_name": "Écran {0}",
+            "display_name_friendly": "Écran {0} · {1}",
             "description": "Choisissez l’écran du monde pixel et de la fenêtre de rédaction.",
             "title": "Écran",
             "tooltip": "Écran du monde pixel et de la fenêtre de rédaction",
             "unavailable": "Aucun écran disponible."
           },
           "span": {
-            "description": "Choisissez la portion du bord d’écran que vos personnages peuvent explorer.",
+            "description": "Choisissez la portion de l’écran occupée par le monde pixel.",
             "full": "Tout le bord",
             "title": "Zone de déplacement",
             "tooltip": "Zone de l’écran occupée par le monde pixel"
           },
-          "title": "Emplacement des personnages"
+          "title": "Position à l’écran"
         },
         "save": {
           "failed": "Impossible d’enregistrer vos paramètres. Réessayez. ({0})"
@@ -538,7 +540,7 @@
           "action": {
             "composer": "Ouvrir ou fermer la saisie de message",
             "history": "Ouvrir ou fermer l’historique récent",
-            "overlay": "Afficher ou masquer la superposition",
+            "overlay": "Afficher ou masquer le monde pixel",
             "quiet_mode": "Activer ou désactiver le mode discret"
           },
           "description": "Sélectionnez un raccourci, puis appuyez sur la combinaison de touches voulue. Si vous attribuez une combinaison déjà utilisée, les deux raccourcis seront intervertis.",
@@ -560,7 +562,7 @@
         },
         "sound": {
           "character_effects": {
-            "description": "Jouez un effet sonore lorsque les personnages du groupe actif sont touchés.",
+            "description": "Joue un effet sonore lorsqu’un jouet lancé touche un personnage.",
             "title": "Effets sonores des personnages"
           },
           "description": "Réglez les effets sonores des personnages.",
@@ -574,11 +576,11 @@
         },
         "theme": {
           "dark": "Sombre",
-          "description": "Choisissez pour l’application le thème clair, sombre ou système.",
+          "description": "Choisissez le thème de l’application.",
           "light": "Clair",
           "system": "Valeur par défaut de Windows",
           "system_colors": {
-            "action": "Ouvrir les paramètres de couleur"
+            "action": "Ouvrir les paramètres de couleur du système"
           },
           "title": "Thème"
         },
@@ -682,7 +684,7 @@
       },
       "support": {
         "diagnostics": {
-          "description": "Les fichiers journaux sont compressés et enregistrés sur votre Bureau. En les partageant avec nous, vous pouvez nous aider à corriger les erreurs.",
+          "description": "Compresse les fichiers journaux et les enregistre sur le Bureau. Joignez-les à vos commentaires pour nous aider à résoudre le problème.",
           "export": {
             "action": "Exporter",
             "failed": "Impossible d’exporter les données de diagnostic.",
@@ -720,7 +722,7 @@
           "compose": "Rédiger un message…"
         },
         "overlay": {
-          "hide": "Masquer la superposition"
+          "hide": "Masquer le monde pixel"
         },
         "quiet_mode": {
           "toggle": "Mode discret"
