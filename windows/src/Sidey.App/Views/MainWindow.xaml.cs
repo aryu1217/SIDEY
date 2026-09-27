@@ -44,6 +44,7 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
     private bool _hideQueued;
     private bool _isClosed;
     private bool _hotkeyRecordingActive;
+    private bool _refreshingThemeSelection;
     private Action? _cancelHotkeyEditor;
     private string? _pageRequestedAfterHotkeyEditor;
     private string _currentNavigationTag = "profile";
@@ -119,6 +120,32 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
     public MainWindowViewModel ViewModel { get; }
 
     public void RefreshLocalizationLayout() => LocalizationLayout.Apply(MainRoot);
+
+    public void RefreshLocalizedThemeSelection()
+    {
+        // ComboBox keeps a copy of the selected item's text while it is closed.
+        // Reselect after the localized item bindings have updated so the copy changes too.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_isClosed || ThemeComboBox.SelectedIndex < 0)
+                return;
+
+            int selectedIndex = ThemeComboBox.SelectedIndex;
+            bool wasSelectionEnabled = ViewModel.IsThemeSelectionEnabled;
+            _refreshingThemeSelection = true;
+            ViewModel.IsThemeSelectionEnabled = false;
+            try
+            {
+                ThemeComboBox.SelectedIndex = -1;
+                ThemeComboBox.SelectedIndex = selectedIndex;
+            }
+            finally
+            {
+                ViewModel.IsThemeSelectionEnabled = wasSelectionEnabled;
+                _refreshingThemeSelection = false;
+            }
+        });
+    }
 
     public event Action<bool>? HotkeyRecordingChanged;
 
@@ -363,7 +390,6 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
             {
                 StartupDiagnostics.NonFatal("hotkey-recorder-hook", exception);
             }
-            SetHotkeyRecordingActive(active && recorder.IsActive);
         }
         void OnWindowActivated(object sender, WindowActivatedEventArgs activationArgs) =>
             SetRecorderActive(activationArgs.WindowActivationState != WindowActivationState.Deactivated
@@ -395,9 +421,12 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
             capture.Focus(FocusState.Programmatic);
         };
         dialog.Loaded += (_, _) => capture.Focus(FocusState.Programmatic);
-        ShowCandidate();
         try
         {
+            // Release SIDEY's registered shortcuts before probing the initial binding.
+            // Keep them released while the dialog is open, even if its controls lose focus.
+            SetHotkeyRecordingActive(true);
+            ShowCandidate();
             if (await dialog.ShowAsync() == ContentDialogResult.Primary
                 && !cancelledByNavigation && candidate is { } selected)
                 ViewModel.AssignGlobalHotkey(action, selected);
@@ -556,7 +585,7 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
         _ = sender;
-        if (args.PropertyName == nameof(MainWindowViewModel.SelectedThemeIndex))
+        if (args.PropertyName == nameof(MainWindowViewModel.SelectedThemeIndex) && !_refreshingThemeSelection)
             ApplyRequestedTheme();
     }
 
@@ -1247,6 +1276,43 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
         ViewModel.StopSoundVolumeFeedback();
         _lifetime.Cancel();
         MainRoot.DataContext = null;
+    }
+
+    private void OnRootNavigationPreviewKeyDown(object sender, KeyRoutedEventArgs args)
+    {
+        if (sender is not NavigationView navigation
+            || args.Key != VirtualKey.Tab
+            || args.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        NavigationViewItem? currentItem = null;
+        for (DependencyObject? ancestor = source;
+             ancestor is not null && !ReferenceEquals(ancestor, navigation);
+             ancestor = VisualTreeHelper.GetParent(ancestor))
+        {
+            if (ancestor is NavigationViewItem item)
+            {
+                currentItem = item;
+                break;
+            }
+        }
+
+        NavigationViewItem[] items =
+        [
+            .. navigation.MenuItems.OfType<NavigationViewItem>(),
+            .. navigation.FooterMenuItems.OfType<NavigationViewItem>(),
+        ];
+        int currentIndex = Array.IndexOf(items, currentItem);
+        int nextIndex = currentIndex + (IsKeyDown(VirtualKey.Shift) ? -1 : 1);
+        if (currentIndex >= 0
+            && nextIndex >= 0
+            && nextIndex < items.Length
+            && items[nextIndex].Focus(FocusState.Keyboard))
+        {
+            args.Handled = true;
+        }
     }
 
     private void OnNavigationSelectionChanged(

@@ -11,6 +11,8 @@ namespace Sidey.App.Services;
 
 internal sealed class WindowsUpdateServiceAdapter : IUpdateService
 {
+    private static readonly Uri s_releaseNotesUri = new(
+        "https://sidey-app.github.io/SIDEY/whats-new/windows/");
     private static readonly string s_lastCheckedPath = Path.Combine(
         SideyStoragePaths.LocalApplicationDataRoot(),
         "SIDEY",
@@ -41,8 +43,7 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
 
     public DateTimeOffset? LastCheckedAt { get; private set; }
 
-    public Uri CurrentReleaseNotesUri => ReleaseNotesUri(
-        $"windows-v{_service.EffectiveCurrentReleaseVersion}");
+    public Uri CurrentReleaseNotesUri => s_releaseNotesUri;
 
     public async Task CleanupInstalledUpdatesAsync()
     {
@@ -73,7 +74,7 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
                     manifest.ProductVersion,
                     manifest.InstallerUri,
                     manifest.Sha256,
-                    ReleaseNotesUri(manifest.UpdateTag),
+                    s_releaseNotesUri,
                     manifest.UpdateVersion,
                     manifest.UpdateTag);
         }
@@ -128,11 +129,7 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
     public Task OpenReleaseNotesAsync(Uri releaseNotesUri)
     {
         ArgumentNullException.ThrowIfNull(releaseNotesUri);
-        if (!StringComparer.OrdinalIgnoreCase.Equals(releaseNotesUri.Scheme, Uri.UriSchemeHttps)
-            || !StringComparer.OrdinalIgnoreCase.Equals(releaseNotesUri.Host, "github.com")
-            || !releaseNotesUri.AbsolutePath.StartsWith(
-                "/sidey-app/SIDEY/releases/tag/windows-v",
-                StringComparison.Ordinal))
+        if (!StringComparer.Ordinal.Equals(releaseNotesUri.AbsoluteUri, s_releaseNotesUri.AbsoluteUri))
         {
             throw new InvalidOperationException("The SIDEY release notes URL is not trusted.");
         }
@@ -144,9 +141,6 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
         StartupDiagnostics.Stage("release-notes-opened");
         return Task.CompletedTask;
     }
-
-    private static Uri ReleaseNotesUri(string tag) => new(
-        $"https://github.com/sidey-app/SIDEY/releases/tag/{tag}");
 
     private static DateTimeOffset? ReadLastCheckedAt()
     {

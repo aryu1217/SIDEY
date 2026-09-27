@@ -76,6 +76,7 @@
       <Setter Property="FontWeight" Value="Normal" />
     </Style>
     <Style x:Key="SideySettingsRowDescriptionStyle" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="Normal" />
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
       <Setter Property="TextWrapping" Value="Wrap" />
@@ -114,12 +115,15 @@
             <Setter Target="SoundControlsGrid.HorizontalAlignment" Value="Stretch" />
             <Setter Target="SoundSettingsLayout.RowSpacing" Value="12" />
             <Setter Target="EdgeControlColumn.Width" Value="0" />
+            <Setter Target="EdgeSettingsLayout.RowSpacing" Value="12" />
             <Setter Target="EdgeComboBox.(Grid.Row)" Value="1" />
             <Setter Target="EdgeComboBox.(Grid.Column)" Value="0" />
             <Setter Target="SpanControlColumn.Width" Value="0" />
+            <Setter Target="SpanSettingsLayout.RowSpacing" Value="12" />
             <Setter Target="SpanComboBox.(Grid.Row)" Value="1" />
             <Setter Target="SpanComboBox.(Grid.Column)" Value="0" />
             <Setter Target="MonitorControlColumn.Width" Value="0" />
+            <Setter Target="MonitorSettingsLayout.RowSpacing" Value="12" />
             <Setter Target="MonitorComboBox.(Grid.Row)" Value="1" />
             <Setter Target="MonitorComboBox.(Grid.Column)" Value="0" />
             <Setter Target="LanguageDescription.(Grid.Row)" Value="0" />
@@ -167,6 +171,7 @@
         IsTitleBarAutoPaddingEnabled="False"
         OpenPaneLength="210"
         PaneDisplayMode="Auto"
+        PreviewKeyDown="OnRootNavigationPreviewKeyDown"
         SelectionChanged="OnNavigationSelectionChanged">
       <NavigationView.Resources>
         <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
@@ -194,267 +199,282 @@
                 <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.title}, Mode=OneWay}" />
                 <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.description}, Mode=OneWay}" TextWrapping="Wrap" />
               </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <StackPanel x:Name="ProfileCardContent" Spacing="20">
-                  <controls:ResponsiveFormPanel x:Name="ProfileNameLayout">
-                    <StackPanel Spacing="4">
-                      <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=profile.nickname.label}, Mode=OneWay}" />
-                      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.nickname.description}, Mode=OneWay}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel x:Name="ProfileNameEditor" Spacing="8">
-                      <TextBox MaxLength="8" PlaceholderText="{Binding Value, Source={i18n:I18n Key=profile.nickname.placeholder}, Mode=OneWay}" Text="{Binding Nickname, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                      <Button
-                          Command="{Binding SaveProfileCommand}"
-                          Content="{Binding Value, Source={i18n:I18n Key=profile.nickname.save.action}, Mode=OneWay}"
-                          HorizontalAlignment="Right"
-                          Style="{StaticResource AccentButtonStyle}"
-                          ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=profile.nickname.save.tooltip}, Mode=OneWay}"
-                          Visibility="{Binding HasNicknameChanges, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    </StackPanel>
-                  </controls:ResponsiveFormPanel>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <StackPanel Spacing="4">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=profile.character.label}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.character.description}, Mode=OneWay}" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <StackPanel>
-                    <GridView
-                      x:Name="CharacterSelector"
-                      IsEnabled="{Binding IsSavingCharacter, Converter={StaticResource InverseBooleanConverter}}"
-                      ItemsSource="{Binding CharacterSelections}"
-                      SelectedValuePath="Id"
-                      SelectedValue="{Binding SelectedCharacterId, Mode=TwoWay}"
-                      SelectionMode="Single"
-                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                      ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
-                    <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
-                    <GridView.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <controls:ResponsiveSelectionPanel MaximumColumns="5" MinimumItemWidth="128" />
-                      </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                      <Style TargetType="GridViewItem">
-                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
-                        <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName}" />
-                        <Setter Property="AutomationProperties.ItemStatus" Value="{Binding SelectionStatus}" />
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="Template">
-                          <Setter.Value>
-                            <ControlTemplate TargetType="GridViewItem">
-                              <ListViewItemPresenter CornerRadius="8" ContentMargin="{TemplateBinding Padding}"
-                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                  Control.IsTemplateFocusTarget="True" FocusVisualMargin="{TemplateBinding FocusVisualMargin}"
-                                  FocusVisualPrimaryBrush="{TemplateBinding FocusVisualPrimaryBrush}" FocusVisualPrimaryThickness="{TemplateBinding FocusVisualPrimaryThickness}"
-                                  FocusVisualSecondaryBrush="{TemplateBinding FocusVisualSecondaryBrush}" FocusVisualSecondaryThickness="{TemplateBinding FocusVisualSecondaryThickness}"
-                                  SelectionCheckMarkVisualEnabled="False" SelectedBorderThickness="0"
-                                  PointerOverBackground="{ThemeResource SubtleButtonBackgroundPointerOver}" SelectedPointerOverBackground="{ThemeResource SubtleButtonBackgroundPointerOver}"
-                                  PressedBackground="{ThemeResource SubtleButtonBackgroundPressed}" SelectedPressedBackground="{ThemeResource SubtleButtonBackgroundPressed}"
-                                  SelectedBackground="Transparent" SelectedDisabledBackground="Transparent"
-                                  PointerOverBorderBrush="Transparent" SelectedBorderBrush="Transparent" SelectedPointerOverBorderBrush="Transparent"
-                                  SelectedPressedBorderBrush="Transparent" SelectedDisabledBorderBrush="Transparent" SelectedInnerBorderBrush="Transparent"
-                                  DisabledOpacity="{ThemeResource ListViewItemDisabledThemeOpacity}" />
-                            </ControlTemplate>
-                          </Setter.Value>
-                        </Setter>
-                      </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                      <DataTemplate>
-                        <Grid MinHeight="116" HorizontalAlignment="Stretch">
-                          <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
-                          <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
-                            <Border Width="48" Height="48" HorizontalAlignment="Center">
-                              <controls:PixelCharacterPreview CharacterId="{Binding CharacterId}" />
-                            </Border>
-                            <TextBlock HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
-                          </StackPanel>
-                          <Border
-                              BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                              BorderThickness="1.5"
-                              CornerRadius="8"
-                              IsHitTestVisible="False"
-                              Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                          <Border
-                              Width="24"
-                              Height="24"
-                              Margin="8"
-                              HorizontalAlignment="Right"
-                              VerticalAlignment="Top"
-                              Background="{ThemeResource AccentFillColorDefaultBrush}"
-                              CornerRadius="12"
-                              IsHitTestVisible="False"
-                              Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <FontIcon
-                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                FontSize="12"
-                                Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                Glyph="&#xE73E;" />
-                          </Border>
-                        </Grid>
-                      </DataTemplate>
-                    </GridView.ItemTemplate>
-                    </GridView>
-                    <controls:ResponsiveSelectionPanel x:Name="CharacterSkeleton" MaximumColumns="5" MinimumItemWidth="128" IsHitTestVisible="False" Visibility="{Binding IsCharacterSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="68" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="52" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="64" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                    </controls:ResponsiveSelectionPanel>
-                  </StackPanel>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <StackPanel Spacing="4">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.bubble.title}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.bubble.description}, Mode=OneWay}" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <StackPanel>
-                    <GridView
-                      x:Name="BubbleSelector"
-                      ItemsSource="{Binding BubbleSelections}"
-                      SelectionMode="None"
-                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                      ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
-                    <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
-                    <GridView.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <controls:ResponsiveSelectionPanel MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" />
-                      </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                      <Style TargetType="GridViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="IsTabStop" Value="False" />
-                        <Setter Property="Template">
-                          <Setter.Value>
-                            <ControlTemplate TargetType="GridViewItem">
-                              <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                            </ControlTemplate>
-                          </Setter.Value>
-                        </Setter>
-                      </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                      <DataTemplate>
-                        <Button MinHeight="116" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Command="{Binding SelectCommand}" IsEnabled="{Binding IsEnabled}" AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.ItemStatus="{Binding SelectionStatus}" Style="{StaticResource SubtleButtonStyle}" CornerRadius="8">
-                          <Grid MinHeight="116">
-                            <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
-                            <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
-                              <controls:StoreProductArtwork Height="58" ProductKind="{Binding Kind}" CatalogItemId="{Binding CatalogItemId}" CharacterId="{Binding CharacterId}" />
-                              <TextBlock MinHeight="32" HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1.5" CornerRadius="8" IsHitTestVisible="False" Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <Border
-                                Width="24"
-                                Height="24"
-                                Margin="8"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                CornerRadius="12"
-                                IsHitTestVisible="False"
-                                Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                              <FontIcon
-                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  FontSize="12"
-                                  Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                  Glyph="&#xE73E;" />
-                            </Border>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </GridView.ItemTemplate>
-                    </GridView>
-                    <controls:ResponsiveSelectionPanel x:Name="BubbleSkeleton" MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" IsHitTestVisible="False" Visibility="{Binding IsBubbleSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="72" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="62" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                    </controls:ResponsiveSelectionPanel>
-                  </StackPanel>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <StackPanel Spacing="4">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.throwable.title}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.throwable.description}, Mode=OneWay}" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <StackPanel>
-                    <GridView
-                      x:Name="ThrowableSelector"
-                      ItemsSource="{Binding ThrowableSelections}"
-                      SelectionMode="None"
-                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                      ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
-                    <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
-                    <GridView.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <controls:ResponsiveSelectionPanel MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" />
-                      </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                      <Style TargetType="GridViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="IsTabStop" Value="False" />
-                        <Setter Property="Template">
-                          <Setter.Value>
-                            <ControlTemplate TargetType="GridViewItem">
-                              <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                            </ControlTemplate>
-                          </Setter.Value>
-                        </Setter>
-                      </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                      <DataTemplate>
-                        <Button MinHeight="116" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Command="{Binding SelectCommand}" IsEnabled="{Binding IsEnabled}" AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.ItemStatus="{Binding SelectionStatus}" Style="{StaticResource SubtleButtonStyle}" CornerRadius="8">
-                          <Grid MinHeight="116">
-                            <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
-                            <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
-                              <controls:StoreProductArtwork Height="58" ProductKind="{Binding Kind}" CatalogItemId="{Binding CatalogItemId}" CharacterId="{Binding CharacterId}" />
-                              <TextBlock MinHeight="32" HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1.5" CornerRadius="8" IsHitTestVisible="False" Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <Border
-                                Width="24"
-                                Height="24"
-                                Margin="8"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                CornerRadius="12"
-                                IsHitTestVisible="False"
-                                Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                              <FontIcon
-                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
+              <StackPanel x:Name="ProfileCardContent" Spacing="8">
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                    <controls:ResponsiveFormPanel x:Name="ProfileNameLayout">
+                      <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.nickname.label}, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.nickname.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel x:Name="ProfileNameEditor" Spacing="8">
+                        <TextBox MaxLength="8" PlaceholderText="{Binding Value, Source={i18n:I18n Key=profile.nickname.placeholder}, Mode=OneWay}" Text="{Binding Nickname, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button
+                            Command="{Binding SaveProfileCommand}"
+                            Content="{Binding Value, Source={i18n:I18n Key=profile.nickname.save.action}, Mode=OneWay}"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource AccentButtonStyle}"
+                            ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=profile.nickname.save.tooltip}, Mode=OneWay}"
+                            Visibility="{Binding HasNicknameChanges, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                      </StackPanel>
+                    </controls:ResponsiveFormPanel>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                  <StackPanel Spacing="12">
+                      <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.character.label}, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.character.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel>
+                        <GridView
+                          x:Name="CharacterSelector"
+                          TabFocusNavigation="Local"
+                          IsEnabled="{Binding IsSavingCharacter, Converter={StaticResource InverseBooleanConverter}}"
+                          ItemsSource="{Binding CharacterSelections}"
+                          SelectedValuePath="Id"
+                          SelectedValue="{Binding SelectedCharacterId, Mode=TwoWay}"
+                          SelectionMode="Single"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                          ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
+                        <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
+                        <GridView.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <controls:ResponsiveSelectionPanel MaximumColumns="5" MinimumItemWidth="128" />
+                          </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemContainerStyle>
+                          <Style TargetType="GridViewItem">
+                            <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                            <Setter Property="TabFocusNavigation" Value="Local" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName}" />
+                            <Setter Property="AutomationProperties.ItemStatus" Value="{Binding SelectionStatus}" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Template">
+                              <Setter.Value>
+                                <ControlTemplate TargetType="GridViewItem">
+                                  <ListViewItemPresenter CornerRadius="8" ContentMargin="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Control.IsTemplateFocusTarget="True" FocusVisualMargin="{TemplateBinding FocusVisualMargin}"
+                                      FocusVisualPrimaryBrush="{TemplateBinding FocusVisualPrimaryBrush}" FocusVisualPrimaryThickness="{TemplateBinding FocusVisualPrimaryThickness}"
+                                      FocusVisualSecondaryBrush="{TemplateBinding FocusVisualSecondaryBrush}" FocusVisualSecondaryThickness="{TemplateBinding FocusVisualSecondaryThickness}"
+                                      SelectionCheckMarkVisualEnabled="False" SelectedBorderThickness="0"
+                                      PointerOverBackground="{ThemeResource SubtleButtonBackgroundPointerOver}" SelectedPointerOverBackground="{ThemeResource SubtleButtonBackgroundPointerOver}"
+                                      PressedBackground="{ThemeResource SubtleButtonBackgroundPressed}" SelectedPressedBackground="{ThemeResource SubtleButtonBackgroundPressed}"
+                                      SelectedBackground="Transparent" SelectedDisabledBackground="Transparent"
+                                      PointerOverBorderBrush="Transparent" SelectedBorderBrush="Transparent" SelectedPointerOverBorderBrush="Transparent"
+                                      SelectedPressedBorderBrush="Transparent" SelectedDisabledBorderBrush="Transparent" SelectedInnerBorderBrush="Transparent"
+                                      DisabledOpacity="{ThemeResource ListViewItemDisabledThemeOpacity}" />
+                                </ControlTemplate>
+                              </Setter.Value>
+                            </Setter>
+                          </Style>
+                        </GridView.ItemContainerStyle>
+                        <GridView.ItemTemplate>
+                          <DataTemplate>
+                            <Grid MinHeight="116" HorizontalAlignment="Stretch">
+                              <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
+                              <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
+                                <Border Width="48" Height="48" HorizontalAlignment="Center">
+                                  <controls:PixelCharacterPreview CharacterId="{Binding CharacterId}" />
+                                </Border>
+                                <TextBlock HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <Border
+                                  BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                  BorderThickness="1.5"
+                                  CornerRadius="8"
+                                  IsHitTestVisible="False"
+                                  Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                              <Border
+                                  Width="24"
+                                  Height="24"
+                                  Margin="8"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Top"
+                                  Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                  CornerRadius="12"
+                                  IsHitTestVisible="False"
+                                  Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <FontIcon
+                                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                     FontSize="12"
-                                  Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                  Glyph="&#xE73E;" />
-                            </Border>
-                          </Grid>
-                        </Button>
-                      </DataTemplate>
-                    </GridView.ItemTemplate>
-                    </GridView>
-                    <controls:ResponsiveSelectionPanel x:Name="ThrowableSkeleton" MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" IsHitTestVisible="False" Visibility="{Binding IsThrowableSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="72" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                      <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="62" Height="12" HorizontalAlignment="Center" /></StackPanel>
-                    </controls:ResponsiveSelectionPanel>
+                                    Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                    Glyph="&#xE73E;" />
+                              </Border>
+                            </Grid>
+                          </DataTemplate>
+                        </GridView.ItemTemplate>
+                        </GridView>
+                        <controls:ResponsiveSelectionPanel x:Name="CharacterSkeleton" MaximumColumns="5" MinimumItemWidth="128" IsHitTestVisible="False" Visibility="{Binding IsCharacterSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="68" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="52" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="48" Height="48" HorizontalAlignment="Center" /><controls:SkeletonBar Width="64" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                        </controls:ResponsiveSelectionPanel>
+                      </StackPanel>
                   </StackPanel>
-                  <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.duplicates.notice}, Mode=OneWay}" TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                  <StackPanel Spacing="12">
+                      <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.bubble.title}, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.bubble.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel>
+                        <GridView
+                          x:Name="BubbleSelector"
+                          TabFocusNavigation="Local"
+                          ItemsSource="{Binding BubbleSelections}"
+                          SelectionMode="None"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                          ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
+                        <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
+                        <GridView.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <controls:ResponsiveSelectionPanel MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" />
+                          </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemContainerStyle>
+                          <Style TargetType="GridViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="IsTabStop" Value="False" />
+                            <Setter Property="TabFocusNavigation" Value="Local" />
+                            <Setter Property="Template">
+                              <Setter.Value>
+                                <ControlTemplate TargetType="GridViewItem">
+                                  <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </ControlTemplate>
+                              </Setter.Value>
+                            </Setter>
+                          </Style>
+                        </GridView.ItemContainerStyle>
+                        <GridView.ItemTemplate>
+                          <DataTemplate>
+                            <Button MinHeight="116" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Command="{Binding SelectCommand}" IsEnabled="{Binding IsEnabled}" AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.ItemStatus="{Binding SelectionStatus}" Style="{StaticResource SubtleButtonStyle}" CornerRadius="8">
+                              <Grid MinHeight="116">
+                                <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
+                                <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
+                                  <controls:StoreProductArtwork Height="58" ProductKind="{Binding Kind}" CatalogItemId="{Binding CatalogItemId}" CharacterId="{Binding CharacterId}" />
+                                  <TextBlock MinHeight="32" HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1.5" CornerRadius="8" IsHitTestVisible="False" Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <Border
+                                    Width="24"
+                                    Height="24"
+                                    Margin="8"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="12"
+                                    IsHitTestVisible="False"
+                                    Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                  <FontIcon
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      FontSize="12"
+                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                      Glyph="&#xE73E;" />
+                                </Border>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </GridView.ItemTemplate>
+                        </GridView>
+                        <controls:ResponsiveSelectionPanel x:Name="BubbleSkeleton" MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" IsHitTestVisible="False" Visibility="{Binding IsBubbleSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="72" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="70" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="62" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                        </controls:ResponsiveSelectionPanel>
+                      </StackPanel>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                  <StackPanel Spacing="12">
+                      <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.throwable.title}, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=profile.cosmetics.throwable.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel>
+                        <GridView
+                          x:Name="ThrowableSelector"
+                          TabFocusNavigation="Local"
+                          ItemsSource="{Binding ThrowableSelections}"
+                          SelectionMode="None"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                          ScrollViewer.HorizontalScrollMode="Disabled" ScrollViewer.VerticalScrollMode="Disabled" HorizontalAlignment="Stretch">
+                        <GridView.ItemContainerTransitions><TransitionCollection /></GridView.ItemContainerTransitions>
+                        <GridView.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <controls:ResponsiveSelectionPanel MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" />
+                          </ItemsPanelTemplate>
+                        </GridView.ItemsPanel>
+                        <GridView.ItemContainerStyle>
+                          <Style TargetType="GridViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="IsTabStop" Value="False" />
+                            <Setter Property="TabFocusNavigation" Value="Local" />
+                            <Setter Property="Template">
+                              <Setter.Value>
+                                <ControlTemplate TargetType="GridViewItem">
+                                  <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </ControlTemplate>
+                              </Setter.Value>
+                            </Setter>
+                          </Style>
+                        </GridView.ItemContainerStyle>
+                        <GridView.ItemTemplate>
+                          <DataTemplate>
+                            <Button MinHeight="116" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Command="{Binding SelectCommand}" IsEnabled="{Binding IsEnabled}" AutomationProperties.Name="{Binding DisplayName}" AutomationProperties.ItemStatus="{Binding SelectionStatus}" Style="{StaticResource SubtleButtonStyle}" CornerRadius="8">
+                              <Grid MinHeight="116">
+                                <controls:SelectionProgress Canvas.ZIndex="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" IsPending="{Binding IsPending}" AnimationsEnabled="{Binding AnimationsEnabled}" />
+                                <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center" Padding="8" Spacing="8">
+                                  <controls:StoreProductArtwork Height="58" ProductKind="{Binding Kind}" CatalogItemId="{Binding CatalogItemId}" CharacterId="{Binding CharacterId}" />
+                                  <TextBlock MinHeight="32" HorizontalAlignment="Stretch" Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Border BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1.5" CornerRadius="8" IsHitTestVisible="False" Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <Border
+                                    Width="24"
+                                    Height="24"
+                                    Margin="8"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    CornerRadius="12"
+                                    IsHitTestVisible="False"
+                                    Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                  <FontIcon
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                        FontSize="12"
+                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                      Glyph="&#xE73E;" />
+                                </Border>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </GridView.ItemTemplate>
+                        </GridView>
+                        <controls:ResponsiveSelectionPanel x:Name="ThrowableSkeleton" MaximumColumns="4" MinimumItemWidth="128" FillAvailableWidth="True" IsHitTestVisible="False" Visibility="{Binding IsThrowableSelectionsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="58" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="72" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                          <StackPanel VerticalAlignment="Center" Spacing="12"><controls:SkeletonBar Width="58" Height="50" HorizontalAlignment="Center" /><controls:SkeletonBar Width="62" Height="12" HorizontalAlignment="Center" /></StackPanel>
+                        </controls:ResponsiveSelectionPanel>
+                      </StackPanel>
+                  </StackPanel>
+                </Border>
+                    <TextBlock Foreground="{ThemeResource TextFillColorTertiaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=profile.duplicates.notice}, Mode=OneWay}" TextWrapping="Wrap" />
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
 
@@ -477,21 +497,8 @@
                     <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=groups.empty.description}, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" />
                   </StackPanel>
                   </Border>
-                  <ListView IsItemClickEnabled="False" ItemsSource="{Binding Rooms}" SelectionMode="None" Visibility="{Binding HasRooms, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <ListView.ItemContainerStyle>
-                      <Style TargetType="ListViewItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="Padding" Value="0" />
-                      </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.ItemContainerTransitions>
-                      <TransitionCollection>
-                        <AddDeleteThemeTransition />
-                        <ContentThemeTransition VerticalOffset="8" />
-                        <ReorderThemeTransition />
-                      </TransitionCollection>
-                    </ListView.ItemContainerTransitions>
-                    <ListView.ItemTemplate>
+                  <ItemsRepeater ItemsSource="{Binding Rooms}" TabFocusNavigation="Local" Visibility="{Binding HasRooms, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ItemsRepeater.ItemTemplate>
                       <DataTemplate>
                         <Border Margin="0,0,0,12" Padding="0" Style="{StaticResource SideySettingsCardStyle}">
                           <StackPanel Spacing="0">
@@ -650,8 +657,8 @@
                         </StackPanel>
                         </Border>
                       </DataTemplate>
-                    </ListView.ItemTemplate>
-                  </ListView>
+                    </ItemsRepeater.ItemTemplate>
+                  </ItemsRepeater>
                 </Grid>
                 <StackPanel x:Name="RoomsSkeleton" Spacing="12" Visibility="{Binding IsRoomsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
                   <Border Height="86" Style="{StaticResource SideySettingsCardStyle}">
@@ -831,6 +838,7 @@
                   </StackPanel>
                   <ItemsRepeater
                     x:Name="StoreProductRepeater"
+                    TabFocusNavigation="Local"
                     ItemsSource="{Binding VisibleStoreProducts}"
                     Visibility="{Binding HasVisibleStoreProducts, Converter={StaticResource BooleanToVisibilityConverter}}">
                   <ItemsRepeater.Layout>
@@ -951,38 +959,119 @@
 
           <ScrollViewer x:Name="SettingsPage" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
             <StackPanel x:Name="SettingsPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="20">
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.general.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.general.description}, Mode=OneWay}" TextWrapping="Wrap" />
-              </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <StackPanel Spacing="16">
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.general.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.general.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel Spacing="4">
                       <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.overlay.title}, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.overlay.description}, Mode=OneWay}" />
                     </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding IsOverlayVisible, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.overlay.tooltip}, Mode=OneWay}" />
+                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding IsOverlayVisible, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.overlay.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.overlay.tooltip}, Mode=OneWay}" />
                   </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel Spacing="4">
                       <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.startup.title}, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.startup.description}, Mode=OneWay}" />
                     </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding StartAtLogin, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.startup.description}, Mode=OneWay}" />
+                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding StartAtLogin, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.startup.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.startup.description}, Mode=OneWay}" />
                   </Grid>
-                </StackPanel>
-              </Border>
-
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </Border>
               </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <StackPanel Spacing="12">
+
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.display.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid ColumnSpacing="20">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding IsQuietMode, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.tooltip}, Mode=OneWay}" />
+                </Grid>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid ColumnSpacing="20">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding RequiresRightClickToThrow, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.tooltip}, Mode=OneWay}" />
+                </Grid>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid ColumnSpacing="20">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding ShowOfflineMembers, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.tooltip}, Mode=OneWay}" />
+                </Grid>
+                </Border>
+              </StackPanel>
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid x:Name="EdgeSettingsLayout" ColumnSpacing="20" RowSpacing="0">
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="EdgeControlColumn" Width="220" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ComboBox x:Name="EdgeComboBox" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding SelectedEdgeIndex, Mode=TwoWay}" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.tooltip}, Mode=OneWay}">
+                    <ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.bottom}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.left}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.right}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.top}, Mode=OneWay}" />
+                  </ComboBox>
+                </Grid>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid x:Name="SpanSettingsLayout" ColumnSpacing="20" RowSpacing="0">
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="SpanControlColumn" Width="220" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.span.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.span.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ComboBox x:Name="SpanComboBox" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding SelectedSpanIndex, Mode=TwoWay}" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.placement.span.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.span.tooltip}, Mode=OneWay}">
+                    <ComboBoxItem Content="1/3" /><ComboBoxItem Content="1/2" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.span.full}, Mode=OneWay}" />
+                  </ComboBox>
+                </Grid>
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
+                <Grid x:Name="MonitorSettingsLayout" ColumnSpacing="20" RowSpacing="0">
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="MonitorControlColumn" Width="220" /></Grid.ColumnDefinitions>
+                  <StackPanel Spacing="4">
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.description}, Mode=OneWay}" />
+                  </StackPanel>
+                  <ComboBox x:Name="MonitorComboBox" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Name" ItemsSource="{Binding Monitors}" SelectedValue="{Binding SelectedMonitorIdentifier, Mode=TwoWay}" SelectedValuePath="Identifier" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.title}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.tooltip}, Mode=OneWay}" />
+                </Grid>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.action.overlay}, Mode=OneWay}" VerticalAlignment="Center" />
@@ -997,7 +1086,8 @@
                       </StackPanel>
                     </Button>
                   </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.action.quiet_mode}, Mode=OneWay}" VerticalAlignment="Center" />
@@ -1012,7 +1102,8 @@
                       </StackPanel>
                     </Button>
                   </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.action.composer}, Mode=OneWay}" VerticalAlignment="Center" />
@@ -1027,7 +1118,8 @@
                       </StackPanel>
                     </Button>
                   </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}">
                   <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.action.history}, Mode=OneWay}" VerticalAlignment="Center" />
@@ -1042,48 +1134,14 @@
                       </StackPanel>
                     </Button>
                   </Grid>
-                </StackPanel>
-              </Border>
-
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.display.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.description}, Mode=OneWay}" />
+                </Border>
               </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <StackPanel Spacing="16">
-                  <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding IsQuietMode, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.quiet_mode.tooltip}, Mode=OneWay}" />
-                  </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding RequiresRightClickToThrow, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.throw_guard.tooltip}, Mode=OneWay}" />
-                  </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Grid ColumnSpacing="20">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" Width="48" MinWidth="0" HorizontalAlignment="Right" IsOn="{Binding ShowOfflineMembers, Mode=TwoWay}" VerticalAlignment="Center" OffContent="" OnContent="" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.display.offline_members.tooltip}, Mode=OneWay}" />
-                  </Grid>
-                </StackPanel>
-              </Border>
 
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.sound.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Value, Source={i18n:I18n Key=settings.sound.description}, Mode=OneWay}" />
-              </StackPanel>
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.sound.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Value, Source={i18n:I18n Key=settings.sound.description}, Mode=OneWay}" />
+                </StackPanel>
               <Border x:Name="SoundSettingsCard" Style="{StaticResource SideySettingsCardStyle}">
                 <Grid x:Name="SoundSettingsLayout" ColumnSpacing="16" RowSpacing="0">
                   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -1107,47 +1165,7 @@
                   </Grid>
                 </Grid>
               </Border>
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.description}, Mode=OneWay}" />
               </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <StackPanel Spacing="12">
-                  <Grid ColumnSpacing="20" RowSpacing="12">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="EdgeControlColumn" Width="220" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ComboBox x:Name="EdgeComboBox" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding SelectedEdgeIndex, Mode=TwoWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.tooltip}, Mode=OneWay}">
-                      <ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.bottom}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.left}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.right}, Mode=OneWay}" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.edge.top}, Mode=OneWay}" />
-                    </ComboBox>
-                  </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Grid ColumnSpacing="20" RowSpacing="12">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="SpanControlColumn" Width="220" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.span.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.span.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ComboBox x:Name="SpanComboBox" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="{Binding SelectedSpanIndex, Mode=TwoWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.span.tooltip}, Mode=OneWay}">
-                      <ComboBoxItem Content="1/3" /><ComboBoxItem Content="1/2" /><ComboBoxItem Content="{Binding Value, Source={i18n:I18n Key=settings.placement.span.full}, Mode=OneWay}" />
-                    </ComboBox>
-                  </Grid>
-                  <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Grid ColumnSpacing="20" RowSpacing="12">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="MonitorControlColumn" Width="220" /></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
-                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.title}, Mode=OneWay}" />
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.description}, Mode=OneWay}" />
-                    </StackPanel>
-                    <ComboBox x:Name="MonitorComboBox" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Name" ItemsSource="{Binding Monitors}" SelectedValue="{Binding SelectedMonitorIdentifier, Mode=TwoWay}" SelectedValuePath="Identifier" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.placement.monitor.tooltip}, Mode=OneWay}" />
-                  </Grid>
-                </StackPanel>
-              </Border>
 
               <Border Style="{StaticResource SideySettingsCardStyle}" Visibility="{Binding IsValidationMode, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel Spacing="8">
@@ -1171,7 +1189,7 @@
                 <Grid ColumnSpacing="16">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <Ellipse Width="10" Height="10" VerticalAlignment="Center" Fill="{Binding IsConnected, Converter={StaticResource ConnectionBrushConverter}}" />
-                  <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding ConnectionText}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding ConnectionText}" VerticalAlignment="Center" />
                   <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding RetryConnectionCommand}" Content="{Binding Value, Source={i18n:I18n Key=connection.retry.action}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=connection.retry.action}, Mode=OneWay}" />
                 </Grid>
               </Border>
@@ -1182,8 +1200,8 @@
                   <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="LanguageControlColumn" Width="220" /></Grid.ColumnDefinitions>
                   <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="24" Glyph="&#xF2B7;" VerticalAlignment="Center" />
                   <StackPanel x:Name="LanguageDescription" Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=settings.language.title}, Mode=OneWay}" />
-                    <TextBlock x:Name="LanguageDescriptionText" Text="{Binding Value, Source={i18n:I18n Key=settings.language.description}, Mode=OneWay}" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.language.title}, Mode=OneWay}" />
+                    <TextBlock x:Name="LanguageDescriptionText" Text="{Binding Value, Source={i18n:I18n Key=settings.language.description}, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource SideySettingsRowDescriptionStyle}" />
                   </StackPanel>
                   <ComboBox x:Name="LanguageComboBox" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.language.title}, Mode=OneWay}" IsEnabled="{Binding IsLanguageSelectionEnabled}" SelectedIndex="{Binding SelectedLanguageIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="한국어" />
@@ -1219,10 +1237,11 @@
                   <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="ThemeControlColumn" Width="220" /></Grid.ColumnDefinitions>
                   <FontIcon FontSize="24" Glyph="&#xE790;" VerticalAlignment="Center" />
                   <StackPanel x:Name="ThemeDescription" Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.title}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.theme.description}, Mode=OneWay}" TextWrapping="Wrap" />
                     <HyperlinkButton
                         Padding="0"
+                        FontSize="13"
                         HorizontalAlignment="Left"
                         Command="{Binding OpenExternalLinkCommand}"
                         CommandParameter="ms-settings:colors"
@@ -1252,15 +1271,15 @@
                   <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <FontIcon FontSize="22" Glyph="&#xE895;" VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Spacing="4">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding CurrentVersionText}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding CurrentVersionText}" />
                     <Grid>
-                      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding LastUpdateCheckText}" Visibility="{Binding HasUpdateActivity, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding LastUpdateCheckText}" Visibility="{Binding HasUpdateActivity, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                       <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{Binding HasUpdateActivity, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ProgressRing Width="16" Height="16" IsActive="{Binding HasUpdateActivity}" />
-                        <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding UpdateActivityText}" TextWrapping="Wrap" />
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding UpdateActivityText}" />
                       </StackPanel>
                     </Grid>
-                    <HyperlinkButton HorizontalAlignment="Left" Padding="0" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
+                    <HyperlinkButton HorizontalAlignment="Left" Padding="0" FontSize="13" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
                   </StackPanel>
                   <Button Grid.Column="2" Command="{Binding CheckForUpdatesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.check.action}, Mode=OneWay}" VerticalAlignment="Center" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.update.check_now.tooltip}, Mode=OneWay}" />
                 </Grid>
@@ -1271,8 +1290,8 @@
                   <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <FontIcon FontSize="22" Glyph="&#xE939;" VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=support.feedback.title}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=support.feedback.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=support.feedback.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=support.feedback.description}, Mode=OneWay}" TextWrapping="Wrap" />
                   </StackPanel>
                   <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://github.com/sidey-app/SIDEY/issues/new/choose" Content="{Binding Value, Source={i18n:I18n Key=support.feedback.action}, Mode=OneWay}" />
                 </Grid>
@@ -1283,62 +1302,65 @@
                   <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <FontIcon FontSize="22" Glyph="&#xE90F;" VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=support.diagnostics.title}, Mode=OneWay}" />
-                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=support.diagnostics.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=support.diagnostics.title}, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=support.diagnostics.description}, Mode=OneWay}" TextWrapping="Wrap" />
                   </StackPanel>
                   <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding ExportDiagnosticDataCommand}" Content="{Binding Value, Source={i18n:I18n Key=support.diagnostics.export.action}, Mode=OneWay}" />
                 </Grid>
               </Border>
 
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.description}, Mode=OneWay}" TextWrapping="Wrap" />
-              </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}" Padding="8">
-                <StackPanel Spacing="0">
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource SideySettingsCardStyle}" Padding="8">
                   <Grid Padding="12" ColumnSpacing="16">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <FontIcon FontSize="22" Glyph="&#xE748;" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                      <TextBlock FontWeight="SemiBold" Text="{Binding Value, Source={i18n:I18n Key=account.sign_out.title}, Mode=OneWay}" />
-                      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.sign_out.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.sign_out.title}, Mode=OneWay}" />
+                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.sign_out.description}, Mode=OneWay}" TextWrapping="Wrap" />
                     </StackPanel>
                     <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding SignOutCommand}" Content="{Binding Value, Source={i18n:I18n Key=account.sign_out.title}, Mode=OneWay}" />
                   </Grid>
-                  <Rectangle Height="1" Margin="12,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}" Padding="8">
                   <Grid Padding="12" ColumnSpacing="16">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <FontIcon FontSize="22" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Glyph="&#xE74D;" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                      <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.delete.title}, Mode=OneWay}" />
-                      <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.delete.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                      <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.delete.title}, Mode=OneWay}" />
+                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.delete.description}, Mode=OneWay}" TextWrapping="Wrap" />
                     </StackPanel>
                     <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding DeleteAccountCommand}">
                       <TextBlock Foreground="{ThemeResource SystemFillColorCriticalBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.delete.confirmation.action}, Mode=OneWay}" />
                     </Button>
                   </Grid>
-                </StackPanel>
-              </Border>
-
-              <StackPanel Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=legal.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=legal.description}, Mode=OneWay}" />
+                </Border>
               </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}" Padding="8">
-                <StackPanel Spacing="0">
-                  <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/terms/">
-                    <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.terms.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
-                  </Button>
-                  <Rectangle Height="1" Margin="12,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/privacy/">
-                    <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.privacy.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
-                  </Button>
-                  <Rectangle Height="1" Margin="12,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
-                  <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/refund/">
-                    <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.refund.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
-                  </Button>
+
+              <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=legal.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=legal.description}, Mode=OneWay}" />
                 </StackPanel>
-              </Border>
+                <Border Style="{StaticResource SideySettingsCardStyle}" Padding="8">
+                  <StackPanel Spacing="0">
+                    <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/terms/">
+                      <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.terms.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
+                    </Button>
+                    <Rectangle Height="1" Margin="12,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/privacy/">
+                      <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.privacy.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
+                    </Button>
+                    <Rectangle Height="1" Margin="12,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <Button Padding="12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Style="{StaticResource SubtleButtonStyle}" Command="{Binding OpenExternalLinkCommand}" CommandParameter="https://sidey-app.github.io/SIDEY/refund/">
+                      <Grid><TextBlock Text="{Binding Value, Source={i18n:I18n Key=legal.refund.action}, Mode=OneWay}" /><FontIcon HorizontalAlignment="Right" Glyph="&#xE8A7;" /></Grid>
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </Grid>

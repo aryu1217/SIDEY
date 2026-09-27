@@ -1133,7 +1133,9 @@ public partial class App : Application
             I18n.SetLanguage(language);
             Localization.LocalizedText.RefreshAll();
             _mainWindow?.RefreshLocalizationLayout();
+            _mainWindow?.RefreshMonitors();
             _mainWindow?.ViewModel.RefreshLocalizedText();
+            _mainWindow?.RefreshLocalizedThemeSelection();
             _composer?.RefreshLocalizationLayout();
             _onboardingWindow?.RefreshLocalizationLayout();
             _composer?.Title = I18n.Get("composer.window.title");
