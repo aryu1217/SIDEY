@@ -6,17 +6,13 @@ internal static class PixelVisualOrientation
 {
     internal static PremultipliedVisual ApplyToNameplate(PremultipliedVisual source, OverlayEdge edge)
     {
-        if (edge == OverlayEdge.Bottom)
+        if (edge is OverlayEdge.Bottom or OverlayEdge.Top)
         {
             return source;
         }
 
-        int width = edge is OverlayEdge.Left or OverlayEdge.Right
-            ? source.Height
-            : source.Width;
-        int height = edge is OverlayEdge.Left or OverlayEdge.Right
-            ? source.Width
-            : source.Height;
+        int width = source.Height;
+        int height = source.Width;
         byte[] pixels = new byte[checked(width * height * 4)];
         for (int y = 0; y < height; y++)
         {
@@ -37,7 +33,7 @@ internal static class PixelVisualOrientation
     {
         _ = edge;
         // Message, typing, and doze visuals stay aligned to the physical screen.
-        // Nameplates use ApplyToNameplate so they follow the character edge.
+        // Nameplates use ApplyToNameplate for their edge-specific presentation.
         return source;
     }
 
@@ -47,7 +43,6 @@ internal static class PixelVisualOrientation
         int x,
         int y) => edge switch
         {
-            OverlayEdge.Top => (source.Width - 1 - x, source.Height - 1 - y),
             OverlayEdge.Left => (y, source.Height - 1 - x),
             OverlayEdge.Right => (source.Width - 1 - y, x),
             _ => throw new ArgumentOutOfRangeException(nameof(edge)),
