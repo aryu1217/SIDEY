@@ -958,8 +958,8 @@
           </ScrollViewer>
 
           <ScrollViewer x:Name="SettingsPage" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-            <StackPanel x:Name="SettingsPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="20">
-              <StackPanel Spacing="8">
+            <StackPanel x:Name="SettingsPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="32">
+              <StackPanel Spacing="20">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.general.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.general.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -986,7 +986,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="8">
+              <StackPanel Spacing="20">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.display.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1022,7 +1022,7 @@
                 </Grid>
                 </Border>
               </StackPanel>
-              <StackPanel Spacing="8">
+              <StackPanel Spacing="20">
                 <StackPanel Spacing="4">
                 <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1066,7 +1066,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="8">
+              <StackPanel Spacing="20">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1137,7 +1137,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="8">
+              <StackPanel Spacing="20">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.sound.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Value, Source={i18n:I18n Key=settings.sound.description}, Mode=OneWay}" />
