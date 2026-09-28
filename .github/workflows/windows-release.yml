@@ -13,6 +13,11 @@ on:
         required: false
         default: sidey-app/SIDEY
         type: string
+      deploy_website:
+        description: '별도 승인된 경우에만 공개 웹사이트와 업데이트 안내를 배포합니다.'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -261,6 +266,7 @@ jobs:
   deploy_website:
     name: Update release website
     needs: publish
+    if: ${{ inputs.deploy_website }}
     uses: ./.github/workflows/website-deployment.yml
     with:
       public_repository: ${{ inputs.public_repository }}
