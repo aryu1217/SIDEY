@@ -495,14 +495,19 @@ public sealed class MvvmArchitectureTests
                 && attribute.Value == "UpdateSectionToggle"));
         Assert.Equal("True", toggle.Attribute("IsChecked")?.Value);
         Assert.Equal("OnUpdateSectionToggleClick", toggle.Attribute("Click")?.Value);
+        XElement header = Assert.Single(updateSection.Descendants(), element =>
+            element.Attribute("Tapped")?.Value == "OnUpdateSectionHeaderTapped");
+        Assert.Equal("Transparent", header.Attribute("Background")?.Value);
         XElement details = Assert.Single(updateSection.Descendants(), element =>
             element.Name.LocalName == "StackPanel"
             && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name"
                 && attribute.Value == "UpdateSectionDetails"));
+        Assert.Contains(details.Descendants(), element =>
+            element.Name.LocalName == "TextBlock"
+            && element.Attribute("Text")?.Value.Contains("settings.update.auto_install.metered_exclusion") == true);
 
         foreach (string preference in new[]
         {
-            "AutoDownloadUpdates",
             "AutoInstallUpdates",
             "NotifyWhenUpdateAvailable",
             "ShowReleaseNotesAfterUpdate",

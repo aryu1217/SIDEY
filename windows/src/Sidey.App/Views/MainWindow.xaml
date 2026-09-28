@@ -1276,7 +1276,7 @@
                 </StackPanel>
                 <Border Padding="0" Style="{StaticResource SideySettingsCardStyle}">
                   <StackPanel>
-                    <Grid Padding="20,16" ColumnSpacing="16">
+                    <Grid x:Name="UpdateSectionHeader" Padding="20,16" ColumnSpacing="16" Background="Transparent" Tapped="OnUpdateSectionHeaderTapped">
                       <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                       <FontIcon FontSize="22" Glyph="&#xE895;" VerticalAlignment="Center" />
                       <StackPanel Grid.Column="1" Spacing="4">
@@ -1313,10 +1313,10 @@
                         </Grid>
                       </Border>
                       <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
-                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_download.title}, Mode=OneWay}" IsChecked="{Binding AutoDownloadUpdates, Mode=TwoWay}" />
-                      </Border>
-                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
-                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.title}, Mode=OneWay}" IsChecked="{Binding AutoInstallUpdates, Mode=TwoWay}" />
+                        <StackPanel>
+                          <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.title}, Mode=OneWay}" IsChecked="{Binding AutoInstallUpdates, Mode=TwoWay}" />
+                          <TextBlock Margin="36,-4,0,0" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.metered_exclusion}, Mode=OneWay}" TextWrapping="Wrap" />
+                        </StackPanel>
                       </Border>
                       <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
                         <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.notify.title}, Mode=OneWay}" IsChecked="{Binding NotifyWhenUpdateAvailable, Mode=TwoWay}" />

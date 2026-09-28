@@ -20,10 +20,9 @@ public sealed record AvailableUpdate(
     string? UpdateTag = null);
 
 public sealed record UpdatePreferences(
-    bool AutoDownload = false,
+    bool AutoInstall = true,
     bool NotifyWhenAvailable = true,
-    bool ShowReleaseNotesAfterUpdate = true,
-    bool AutoInstall = true);
+    bool ShowReleaseNotesAfterUpdate = true);
 
 public interface IUpdateService
 {
@@ -36,6 +35,8 @@ public interface IUpdateService
     public Uri CurrentReleaseNotesUri { get; }
 
     public UpdatePreferences Preferences { get; }
+
+    public bool IsAutomaticUpdateConnectionAllowed { get; }
 
     public void SavePreferences(UpdatePreferences preferences);
 

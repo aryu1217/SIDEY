@@ -340,9 +340,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public partial string LastUpdateCheckText { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial bool AutoDownloadUpdates { get; set; }
-
-    [ObservableProperty]
     public partial bool AutoInstallUpdates { get; set; }
 
     [ObservableProperty]
@@ -370,7 +367,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool HasAvailableUpdate => !string.IsNullOrEmpty(AvailableVersionText);
 
-    partial void OnAutoDownloadUpdatesChanged(bool value) => SaveUpdatePreferences();
     partial void OnAutoInstallUpdatesChanged(bool value) => SaveUpdatePreferences();
     partial void OnNotifyWhenUpdateAvailableChanged(bool value) => SaveUpdatePreferences();
     partial void OnShowReleaseNotesAfterUpdateChanged(bool value) => SaveUpdatePreferences();
@@ -382,10 +378,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             _updates.SavePreferences(new UpdatePreferences(
-                AutoDownloadUpdates,
+                AutoInstallUpdates,
                 NotifyWhenUpdateAvailable,
-                ShowReleaseNotesAfterUpdate,
-                AutoInstallUpdates));
+                ShowReleaseNotesAfterUpdate));
         }
         catch (Exception exception)
         {
@@ -399,7 +394,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _isApplyingUpdatePreferences = true;
         try
         {
-            AutoDownloadUpdates = preferences.AutoDownload;
             AutoInstallUpdates = preferences.AutoInstall;
             NotifyWhenUpdateAvailable = preferences.NotifyWhenAvailable;
             ShowReleaseNotesAfterUpdate = preferences.ShowReleaseNotesAfterUpdate;
@@ -721,12 +715,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             RaiseNotice(I18n.Format("update.available", update.Version), NoticeKind.Informational);
             ManualUpdateFound?.Invoke(update);
-            if ((_updates.Preferences.AutoDownload || _updates.Preferences.AutoInstall) && !IsUpdateReady)
+            if (CanAutomaticallyUpdate() && !IsUpdateReady)
             {
                 await DownloadUpdateAsync(update);
             }
             if (IsUpdateReady
-                && (!_updates.Preferences.AutoInstall
+                && (!CanAutomaticallyUpdate()
                     || !await LaunchInstallerAsync(update, silent: true)))
                 ManualUpdateReady?.Invoke(update);
         }
@@ -763,11 +757,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 if (!IsUpdateReady)
                 {
                     onUpdateFound?.Invoke(update);
-                    if (_updates.Preferences.AutoDownload || _updates.Preferences.AutoInstall)
+                    if (CanAutomaticallyUpdate())
                         await DownloadUpdateAsync(update);
                 }
                 if (IsUpdateReady
-                    && (!_updates.Preferences.AutoInstall
+                    && (!CanAutomaticallyUpdate()
                         || !await LaunchInstallerAsync(update, silent: true)))
                     onUpdateReady?.Invoke(update);
             }
@@ -780,6 +774,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             IsCheckingForUpdates = false;
         }
     }
+
+    private bool CanAutomaticallyUpdate() =>
+        _updates.Preferences.AutoInstall && _updates.IsAutomaticUpdateConnectionAllowed;
 
     private void SetAvailableUpdate(AvailableUpdate? update)
     {

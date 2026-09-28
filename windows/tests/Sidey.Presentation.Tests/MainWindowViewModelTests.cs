@@ -1842,7 +1842,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task StartupAutoDownloadNotifiesAvailabilityBeforeDownloadCompletes()
+    public async Task StartupAutomaticUpdateNotifiesAvailabilityBeforeDownloadCompletes()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1851,7 +1851,7 @@ public sealed class MainWindowViewModelTests
             AvailableUpdate = new AvailableUpdate("0.3.0-alpha.3"),
             DownloadHandler = (_, _, _) => completion.Task,
         };
-        updates.SavePreferences(new UpdatePreferences(AutoDownload: true, AutoInstall: false));
+        updates.SavePreferences(new UpdatePreferences());
         var viewModel = new MainWindowViewModel(coordinator, new FakeMainWindowDialogService(), updates);
         int found = 0;
         int ready = 0;
@@ -1869,13 +1869,13 @@ public sealed class MainWindowViewModelTests
         completion.SetResult();
         await pending;
 
-        Assert.Equal(1, ready);
+        Assert.Equal(0, ready);
         Assert.True(viewModel.IsUpdateReady);
-        Assert.Equal(0, updates.InstallerLaunchCount);
+        Assert.Equal(1, updates.InstallerLaunchCount);
     }
 
     [Fact]
-    public async Task ManualCheckAutomaticallyDownloadsWithoutLaunchingInstallerWhenEnabled()
+    public async Task MeteredConnectionLeavesAutomaticDownloadAndInstallationManual()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         int found = 0;
@@ -1883,13 +1883,9 @@ public sealed class MainWindowViewModelTests
         var updates = new FakeUpdateService
         {
             AvailableUpdate = new AvailableUpdate("2.1.0"),
-            DownloadHandler = (_, _, _) =>
-            {
-                Assert.Equal(1, found);
-                return Task.CompletedTask;
-            },
+            IsAutomaticUpdateConnectionAllowed = false,
         };
-        updates.SavePreferences(new UpdatePreferences(AutoDownload: true, AutoInstall: false));
+        updates.SavePreferences(new UpdatePreferences());
         var viewModel = new MainWindowViewModel(
             coordinator, new FakeMainWindowDialogService(), updates);
         viewModel.ManualUpdateFound += _ => found++;
@@ -1897,8 +1893,57 @@ public sealed class MainWindowViewModelTests
 
         await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
 
-        Assert.Equal(1, updates.DownloadCount);
+        Assert.Equal(0, updates.DownloadCount);
         Assert.Equal(1, found);
+        Assert.Equal(0, ready);
+        Assert.False(viewModel.IsUpdateReady);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+        Assert.True(viewModel.DownloadUpdateCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task MeteredConnectionLeavesCachedInstallerForManualInstall()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = true,
+            IsAutomaticUpdateConnectionAllowed = false,
+        };
+        updates.SavePreferences(new UpdatePreferences());
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int ready = 0;
+
+        await viewModel.CheckForUpdatesOnStartupAsync(onUpdateReady: _ => ready++);
+
+        Assert.Equal(1, ready);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+    }
+
+    [Fact]
+    public async Task ConnectionBecomingMeteredBeforeInstallLeavesDownloadedUpdateReady()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            DownloadHandler = (_, _, _) => completion.Task,
+        };
+        updates.SavePreferences(new UpdatePreferences());
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int ready = 0;
+
+        Task pending = viewModel.CheckForUpdatesOnStartupAsync(onUpdateReady: _ => ready++);
+        await Task.Yield();
+        updates.IsAutomaticUpdateConnectionAllowed = false;
+        completion.SetResult();
+        await pending;
+
         Assert.Equal(1, ready);
         Assert.True(viewModel.IsUpdateReady);
         Assert.Equal(0, updates.InstallerLaunchCount);
@@ -2035,12 +2080,11 @@ public sealed class MainWindowViewModelTests
         var viewModel = new MainWindowViewModel(
             coordinator, new FakeMainWindowDialogService(), updates);
 
-        viewModel.AutoDownloadUpdates = true;
         viewModel.AutoInstallUpdates = true;
         viewModel.NotifyWhenUpdateAvailable = false;
         viewModel.ShowReleaseNotesAfterUpdate = false;
 
-        Assert.Equal(new UpdatePreferences(true, false, false, true), updates.Preferences);
+        Assert.Equal(new UpdatePreferences(true, false, false), updates.Preferences);
     }
 
     [Fact]
@@ -2053,7 +2097,6 @@ public sealed class MainWindowViewModelTests
             ExistingPreferences);
 
         Assert.NotNull(preferences);
-        Assert.True(preferences.AutoDownload);
         Assert.True(preferences.AutoInstall);
     }
 

@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Sidey.Core.Localization;
 using Sidey.Core.Storage;
 using Sidey.Platform.Windows;
 using Sidey.Presentation.Services;
+using Windows.Networking.Connectivity;
 
 namespace Sidey.App.Services;
 
@@ -51,6 +53,22 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
     public Uri CurrentReleaseNotesUri => s_releaseNotesUri;
 
     public UpdatePreferences Preferences { get; private set; }
+
+    public bool IsAutomaticUpdateConnectionAllowed
+    {
+        get
+        {
+            try
+            {
+                return NetworkInformation.GetInternetConnectionProfile()?.GetConnectionCost()?.NetworkCostType
+                    == NetworkCostType.Unrestricted;
+            }
+            catch (Exception exception) when (exception is COMException or InvalidOperationException)
+            {
+                return false;
+            }
+        }
+    }
 
     public void SavePreferences(UpdatePreferences preferences)
     {

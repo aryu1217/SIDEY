@@ -364,6 +364,8 @@ internal sealed class FakeUpdateService : IUpdateService
 {
     public UpdatePreferences Preferences { get; private set; } = new(AutoInstall: false);
 
+    public bool IsAutomaticUpdateConnectionAllowed { get; set; } = true;
+
     public void SavePreferences(UpdatePreferences preferences) => Preferences = preferences;
 
     public string CurrentVersion { get; set; } = "1.0.6";

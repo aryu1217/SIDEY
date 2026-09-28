@@ -765,6 +765,19 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
         });
     }
 
+    private void OnUpdateSectionHeaderTapped(object sender, TappedRoutedEventArgs args)
+    {
+        for (var source = args.OriginalSource as DependencyObject;
+            source is not null && !ReferenceEquals(source, sender);
+            source = VisualTreeHelper.GetParent(source))
+        {
+            if (source is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase)
+                return;
+        }
+
+        SetUpdateSectionExpanded(UpdateSectionToggle.IsChecked != true);
+    }
+
     private void OnUpdateSectionToggleClick(object sender, RoutedEventArgs args)
     {
         _ = sender;
