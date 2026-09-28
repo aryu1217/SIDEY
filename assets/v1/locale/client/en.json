@@ -1391,7 +1391,8 @@
             "title": "Download updates automatically"
           },
           "auto_install": {
-            "title": "Install updates automatically (SIDEY will restart)"
+            "title": "Automatically download and install updates.",
+            "metered_exclusion": "Excludes metered connections."
           },
           "available_action": {
             "description": "A new version is available to download."

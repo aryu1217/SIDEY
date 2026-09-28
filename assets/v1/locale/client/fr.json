@@ -606,7 +606,8 @@
             "title": "Télécharger automatiquement les mises à jour"
           },
           "auto_install": {
-            "title": "Installer les mises à jour automatiquement"
+            "title": "Télécharger et installer automatiquement les mises à jour",
+            "metered_exclusion": "Sauf sur les connexions limitées."
           },
           "available_action": {
             "description": "Une nouvelle version est disponible au téléchargement."

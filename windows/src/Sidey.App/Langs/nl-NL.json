@@ -623,7 +623,8 @@
         "title": "Updates automatisch downloaden"
       },
       "auto_install": {
-        "title": "Updates automatisch installeren"
+        "metered_exclusion": "Uitgezonderd verbindingen met datalimiet.",
+        "title": "Updates automatisch downloaden en installeren"
       },
       "available_action": {
         "description": "Er is een nieuwe versie beschikbaar om te downloaden."

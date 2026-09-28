@@ -606,7 +606,8 @@
             "title": "Pobieraj aktualizacje automatycznie"
           },
           "auto_install": {
-            "title": "Instaluj aktualizacje automatycznie"
+            "title": "Pobieraj i instaluj aktualizacje automatycznie",
+            "metered_exclusion": "Z wyjątkiem połączeń taryfowych."
           },
           "available_action": {
             "description": "Nowa wersja jest dostępna do pobrania."

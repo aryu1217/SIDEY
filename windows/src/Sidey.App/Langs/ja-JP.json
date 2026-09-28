@@ -623,7 +623,8 @@
         "title": "更新を自動的にダウンロード"
       },
       "auto_install": {
-        "title": "アップデートを自動でインストール"
+        "metered_exclusion": "従量制課金接続は対象外",
+        "title": "更新を自動的にダウンロードしてインストール"
       },
       "available_action": {
         "description": "新しいバージョンをダウンロードできます。"

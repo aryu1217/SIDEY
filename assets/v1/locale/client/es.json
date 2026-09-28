@@ -606,7 +606,8 @@
             "title": "Descargar actualizaciones automáticamente"
           },
           "auto_install": {
-            "title": "Instalar actualizaciones automáticamente"
+            "title": "Descargar e instalar actualizaciones automáticamente",
+            "metered_exclusion": "Se excluyen las conexiones de uso medido."
           },
           "available_action": {
             "description": "Hay una nueva versión disponible para descargar."

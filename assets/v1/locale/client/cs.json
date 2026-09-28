@@ -1391,7 +1391,8 @@
             "title": "Automaticky stahovat aktualizace"
           },
           "auto_install": {
-            "title": "Instalovat aktualizace automaticky"
+            "title": "Automaticky stahovat a instalovat aktualizace",
+            "metered_exclusion": "S výjimkou připojení účtovaných podle objemu dat."
           },
           "available_action": {
             "description": "Je k dispozici nová verze ke stažení."

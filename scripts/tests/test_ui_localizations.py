@@ -286,7 +286,9 @@ class UILocalizationTests(unittest.TestCase):
         staged_windows_keys = {
             "settings.placement.monitor.display_name",
             "settings.placement.monitor.display_name_friendly",
+            "settings.update.auto_download.title",
             "settings.update.auto_install.title",
+            "settings.update.auto_install.metered_exclusion",
         }
         stale = sorted(
             key for key in self.source["windows"]

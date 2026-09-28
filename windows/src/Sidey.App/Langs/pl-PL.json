@@ -623,7 +623,8 @@
         "title": "Pobieraj aktualizacje automatycznie"
       },
       "auto_install": {
-        "title": "Instaluj aktualizacje automatycznie"
+        "metered_exclusion": "Z wyjątkiem połączeń taryfowych.",
+        "title": "Pobieraj i instaluj aktualizacje automatycznie"
       },
       "available_action": {
         "description": "Nowa wersja jest dostępna do pobrania."

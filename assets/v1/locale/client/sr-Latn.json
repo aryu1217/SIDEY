@@ -1391,7 +1391,8 @@
             "title": "Automatski preuzimaj ispravke"
           },
           "auto_install": {
-            "title": "Automatski instaliraj ažuriranja"
+            "title": "Automatski preuzimaj i instaliraj ažuriranja",
+            "metered_exclusion": "Osim veza sa ograničenom potrošnjom podataka."
           },
           "available_action": {
             "description": "Nova verzija je dostupna za preuzimanje."

@@ -623,7 +623,8 @@
         "title": "Descarcă automat actualizările"
       },
       "auto_install": {
-        "title": "Instalează automat actualizările"
+        "metered_exclusion": "Cu excepția conexiunilor tarifate după utilizare.",
+        "title": "Descarcă și instalează automat actualizările"
       },
       "available_action": {
         "description": "O versiune nouă este disponibilă pentru descărcare."

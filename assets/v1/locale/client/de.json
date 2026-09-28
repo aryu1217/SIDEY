@@ -1391,7 +1391,8 @@
             "title": "Updates automatisch herunterladen"
           },
           "auto_install": {
-            "title": "Updates automatisch installieren"
+            "title": "Updates automatisch herunterladen und installieren",
+            "metered_exclusion": "Ausgenommen getaktete Verbindungen."
           },
           "available_action": {
             "description": "Eine neue Version steht zum Herunterladen bereit."

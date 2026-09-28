@@ -1444,7 +1444,8 @@
             "title": "Transferir atualizações automaticamente"
           },
           "auto_install": {
-            "title": "Instalar atualizações automaticamente"
+            "title": "Transferir e instalar atualizações automaticamente",
+            "metered_exclusion": "Exclui ligações com tráfego limitado."
           },
           "available_action": {
             "description": "Está disponível uma nova versão para transferência."

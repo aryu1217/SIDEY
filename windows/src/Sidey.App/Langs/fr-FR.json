@@ -623,7 +623,8 @@
         "title": "Télécharger automatiquement les mises à jour"
       },
       "auto_install": {
-        "title": "Installer les mises à jour automatiquement"
+        "metered_exclusion": "Sauf sur les connexions limitées.",
+        "title": "Télécharger et installer automatiquement les mises à jour"
       },
       "available_action": {
         "description": "Une nouvelle version est disponible au téléchargement."
