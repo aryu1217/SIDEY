@@ -1440,9 +1440,6 @@
             "action": "Detalhes da atualização"
           },
           "title": "Atualizações",
-          "auto_download": {
-            "title": "Baixar atualizações automaticamente"
-          },
           "auto_install": {
             "title": "Baixar e instalar atualizações automaticamente",
             "metered_exclusion": "Exceto em conexões limitadas."

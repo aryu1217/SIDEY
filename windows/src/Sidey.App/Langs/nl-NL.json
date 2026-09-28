@@ -619,9 +619,6 @@
       "title": "Thema"
     },
     "update": {
-      "auto_download": {
-        "title": "Updates automatisch downloaden"
-      },
       "auto_install": {
         "metered_exclusion": "Uitgezonderd verbindingen met datalimiet.",
         "title": "Updates automatisch downloaden en installeren"

@@ -1387,9 +1387,6 @@
             "action": "Noutăți"
           },
           "title": "Actualizări",
-          "auto_download": {
-            "title": "Descarcă automat actualizările"
-          },
           "auto_install": {
             "title": "Descarcă și instalează automat actualizările",
             "metered_exclusion": "Cu excepția conexiunilor tarifate după utilizare."

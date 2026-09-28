@@ -619,9 +619,6 @@
       "title": "Motyw"
     },
     "update": {
-      "auto_download": {
-        "title": "Pobieraj aktualizacje automatycznie"
-      },
       "auto_install": {
         "metered_exclusion": "Z wyjątkiem połączeń taryfowych.",
         "title": "Pobieraj i instaluj aktualizacje automatycznie"

@@ -1387,9 +1387,6 @@
             "action": "更新内容"
           },
           "title": "アップデート",
-          "auto_download": {
-            "title": "更新を自動的にダウンロード"
-          },
           "auto_install": {
             "title": "更新を自動的にダウンロードしてインストール",
             "metered_exclusion": "従量制課金接続は対象外"

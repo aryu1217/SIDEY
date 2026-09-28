@@ -619,9 +619,6 @@
       "title": "Theme"
     },
     "update": {
-      "auto_download": {
-        "title": "Download updates automatically"
-      },
       "auto_install": {
         "metered_exclusion": "Excludes metered connections.",
         "title": "Automatically download and install updates."

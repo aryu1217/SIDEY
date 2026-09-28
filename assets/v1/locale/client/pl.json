@@ -602,9 +602,6 @@
             "action": "Szczegóły aktualizacji"
           },
           "title": "Aktualizacje",
-          "auto_download": {
-            "title": "Pobieraj aktualizacje automatycznie"
-          },
           "auto_install": {
             "title": "Pobieraj i instaluj aktualizacje automatycznie",
             "metered_exclusion": "Z wyjątkiem połączeń taryfowych."

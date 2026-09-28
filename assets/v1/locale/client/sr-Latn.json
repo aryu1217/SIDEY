@@ -1387,9 +1387,6 @@
             "action": "Detalji ispravke"
           },
           "title": "Ispravke",
-          "auto_download": {
-            "title": "Automatski preuzimaj ispravke"
-          },
           "auto_install": {
             "title": "Automatski preuzimaj i instaliraj ažuriranja",
             "metered_exclusion": "Osim veza sa ograničenom potrošnjom podataka."

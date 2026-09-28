@@ -619,9 +619,6 @@
       "title": "Temă"
     },
     "update": {
-      "auto_download": {
-        "title": "Descarcă automat actualizările"
-      },
       "auto_install": {
         "metered_exclusion": "Cu excepția conexiunilor tarifate după utilizare.",
         "title": "Descarcă și instalează automat actualizările"

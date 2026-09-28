@@ -619,9 +619,6 @@
       "title": "테마"
     },
     "update": {
-      "auto_download": {
-        "title": "업데이트를 자동으로 다운로드"
-      },
       "auto_install": {
         "metered_exclusion": "데이터 통신 연결 제외",
         "title": "업데이트를 자동으로 다운로드하고 설치합니다."

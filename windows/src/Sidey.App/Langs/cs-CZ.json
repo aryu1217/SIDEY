@@ -619,9 +619,6 @@
       "title": "Motiv"
     },
     "update": {
-      "auto_download": {
-        "title": "Automaticky stahovat aktualizace"
-      },
       "auto_install": {
         "metered_exclusion": "S výjimkou připojení účtovaných podle objemu dat.",
         "title": "Automaticky stahovat a instalovat aktualizace"

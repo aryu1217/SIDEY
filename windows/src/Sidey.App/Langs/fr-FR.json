@@ -619,9 +619,6 @@
       "title": "Thème"
     },
     "update": {
-      "auto_download": {
-        "title": "Télécharger automatiquement les mises à jour"
-      },
       "auto_install": {
         "metered_exclusion": "Sauf sur les connexions limitées.",
         "title": "Télécharger et installer automatiquement les mises à jour"

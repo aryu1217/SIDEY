@@ -1387,9 +1387,6 @@
             "action": "Wat is er nieuw"
           },
           "title": "Updates",
-          "auto_download": {
-            "title": "Updates automatisch downloaden"
-          },
           "auto_install": {
             "title": "Updates automatisch downloaden en installeren",
             "metered_exclusion": "Uitgezonderd verbindingen met datalimiet."

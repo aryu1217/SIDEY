@@ -619,9 +619,6 @@
       "title": "Tema"
     },
     "update": {
-      "auto_download": {
-        "title": "Güncellemeleri otomatik olarak indir"
-      },
       "auto_install": {
         "metered_exclusion": "Tarifeli bağlantılar hariç.",
         "title": "Güncellemeleri otomatik olarak indir ve yükle"

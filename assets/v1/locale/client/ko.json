@@ -1387,9 +1387,6 @@
             "action": "업데이트 내용"
           },
           "title": "업데이트",
-          "auto_download": {
-            "title": "업데이트를 자동으로 다운로드"
-          },
           "auto_install": {
             "title": "업데이트를 자동으로 다운로드하고 설치합니다.",
             "metered_exclusion": "데이터 통신 연결 제외"

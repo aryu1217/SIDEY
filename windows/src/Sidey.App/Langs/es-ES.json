@@ -619,9 +619,6 @@
       "title": "Tema"
     },
     "update": {
-      "auto_download": {
-        "title": "Descargar actualizaciones automáticamente"
-      },
       "auto_install": {
         "metered_exclusion": "Se excluyen las conexiones de uso medido.",
         "title": "Descargar e instalar actualizaciones automáticamente"

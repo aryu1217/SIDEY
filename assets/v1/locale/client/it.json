@@ -602,9 +602,6 @@
             "action": "Dettagli aggiornamento"
           },
           "title": "Aggiornamenti",
-          "auto_download": {
-            "title": "Scarica automaticamente gli aggiornamenti"
-          },
           "auto_install": {
             "title": "Scarica e installa automaticamente gli aggiornamenti",
             "metered_exclusion": "Esclude le connessioni a consumo."

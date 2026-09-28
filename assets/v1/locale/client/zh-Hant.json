@@ -1387,9 +1387,6 @@
             "action": "更新內容"
           },
           "title": "更新",
-          "auto_download": {
-            "title": "自動下載更新"
-          },
           "auto_install": {
             "title": "自動下載並安裝更新",
             "metered_exclusion": "不包括計量付費網路連線"

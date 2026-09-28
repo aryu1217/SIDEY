@@ -1387,9 +1387,6 @@
             "action": "Updatedetails"
           },
           "title": "Updates",
-          "auto_download": {
-            "title": "Updates automatisch herunterladen"
-          },
           "auto_install": {
             "title": "Updates automatisch herunterladen und installieren",
             "metered_exclusion": "Ausgenommen getaktete Verbindungen."

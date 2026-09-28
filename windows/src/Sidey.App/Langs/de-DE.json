@@ -619,9 +619,6 @@
       "title": "Design"
     },
     "update": {
-      "auto_download": {
-        "title": "Updates automatisch herunterladen"
-      },
       "auto_install": {
         "metered_exclusion": "Ausgenommen getaktete Verbindungen.",
         "title": "Updates automatisch herunterladen und installieren"

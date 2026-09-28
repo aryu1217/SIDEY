@@ -1387,9 +1387,6 @@
             "action": "Podrobnosti aktualizace"
           },
           "title": "Aktualizace",
-          "auto_download": {
-            "title": "Automaticky stahovat aktualizace"
-          },
           "auto_install": {
             "title": "Automaticky stahovat a instalovat aktualizace",
             "metered_exclusion": "S výjimkou připojení účtovaných podle objemu dat."

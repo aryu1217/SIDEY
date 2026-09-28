@@ -619,9 +619,6 @@
       "title": "主題"
     },
     "update": {
-      "auto_download": {
-        "title": "自動下載更新"
-      },
       "auto_install": {
         "metered_exclusion": "不包括計量付費網路連線",
         "title": "自動下載並安裝更新"
