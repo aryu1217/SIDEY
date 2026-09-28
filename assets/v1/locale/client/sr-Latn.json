@@ -1390,6 +1390,9 @@
           "auto_download": {
             "title": "Automatski preuzimaj ispravke"
           },
+          "auto_install": {
+            "title": "Automatski instaliraj ažuriranja"
+          },
           "available_action": {
             "description": "Nova verzija je dostupna za preuzimanje."
           },

@@ -1443,6 +1443,9 @@
           "auto_download": {
             "title": "Baixar atualizações automaticamente"
           },
+          "auto_install": {
+            "title": "Instalar atualizações automaticamente"
+          },
           "available_action": {
             "description": "Uma nova versão está disponível para download."
           },

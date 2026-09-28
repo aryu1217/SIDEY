@@ -1390,6 +1390,9 @@
           "auto_download": {
             "title": "Updates automatisch downloaden"
           },
+          "auto_install": {
+            "title": "Updates automatisch installeren"
+          },
           "available_action": {
             "description": "Er is een nieuwe versie beschikbaar om te downloaden."
           },

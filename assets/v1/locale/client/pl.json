@@ -605,6 +605,9 @@
           "auto_download": {
             "title": "Pobieraj aktualizacje automatycznie"
           },
+          "auto_install": {
+            "title": "Instaluj aktualizacje automatycznie"
+          },
           "available_action": {
             "description": "Nowa wersja jest dostępna do pobrania."
           },

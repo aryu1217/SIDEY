@@ -622,6 +622,9 @@
       "auto_download": {
         "title": "Güncellemeleri otomatik olarak indir"
       },
+      "auto_install": {
+        "title": "Güncellemeleri otomatik yükle"
+      },
       "available_action": {
         "description": "İndirilebilecek yeni bir sürüm var."
       },

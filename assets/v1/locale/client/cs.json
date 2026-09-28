@@ -1390,6 +1390,9 @@
           "auto_download": {
             "title": "Automaticky stahovat aktualizace"
           },
+          "auto_install": {
+            "title": "Instalovat aktualizace automaticky"
+          },
           "available_action": {
             "description": "Je k dispozici nová verze ke stažení."
           },

@@ -622,6 +622,9 @@
       "auto_download": {
         "title": "自動下載更新"
       },
+      "auto_install": {
+        "title": "自動安裝更新"
+      },
       "available_action": {
         "description": "有新版本可供下載。"
       },

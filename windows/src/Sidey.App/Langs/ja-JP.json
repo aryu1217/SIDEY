@@ -622,6 +622,9 @@
       "auto_download": {
         "title": "更新を自動的にダウンロード"
       },
+      "auto_install": {
+        "title": "アップデートを自動でインストール"
+      },
       "available_action": {
         "description": "新しいバージョンをダウンロードできます。"
       },

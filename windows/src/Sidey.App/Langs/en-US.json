@@ -622,6 +622,9 @@
       "auto_download": {
         "title": "Download updates automatically"
       },
+      "auto_install": {
+        "title": "Install updates automatically (SIDEY will restart)"
+      },
       "available_action": {
         "description": "A new version is available to download."
       },

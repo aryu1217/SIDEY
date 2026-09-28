@@ -622,6 +622,9 @@
       "auto_download": {
         "title": "Descarcă automat actualizările"
       },
+      "auto_install": {
+        "title": "Instalează automat actualizările"
+      },
       "available_action": {
         "description": "O versiune nouă este disponibilă pentru descărcare."
       },
