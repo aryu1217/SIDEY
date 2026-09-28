@@ -209,6 +209,129 @@ class GateTests(unittest.TestCase):
                         ["release/app-store-localizations.json"],
                     )
 
+    def test_shared_product_version_transition_requires_atomic_generated_mirrors(self):
+        paths = [
+            "release/version.json",
+            "release/macos.json",
+            "macos/Config/Version.xcconfig",
+            "release/windows.json",
+            "windows/Version.props",
+            "docs/releases/windows-v2.1.0.md",
+        ]
+        before = {
+            "schema": 1,
+            "productVersion": "2.0.0",
+            "windowsRevision": 4,
+            "macBuild": 37,
+        }
+        after = {**before, "productVersion": "2.1.0", "windowsRevision": 0}
+        root = Path(".")
+
+        def check(candidate):
+            with (
+                patch(
+                    "sidey_tools.repository.git",
+                    side_effect=[json.dumps(before), json.dumps(candidate)],
+                ) as git,
+                patch("sidey_tools.repository.run") as run,
+            ):
+                result = validate_paths(
+                    "shared/product-version", paths,
+                    root=root, base="base", revision="head",
+                )
+            self.assertEqual(
+                git.call_args_list,
+                [
+                    call(root, "show", "base:release/version.json"),
+                    call(root, "show", "head:release/version.json"),
+                ],
+            )
+            self.assertEqual(
+                run.call_args_list,
+                [
+                    call(root, sys.executable, "scripts/sidey_version.py", "--check", "macos"),
+                    call(root, sys.executable, "scripts/sidey_version.py", "--check", "windows"),
+                ],
+            )
+            return result
+
+        self.assertEqual(check(after), "shared")
+        for candidate in (
+            before,
+            {**after, "productVersion": "1.9.9"},
+            {**after, "productVersion": "2.01.0"},
+            {**after, "windowsRevision": 1},
+            {**after, "macBuild": 38},
+            {**after, "schema": 2},
+            {**after, "schema": True},
+            {**after, "other": 1},
+        ):
+            with self.subTest(candidate=candidate):
+                with (
+                    patch(
+                        "sidey_tools.repository.git",
+                        side_effect=[json.dumps(before), json.dumps(candidate)],
+                    ),
+                    patch("sidey_tools.repository.run") as run,
+                    self.assertRaisesRegex(WorkflowError, "Product Version"),
+                ):
+                    validate_paths(
+                        "shared/product-version", paths,
+                        root=root, base="base", revision="head",
+                    )
+                run.assert_not_called()
+
+        for removed in paths[1:5]:
+            with self.subTest(removed=removed):
+                with self.assertRaisesRegex(WorkflowError, "platform boundary"):
+                    validate_paths(
+                        "shared/product-version",
+                        [path for path in paths if path != removed],
+                        root=root, base="base", revision="head",
+                    )
+        with self.assertRaisesRegex(WorkflowError, "platform boundary"):
+            validate_paths(
+                "shared/product-version", [*paths, "windows/src/Sidey.App/App.xaml.cs"],
+                root=root, base="base", revision="head",
+            )
+        with self.assertRaisesRegex(WorkflowError, "explicit root and base"):
+            validate_paths("shared/product-version", paths)
+        with self.assertRaisesRegex(WorkflowError, "platform boundary"):
+            validate_paths(
+                "windows/product-version", paths,
+                root=root, base="base", revision="head",
+            )
+
+    def test_shared_product_version_transition_rejects_stale_mirror(self):
+        paths = [
+            "release/version.json",
+            "release/macos.json",
+            "macos/Config/Version.xcconfig",
+            "release/windows.json",
+            "windows/Version.props",
+        ]
+        before = {
+            "schema": 1, "productVersion": "2.0.0",
+            "windowsRevision": 0, "macBuild": 37,
+        }
+        after = {**before, "productVersion": "2.1.0"}
+        with (
+            patch(
+                "sidey_tools.repository.git",
+                side_effect=[json.dumps(before), json.dumps(after)],
+            ),
+            patch(
+                "sidey_tools.repository.run",
+                side_effect=["macOS mirror current", WorkflowError("Windows mirror stale")],
+            ) as run,
+            self.assertRaisesRegex(WorkflowError, "Windows mirror stale"),
+        ):
+            validate_paths(
+                "shared/product-version", paths,
+                root=Path("."), base="base", revision="head",
+            )
+        self.assertEqual(run.call_count, 2)
+
     def test_macos_build_counter_requires_both_mirrors_and_exact_base_diff(self):
         paths = [
             "release/version.json",

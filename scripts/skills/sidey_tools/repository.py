@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 from .errors import WorkflowError
@@ -42,6 +43,69 @@ LOCALIZATION_PLATFORM_PATHS = (
     | MACOS_LOCALIZATION_MIRRORS
     | {"scripts/macos/sync_commerce_localizations.py"}
 )
+PRODUCT_VERSION_MIRRORS = {
+    "release/macos.json",
+    "macos/Config/Version.xcconfig",
+    "release/windows.json",
+    "windows/Version.props",
+}
+STABLE_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+
+
+def validate_product_version_transition(
+    root: str | Path | None,
+    base: str | None,
+    revision: str,
+) -> None:
+    """Allow one atomic shared version bump with only its generated mirrors."""
+
+    if root is None or base is None:
+        raise WorkflowError(
+            "Product Version transition requires an explicit root and base"
+        )
+    try:
+        before = json.loads(git(root, "show", f"{base}:release/version.json"))
+        after = json.loads(git(root, "show", f"{revision}:release/version.json"))
+    except (json.JSONDecodeError, WorkflowError) as error:
+        raise WorkflowError(
+            f"Cannot compare Product Version against the base: {error}"
+        ) from error
+
+    keys = {"schema", "productVersion", "windowsRevision", "macBuild"}
+    if (
+        not isinstance(before, dict)
+        or not isinstance(after, dict)
+        or set(before) != keys
+        or set(after) != keys
+        or type(before["schema"]) is not int
+        or type(after["schema"]) is not int
+        or before["schema"] != 1
+        or after["schema"] != 1
+        or type(before["productVersion"]) is not str
+        or type(after["productVersion"]) is not str
+        or STABLE_VERSION.fullmatch(before["productVersion"]) is None
+        or STABLE_VERSION.fullmatch(after["productVersion"]) is None
+        or type(before["windowsRevision"]) is not int
+        or type(after["windowsRevision"]) is not int
+        or not 0 <= before["windowsRevision"] <= 999
+        or after["windowsRevision"] != 0
+        or type(before["macBuild"]) is not int
+        or type(after["macBuild"]) is not int
+        or before["macBuild"] < 1
+        or after["macBuild"] != before["macBuild"]
+    ):
+        raise WorkflowError(
+            "Shared Product Version transition must preserve schema and macBuild, "
+            "reset windowsRevision to 0, and use stable versions"
+        )
+
+    previous_version = tuple(map(int, before["productVersion"].split(".")))
+    next_version = tuple(map(int, after["productVersion"].split(".")))
+    if next_version <= previous_version:
+        raise WorkflowError("Shared Product Version must increase")
+
+    for platform in ("macos", "windows"):
+        run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
 
 
 def git(root: str | Path, *args: str) -> str:
@@ -130,6 +194,11 @@ def validate_paths(
 
     platform = match[1]
     mac_build_change = platform == "macos" and "release/version.json" in paths
+    product_version_change = (
+        platform == "shared"
+        and "release/version.json" in paths
+        and PRODUCT_VERSION_MIRRORS.issubset(paths)
+    )
     localization_source_change = (
         platform == "shared"
         and any(
@@ -170,6 +239,7 @@ def validate_paths(
         path for path in paths
         if platform_for(path) != platform
         and not (mac_build_change and path == "release/version.json")
+        and not (product_version_change and path in PRODUCT_VERSION_MIRRORS)
         and not (
             localization_source_change
             and path in LOCALIZATION_PLATFORM_PATHS
@@ -184,6 +254,8 @@ def validate_paths(
         raise WorkflowError(
             f"{branch_name} crosses its platform boundary: {changed}"
         )
+    if product_version_change:
+        validate_product_version_transition(root, base, revision)
     if mac_build_change:
         mirrors = {"release/macos.json", "macos/Config/Version.xcconfig"}
         if not mirrors.issubset(paths):
