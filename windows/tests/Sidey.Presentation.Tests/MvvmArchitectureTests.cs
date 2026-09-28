@@ -489,6 +489,17 @@ public sealed class MvvmArchitectureTests
             element => element.Attribute("Text")?.Value
                 == "{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}");
 
+        XElement toggle = Assert.Single(updateSection.Descendants(), element =>
+            element.Name.LocalName == "ToggleButton"
+            && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name"
+                && attribute.Value == "UpdateSectionToggle"));
+        Assert.Equal("True", toggle.Attribute("IsChecked")?.Value);
+        Assert.Equal("OnUpdateSectionToggleClick", toggle.Attribute("Click")?.Value);
+        XElement details = Assert.Single(updateSection.Descendants(), element =>
+            element.Name.LocalName == "StackPanel"
+            && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name"
+                && attribute.Value == "UpdateSectionDetails"));
+
         foreach (string preference in new[]
         {
             "AutoDownloadUpdates",
@@ -496,7 +507,7 @@ public sealed class MvvmArchitectureTests
             "ShowReleaseNotesAfterUpdate",
         })
         {
-            Assert.Contains(view.Descendants(), element =>
+            Assert.Contains(details.Descendants(), element =>
                 element.Name.LocalName == "CheckBox"
                 && element.Attribute("IsChecked")?.Value
                     == $"{{Binding {preference}, Mode=TwoWay}}");
@@ -504,7 +515,7 @@ public sealed class MvvmArchitectureTests
 
         foreach (string action in new[] { "DownloadUpdateCommand", "InstallUpdateCommand" })
         {
-            Assert.Contains(view.Descendants(), element =>
+            Assert.Contains(details.Descendants(), element =>
                 element.Name.LocalName == "Button"
                 && element.Attribute("Command")?.Value == $"{{Binding {action}}}");
         }

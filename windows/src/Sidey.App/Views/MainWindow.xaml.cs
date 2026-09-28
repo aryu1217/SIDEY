@@ -746,6 +746,7 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
         }
 
         ShowPage("about");
+        SetUpdateSectionExpanded(true);
         DispatcherQueue.TryEnqueue(() =>
         {
             if (_isClosed)
@@ -762,6 +763,20 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
                 null,
                 disableAnimation: true);
         });
+    }
+
+    private void OnUpdateSectionToggleClick(object sender, RoutedEventArgs args)
+    {
+        _ = sender;
+        _ = args;
+        SetUpdateSectionExpanded(UpdateSectionToggle.IsChecked == true);
+    }
+
+    private void SetUpdateSectionExpanded(bool expanded)
+    {
+        UpdateSectionToggle.IsChecked = expanded;
+        UpdateSectionDetails.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        SetChevronAngle(UpdateSectionChevron, expanded ? 180 : 0);
     }
 
     public async Task<bool> ConfirmInviteCodeRotationAsync()

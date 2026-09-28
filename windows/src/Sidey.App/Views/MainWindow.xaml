@@ -1269,50 +1269,62 @@
                 </Grid>
               </Border>
 
-              <StackPanel x:Name="UpdateSection" Spacing="4">
-                <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.description}, Mode=OneWay}" />
-              </StackPanel>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <Grid ColumnSpacing="16">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <FontIcon FontSize="22" Glyph="&#xE895;" VerticalAlignment="Center" />
-                  <StackPanel Grid.Column="1" Spacing="4">
-                    <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding CurrentVersionText}" />
-                    <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding AvailableVersionText}" Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Grid>
-                      <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding LastUpdateCheckText}" Visibility="{Binding HasUpdateActivity, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
-                      <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{Binding HasUpdateActivity, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <ProgressRing Width="16" Height="16" IsActive="{Binding HasUpdateActivity}" />
-                        <TextBlock VerticalAlignment="Center" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding UpdateActivityText}" />
+              <StackPanel x:Name="UpdateSection" Spacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}" />
+                  <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.description}, Mode=OneWay}" />
+                </StackPanel>
+                <Border Padding="0" Style="{StaticResource SideySettingsCardStyle}">
+                  <StackPanel>
+                    <Grid Padding="20,16" ColumnSpacing="16">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <FontIcon FontSize="22" Glyph="&#xE895;" VerticalAlignment="Center" />
+                      <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding CurrentVersionText}" />
+                        <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding AvailableVersionText}" Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <Grid>
+                          <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding LastUpdateCheckText}" Visibility="{Binding HasUpdateActivity, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                          <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{Binding HasUpdateActivity, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ProgressRing Width="16" Height="16" IsActive="{Binding HasUpdateActivity}" />
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding UpdateActivityText}" />
+                          </StackPanel>
+                        </Grid>
+                        <HyperlinkButton HorizontalAlignment="Left" Style="{StaticResource SideySettingsDescriptionLinkStyle}" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
                       </StackPanel>
+                      <Button Grid.Column="2" Command="{Binding CheckForUpdatesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.check.action}, Mode=OneWay}" VerticalAlignment="Center" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.update.check_now.tooltip}, Mode=OneWay}" />
+                      <ToggleButton x:Name="UpdateSectionToggle" Grid.Column="3" IsChecked="True" VerticalAlignment="Center"
+                          AutomationProperties.AutomationId="UpdateSectionToggle"
+                          AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}"
+                          Click="OnUpdateSectionToggleClick" Style="{StaticResource SideyStoreFilterToggleStyle}">
+                        <FontIcon x:Name="UpdateSectionChevron" FontSize="12" Glyph="&#xE70D;" RenderTransformOrigin="0.5,0.5">
+                          <FontIcon.RenderTransform><RotateTransform Angle="180" /></FontIcon.RenderTransform>
+                        </FontIcon>
+                      </ToggleButton>
                     </Grid>
-                    <HyperlinkButton HorizontalAlignment="Left" Style="{StaticResource SideySettingsDescriptionLinkStyle}" Command="{Binding OpenReleaseNotesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.release_notes.action}, Mode=OneWay}" />
+                    <StackPanel x:Name="UpdateSectionDetails">
+                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,14" Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid ColumnSpacing="16">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                          <TextBlock VerticalAlignment="Center" Text="{Binding Value, Source={i18n:I18n Key=settings.update.available_action.description}, Mode=OneWay}" TextWrapping="Wrap" />
+                          <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Command="{Binding DownloadUpdateCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.download.action}, Mode=OneWay}" Visibility="{Binding IsUpdateReady, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                            <Button Command="{Binding InstallUpdateCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.install.action}, Mode=OneWay}" Visibility="{Binding IsUpdateReady, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_download.title}, Mode=OneWay}" IsChecked="{Binding AutoDownloadUpdates, Mode=TwoWay}" />
+                      </Border>
+                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.notify.title}, Mode=OneWay}" IsChecked="{Binding NotifyWhenUpdateAvailable, Mode=TwoWay}" />
+                      </Border>
+                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.show_after.title}, Mode=OneWay}" IsChecked="{Binding ShowReleaseNotesAfterUpdate, Mode=TwoWay}" />
+                      </Border>
+                    </StackPanel>
                   </StackPanel>
-                  <Button Grid.Column="2" Command="{Binding CheckForUpdatesCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.check.action}, Mode=OneWay}" VerticalAlignment="Center" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=settings.update.check_now.tooltip}, Mode=OneWay}" />
-                </Grid>
-              </Border>
-
-              <Border Style="{StaticResource SideySettingsCardStyle}" Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Grid ColumnSpacing="16">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <TextBlock VerticalAlignment="Center" Text="{Binding Value, Source={i18n:I18n Key=settings.update.available_action.description}, Mode=OneWay}" TextWrapping="Wrap" />
-                  <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Command="{Binding DownloadUpdateCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.download.action}, Mode=OneWay}" Visibility="{Binding IsUpdateReady, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
-                    <Button Command="{Binding InstallUpdateCommand}" Content="{Binding Value, Source={i18n:I18n Key=settings.update.install.action}, Mode=OneWay}" Visibility="{Binding IsUpdateReady, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_download.title}, Mode=OneWay}" IsChecked="{Binding AutoDownloadUpdates, Mode=TwoWay}" />
-              </Border>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.notify.title}, Mode=OneWay}" IsChecked="{Binding NotifyWhenUpdateAvailable, Mode=TwoWay}" />
-              </Border>
-              <Border Style="{StaticResource SideySettingsCardStyle}">
-                <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.show_after.title}, Mode=OneWay}" IsChecked="{Binding ShowReleaseNotesAfterUpdate, Mode=TwoWay}" />
-              </Border>
+                </Border>
+              </StackPanel>
 
               <Border Style="{StaticResource SideySettingsCardStyle}">
                 <Grid ColumnSpacing="16">
