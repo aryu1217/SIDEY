@@ -966,8 +966,8 @@
           </ScrollViewer>
 
           <ScrollViewer x:Name="SettingsPage" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-            <StackPanel x:Name="SettingsPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="32">
-              <StackPanel Spacing="20">
+            <StackPanel x:Name="SettingsPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="20">
+              <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.general.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.general.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -994,7 +994,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="20">
+              <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.display.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.display.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1030,7 +1030,7 @@
                 </Grid>
                 </Border>
               </StackPanel>
-              <StackPanel Spacing="20">
+              <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
                 <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.placement.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1074,7 +1074,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="20">
+              <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.shortcuts.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1145,7 +1145,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="20">
+              <StackPanel Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.section.sound.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Text="{Binding Value, Source={i18n:I18n Key=settings.sound.description}, Mode=OneWay}" />
@@ -1187,8 +1187,8 @@
           </ScrollViewer>
 
           <ScrollViewer x:Name="AboutPage" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="Collapsed">
-            <StackPanel x:Name="AboutPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="20">
-              <StackPanel Spacing="4">
+            <StackPanel x:Name="AboutPageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="8">
+              <StackPanel Margin="0,0,0,8" Spacing="4">
                 <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=app.info.title}, Mode=OneWay}" />
                 <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=app.info.description}, Mode=OneWay}" TextWrapping="Wrap" />
               </StackPanel>
@@ -1269,15 +1269,21 @@
                 </Grid>
               </Border>
 
-              <StackPanel x:Name="UpdateSection" Spacing="12">
+              <StackPanel x:Name="UpdateSection" Margin="0,12,0,0" Spacing="12">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.description}, Mode=OneWay}" />
                 </StackPanel>
                 <Border Padding="0" Style="{StaticResource SideySettingsCardStyle}">
                   <StackPanel>
-                    <Grid x:Name="UpdateSectionHeader" Padding="20,16" ColumnSpacing="16" Background="Transparent" Tapped="OnUpdateSectionHeaderTapped">
+                    <Grid x:Name="UpdateSectionHeader" Padding="20,16" ColumnSpacing="16" Background="Transparent"
+                        PointerEntered="OnUpdateSectionHeaderPointerEntered"
+                        PointerExited="OnUpdateSectionHeaderPointerExited"
+                        Tapped="OnUpdateSectionHeaderTapped">
                       <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <Border x:Name="UpdateSectionHeaderHoverBackground" Grid.ColumnSpan="4" Margin="-20,-16"
+                          Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8,8,0,0"
+                          IsHitTestVisible="False" Opacity="0" />
                       <FontIcon FontSize="22" Glyph="&#xE895;" VerticalAlignment="Center" />
                       <StackPanel Grid.Column="1" Spacing="4">
                         <TextBlock Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding CurrentVersionText}" />
@@ -1295,7 +1301,7 @@
                       <ToggleButton x:Name="UpdateSectionToggle" Grid.Column="3" IsChecked="True" VerticalAlignment="Center"
                           AutomationProperties.AutomationId="UpdateSectionToggle"
                           AutomationProperties.Name="{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}"
-                          Click="OnUpdateSectionToggleClick" Style="{StaticResource SideyStoreFilterToggleStyle}">
+                          Click="OnUpdateSectionToggleClick" Style="{StaticResource SideyUpdateSectionToggleStyle}">
                         <FontIcon x:Name="UpdateSectionChevron" FontSize="12" Glyph="&#xE70D;" RenderTransformOrigin="0.5,0.5">
                           <FontIcon.RenderTransform><RotateTransform Angle="180" /></FontIcon.RenderTransform>
                         </FontIcon>
@@ -1313,10 +1319,12 @@
                         </Grid>
                       </Border>
                       <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
-                        <StackPanel>
-                          <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.title}, Mode=OneWay}" IsChecked="{Binding AutoInstallUpdates, Mode=TwoWay}" />
-                          <TextBlock Margin="36,-4,0,0" Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.metered_exclusion}, Mode=OneWay}" TextWrapping="Wrap" />
-                        </StackPanel>
+                        <CheckBox IsChecked="{Binding AutoInstallUpdates, Mode=TwoWay}">
+                          <StackPanel>
+                            <TextBlock Text="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.title}, Mode=OneWay}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SideySettingsRowDescriptionStyle}" Text="{Binding Value, Source={i18n:I18n Key=settings.update.auto_install.metered_exclusion}, Mode=OneWay}" />
+                          </StackPanel>
+                        </CheckBox>
                       </Border>
                       <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
                         <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.notify.title}, Mode=OneWay}" IsChecked="{Binding NotifyWhenUpdateAvailable, Mode=TwoWay}" />
@@ -1353,7 +1361,7 @@
                 </Grid>
               </Border>
 
-              <StackPanel Spacing="8">
+              <StackPanel Margin="0,12,0,0" Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=account.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=account.description}, Mode=OneWay}" TextWrapping="Wrap" />
@@ -1384,7 +1392,7 @@
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="8">
+              <StackPanel Margin="0,12,0,0" Spacing="8">
                 <StackPanel Spacing="4">
                   <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{ThemeResource SubtitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=legal.title}, Mode=OneWay}" />
                   <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=legal.description}, Mode=OneWay}" />

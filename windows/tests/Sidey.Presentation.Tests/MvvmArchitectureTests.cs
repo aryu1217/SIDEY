@@ -495,16 +495,29 @@ public sealed class MvvmArchitectureTests
                 && attribute.Value == "UpdateSectionToggle"));
         Assert.Equal("True", toggle.Attribute("IsChecked")?.Value);
         Assert.Equal("OnUpdateSectionToggleClick", toggle.Attribute("Click")?.Value);
+        Assert.Equal("{StaticResource SideyUpdateSectionToggleStyle}", toggle.Attribute("Style")?.Value);
         XElement header = Assert.Single(updateSection.Descendants(), element =>
             element.Attribute("Tapped")?.Value == "OnUpdateSectionHeaderTapped");
         Assert.Equal("Transparent", header.Attribute("Background")?.Value);
+        Assert.Equal("OnUpdateSectionHeaderPointerEntered", header.Attribute("PointerEntered")?.Value);
+        Assert.Equal("OnUpdateSectionHeaderPointerExited", header.Attribute("PointerExited")?.Value);
+        XElement hoverBackground = Assert.Single(header.Elements(), element =>
+            element.Attributes().Any(attribute => attribute.Name.LocalName == "Name"
+                && attribute.Value == "UpdateSectionHeaderHoverBackground"));
+        Assert.Equal("0", hoverBackground.Attribute("Opacity")?.Value);
         XElement details = Assert.Single(updateSection.Descendants(), element =>
             element.Name.LocalName == "StackPanel"
             && element.Attributes().Any(attribute => attribute.Name.LocalName == "Name"
                 && attribute.Value == "UpdateSectionDetails"));
-        Assert.Contains(details.Descendants(), element =>
-            element.Name.LocalName == "TextBlock"
-            && element.Attribute("Text")?.Value.Contains("settings.update.auto_install.metered_exclusion") == true);
+        XElement autoInstall = Assert.Single(details.Descendants(), element =>
+            element.Name.LocalName == "CheckBox"
+            && element.Attribute("IsChecked")?.Value == "{Binding AutoInstallUpdates, Mode=TwoWay}");
+        XElement autoInstallContent = Assert.Single(autoInstall.Elements());
+        Assert.Equal("StackPanel", autoInstallContent.Name.LocalName);
+        Assert.Equal(2, autoInstallContent.Elements().Count());
+        Assert.All(autoInstallContent.Elements(), element => Assert.Equal("TextBlock", element.Name.LocalName));
+        Assert.Contains(autoInstallContent.Descendants(), element =>
+            element.Attribute("Text")?.Value.Contains("settings.update.auto_install.metered_exclusion") == true);
 
         foreach (string preference in new[]
         {

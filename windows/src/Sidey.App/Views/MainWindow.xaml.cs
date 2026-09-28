@@ -40,6 +40,8 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
     private bool _storeSearchUpdateQueued;
     private bool _storePreviewDialogOpen;
     private Task _storeFilterTransition = Task.CompletedTask;
+    private Task _updateSectionTransition = Task.CompletedTask;
+    private bool _updateSectionTargetExpanded = true;
     private readonly HashSet<Guid> _roomExpansionAnimations = [];
     private bool _hideQueued;
     private bool _isClosed;
@@ -746,6 +748,17 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
         }
 
         ShowPage("about");
+        _ = ExpandAndScrollToUpdatesAsync();
+    }
+
+    private async Task ExpandAndScrollToUpdatesAsync()
+    {
+        await _updateSectionTransition;
+        if (_isClosed || !StringComparer.Ordinal.Equals(_currentNavigationTag, "about"))
+        {
+            return;
+        }
+
         SetUpdateSectionExpanded(true);
         DispatcherQueue.TryEnqueue(() =>
         {
@@ -775,20 +788,89 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
                 return;
         }
 
-        SetUpdateSectionExpanded(UpdateSectionToggle.IsChecked != true);
+        RequestUpdateSectionExpanded(UpdateSectionToggle.IsChecked != true);
     }
 
     private void OnUpdateSectionToggleClick(object sender, RoutedEventArgs args)
     {
         _ = sender;
         _ = args;
-        SetUpdateSectionExpanded(UpdateSectionToggle.IsChecked == true);
+        RequestUpdateSectionExpanded(UpdateSectionToggle.IsChecked == true);
+    }
+
+    private void OnUpdateSectionHeaderPointerEntered(object sender, PointerRoutedEventArgs args)
+    {
+        _ = sender;
+        _ = args;
+        UpdateSectionHeaderHoverBackground.Opacity = 1;
+    }
+
+    private void OnUpdateSectionHeaderPointerExited(object sender, PointerRoutedEventArgs args)
+    {
+        _ = sender;
+        _ = args;
+        UpdateSectionHeaderHoverBackground.Opacity = 0;
+    }
+
+    private void RequestUpdateSectionExpanded(bool expanded)
+    {
+        if (!_updateSectionTransition.IsCompleted)
+        {
+            UpdateSectionToggle.IsChecked = _updateSectionTargetExpanded;
+            return;
+        }
+
+        _updateSectionTargetExpanded = expanded;
+        UpdateSectionToggle.IsChecked = expanded;
+        _updateSectionTransition = TransitionUpdateSectionAsync(expanded);
+    }
+
+    private async Task TransitionUpdateSectionAsync(bool expanded)
+    {
+        if (!expanded && MainRoot.XamlRoot is { } xamlRoot)
+        {
+            for (var focused = FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
+                focused is not null;
+                focused = VisualTreeHelper.GetParent(focused))
+            {
+                if (ReferenceEquals(focused, UpdateSectionDetails))
+                {
+                    UpdateSectionToggle.Focus(FocusState.Programmatic);
+                    break;
+                }
+            }
+        }
+
+        if (!_coordinator.AnimationsEnabled)
+        {
+            SetUpdateSectionExpanded(expanded);
+            return;
+        }
+
+        if (expanded)
+        {
+            UpdateSectionDetails.Visibility = Visibility.Visible;
+            UpdateSectionDetails.Height = double.NaN;
+            UpdateSectionDetails.UpdateLayout();
+        }
+
+        await Task.WhenAll(
+            AnimateFilterPanelAsync(UpdateSectionDetails, expanded),
+            AnimateChevronAsync(UpdateSectionChevron, expanded));
+        SetUpdateSectionExpanded(expanded);
     }
 
     private void SetUpdateSectionExpanded(bool expanded)
     {
+        _updateSectionTargetExpanded = expanded;
         UpdateSectionToggle.IsChecked = expanded;
         UpdateSectionDetails.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        UpdateSectionDetails.Height = double.NaN;
+        UpdateSectionDetails.Opacity = 1;
+        if (UpdateSectionDetails.RenderTransform is TranslateTransform transform)
+        {
+            transform.Y = 0;
+        }
         SetChevronAngle(UpdateSectionChevron, expanded ? 180 : 0);
     }
 

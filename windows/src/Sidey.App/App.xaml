@@ -163,6 +163,24 @@
         <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="1" />
       </Style>
+      <Style
+          x:Key="SideyUpdateSectionToggleStyle"
+          BasedOn="{StaticResource SideyStoreFilterToggleStyle}"
+          TargetType="ToggleButton">
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ToggleButton">
+              <ContentPresenter
+                  Padding="{TemplateBinding Padding}"
+                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                  Background="Transparent"
+                  Content="{TemplateBinding Content}"
+                  ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
       <Style x:Key="SideyStoreKindChipStyle" TargetType="RadioButton">
         <Setter Property="MinWidth" Value="96" />
         <Setter Property="Padding" Value="18,7" />
