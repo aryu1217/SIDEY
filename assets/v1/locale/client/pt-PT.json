@@ -1439,7 +1439,26 @@
           "release_notes": {
             "action": "Detalhes da atualização"
           },
-          "title": "Atualizações"
+          "title": "Atualizações",
+          "auto_download": {
+            "title": "Transferir atualizações automaticamente"
+          },
+          "available_action": {
+            "description": "Está disponível uma nova versão para transferência."
+          },
+          "available_version": "O SIDEY {0} está disponível",
+          "download": {
+            "action": "Transferir"
+          },
+          "install": {
+            "action": "Instalar"
+          },
+          "notify": {
+            "title": "Notificar-me sobre novas atualizações"
+          },
+          "show_after": {
+            "title": "Mostrar detalhes após a atualização"
+          }
         }
       },
       "store": {
@@ -1581,11 +1600,12 @@
           "tooltip": "SIDEY · {0} mensagens não lidas"
         },
         "update": {
-          "available": "Está disponível uma atualização. {0}",
+          "available": "O SIDEY {0} está disponível. Abra Atualizações para o transferir.",
           "check": "Procurar atualizações…",
           "check_failed": "Não foi possível procurar atualizações. Tente novamente dentro de momentos.",
           "installed": "O SIDEY foi atualizado para a versão {0}. Clique para ver as alterações.",
-          "latest": "Está a utilizar a versão mais recente."
+          "latest": "Está a utilizar a versão mais recente.",
+          "ready_to_install": "O SIDEY {0} está pronto a instalar. Abra Atualizações para o instalar."
         }
       },
       "update": {
@@ -1594,7 +1614,8 @@
         "download": {
           "hash_mismatch": "Não foi possível verificar o ficheiro de atualização. Transfira-o novamente.",
           "in_progress": "A transferir atualização…",
-          "progress": "A transferir atualização… ({0}%)"
+          "progress": "A transferir atualização… ({0}%)",
+          "ready": "Transferência concluída. Pronto a instalar."
         },
         "failed": "Não foi possível concluir a atualização. Tente novamente dentro de momentos.",
         "install": {

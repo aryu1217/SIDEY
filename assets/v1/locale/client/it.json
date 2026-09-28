@@ -601,7 +601,26 @@
           "release_notes": {
             "action": "Dettagli aggiornamento"
           },
-          "title": "Aggiornamenti"
+          "title": "Aggiornamenti",
+          "auto_download": {
+            "title": "Scarica automaticamente gli aggiornamenti"
+          },
+          "available_action": {
+            "description": "È disponibile una nuova versione da scaricare."
+          },
+          "available_version": "È disponibile SIDEY {0}",
+          "download": {
+            "action": "Scarica"
+          },
+          "install": {
+            "action": "Installa"
+          },
+          "notify": {
+            "title": "Mostra notifiche sui nuovi aggiornamenti"
+          },
+          "show_after": {
+            "title": "Mostra i dettagli dopo l'aggiornamento"
+          }
         }
       },
       "store": {
@@ -743,11 +762,12 @@
           "tooltip": "SIDEY · {0} messaggi non letti"
         },
         "update": {
-          "available": "È disponibile un aggiornamento. {0}",
+          "available": "SIDEY {0} è disponibile. Apri Aggiornamenti per scaricarlo.",
           "check": "Controlla aggiornamenti…",
           "check_failed": "Non è stato possibile controllare gli aggiornamenti. Riprova tra poco.",
           "installed": "SIDEY è stato aggiornato alla versione {0}. Fai clic per vedere le novità.",
-          "latest": "Stai usando la versione più recente."
+          "latest": "Stai usando la versione più recente.",
+          "ready_to_install": "SIDEY {0} è pronto per l'installazione. Apri Aggiornamenti per installarlo."
         }
       },
       "update": {
@@ -756,7 +776,8 @@
         "download": {
           "hash_mismatch": "Non è stato possibile verificare il file di aggiornamento. Scaricalo di nuovo.",
           "in_progress": "Download dell'aggiornamento…",
-          "progress": "Download dell'aggiornamento… ({0}%)"
+          "progress": "Download dell'aggiornamento… ({0}%)",
+          "ready": "Download completato. Pronto per l'installazione."
         },
         "failed": "Non è stato possibile completare l'aggiornamento. Riprova tra poco.",
         "install": {

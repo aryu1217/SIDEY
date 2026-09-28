@@ -601,7 +601,26 @@
           "release_notes": {
             "action": "Szczegóły aktualizacji"
           },
-          "title": "Aktualizacje"
+          "title": "Aktualizacje",
+          "auto_download": {
+            "title": "Pobieraj aktualizacje automatycznie"
+          },
+          "available_action": {
+            "description": "Nowa wersja jest dostępna do pobrania."
+          },
+          "available_version": "Dostępna jest wersja SIDEY {0}",
+          "download": {
+            "action": "Pobierz"
+          },
+          "install": {
+            "action": "Zainstaluj"
+          },
+          "notify": {
+            "title": "Powiadamiaj o nowych aktualizacjach"
+          },
+          "show_after": {
+            "title": "Pokaż szczegóły po aktualizacji"
+          }
         }
       },
       "store": {
@@ -743,11 +762,12 @@
           "tooltip": "SIDEY · Liczba nieprzeczytanych wiadomości: {0}"
         },
         "update": {
-          "available": "Dostępna jest aktualizacja. {0}",
+          "available": "Dostępna jest wersja SIDEY {0}. Otwórz Aktualizacje, aby ją pobrać.",
           "check": "Sprawdź aktualizacje…",
           "check_failed": "Nie udało się sprawdzić dostępności aktualizacji. Spróbuj ponownie za chwilę.",
           "installed": "Aplikacja SIDEY została zaktualizowana do wersji {0}. Kliknij, aby zobaczyć zmiany.",
-          "latest": "Korzystasz z najnowszej wersji."
+          "latest": "Korzystasz z najnowszej wersji.",
+          "ready_to_install": "SIDEY {0} jest gotowy do instalacji. Otwórz Aktualizacje, aby go zainstalować."
         }
       },
       "update": {
@@ -756,7 +776,8 @@
         "download": {
           "hash_mismatch": "Nie udało się zweryfikować pliku aktualizacji. Pobierz go ponownie.",
           "in_progress": "Pobieranie aktualizacji…",
-          "progress": "Pobieranie aktualizacji… ({0}%)"
+          "progress": "Pobieranie aktualizacji… ({0}%)",
+          "ready": "Pobieranie ukończone. Gotowe do instalacji."
         },
         "failed": "Nie udało się ukończyć aktualizacji. Spróbuj ponownie za chwilę.",
         "install": {

@@ -1386,7 +1386,26 @@
           "release_notes": {
             "action": "Güncelleştirme ayrıntıları"
           },
-          "title": "Güncelleştirmeler"
+          "title": "Güncelleştirmeler",
+          "auto_download": {
+            "title": "Güncellemeleri otomatik olarak indir"
+          },
+          "available_action": {
+            "description": "İndirilebilecek yeni bir sürüm var."
+          },
+          "available_version": "SIDEY {0} kullanılabilir",
+          "download": {
+            "action": "İndir"
+          },
+          "install": {
+            "action": "Yükle"
+          },
+          "notify": {
+            "title": "Yeni güncellemeleri bildir"
+          },
+          "show_after": {
+            "title": "Güncellemeden sonra ayrıntıları göster"
+          }
         }
       },
       "store": {
@@ -1528,11 +1547,12 @@
           "tooltip": "SIDEY · {0} okunmamış mesaj"
         },
         "update": {
-          "available": "Bir güncelleştirme kullanılabilir. {0}",
+          "available": "SIDEY {0} kullanılabilir. İndirmek için Güncellemeler'i açın.",
           "check": "Güncelleştirmeleri denetle…",
           "check_failed": "Güncelleştirmeler denetlenemedi. Biraz sonra yeniden deneyin.",
           "installed": "SIDEY {0} sürümüne güncelleştirildi. Değişiklikleri görmek için tıklayın.",
-          "latest": "En son sürümü kullanıyorsunuz."
+          "latest": "En son sürümü kullanıyorsunuz.",
+          "ready_to_install": "SIDEY {0} yüklenmeye hazır. Yüklemek için Güncellemeler'i açın."
         }
       },
       "update": {
@@ -1541,7 +1561,8 @@
         "download": {
           "hash_mismatch": "Güncelleştirme dosyası doğrulanamadı. Yeniden indirin.",
           "in_progress": "Güncelleştirme indiriliyor…",
-          "progress": "Güncelleştirme indiriliyor… (%{0})"
+          "progress": "Güncelleştirme indiriliyor… (%{0})",
+          "ready": "İndirme tamamlandı. Yüklenmeye hazır."
         },
         "failed": "Güncelleştirme tamamlanamadı. Biraz sonra yeniden deneyin.",
         "install": {

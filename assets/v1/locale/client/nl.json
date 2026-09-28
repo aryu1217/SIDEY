@@ -1386,7 +1386,26 @@
           "release_notes": {
             "action": "Wat is er nieuw"
           },
-          "title": "Updates"
+          "title": "Updates",
+          "auto_download": {
+            "title": "Updates automatisch downloaden"
+          },
+          "available_action": {
+            "description": "Er is een nieuwe versie beschikbaar om te downloaden."
+          },
+          "available_version": "SIDEY {0} is beschikbaar",
+          "download": {
+            "action": "Downloaden"
+          },
+          "install": {
+            "action": "Installeren"
+          },
+          "notify": {
+            "title": "Meldingen over nieuwe updates tonen"
+          },
+          "show_after": {
+            "title": "Na het bijwerken de details tonen"
+          }
         }
       },
       "store": {
@@ -1528,11 +1547,12 @@
           "tooltip": "SIDEY · {0} ongelezen berichten"
         },
         "update": {
-          "available": "Er is een update voor SIDEY {0}.",
+          "available": "SIDEY {0} is beschikbaar. Open Updates om deze te downloaden.",
           "check": "Controleren op updates…",
           "check_failed": "Er kan niet op updates worden gecontroleerd. Probeer het straks opnieuw.",
           "installed": "De update naar SIDEY {0} is voltooid. Selecteer deze melding om de wijzigingen te bekijken.",
-          "latest": "Je hebt de nieuwste versie."
+          "latest": "Je hebt de nieuwste versie.",
+          "ready_to_install": "SIDEY {0} is klaar voor installatie. Open Updates om deze te installeren."
         }
       },
       "update": {
@@ -1541,7 +1561,8 @@
         "download": {
           "hash_mismatch": "Het gedownloade updatebestand kan niet worden geverifieerd. Download het opnieuw.",
           "in_progress": "De update wordt gedownload.",
-          "progress": "De update wordt gedownload. ({0}%)"
+          "progress": "De update wordt gedownload. ({0}%)",
+          "ready": "Download voltooid. Klaar voor installatie."
         },
         "failed": "De update kan niet worden voltooid. Probeer het straks opnieuw.",
         "install": {

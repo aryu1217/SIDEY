@@ -1386,7 +1386,26 @@
           "release_notes": {
             "action": "Noutăți"
           },
-          "title": "Actualizări"
+          "title": "Actualizări",
+          "auto_download": {
+            "title": "Descarcă automat actualizările"
+          },
+          "available_action": {
+            "description": "O versiune nouă este disponibilă pentru descărcare."
+          },
+          "available_version": "SIDEY {0} este disponibil",
+          "download": {
+            "action": "Descarcă"
+          },
+          "install": {
+            "action": "Instalează"
+          },
+          "notify": {
+            "title": "Anunță-mă despre actualizările noi"
+          },
+          "show_after": {
+            "title": "Arată detaliile după actualizare"
+          }
         }
       },
       "store": {
@@ -1528,11 +1547,12 @@
           "tooltip": "SIDEY · {0} mesaje necitite"
         },
         "update": {
-          "available": "Este disponibilă o actualizare pentru SIDEY {0}.",
+          "available": "SIDEY {0} este disponibil. Deschide Actualizări pentru a-l descărca.",
           "check": "Căutați actualizări…",
           "check_failed": "Nu s-a putut verifica dacă există actualizări. Încercați din nou mai târziu.",
           "installed": "Actualizarea la SIDEY {0} este finalizată. Selectați notificarea pentru a vedea modificările.",
-          "latest": "Aveți cea mai recentă versiune."
+          "latest": "Aveți cea mai recentă versiune.",
+          "ready_to_install": "SIDEY {0} este gata de instalare. Deschide Actualizări pentru a-l instala."
         }
       },
       "update": {
@@ -1541,7 +1561,8 @@
         "download": {
           "hash_mismatch": "Fișierul de actualizare descărcat nu a putut fi verificat. Descărcați-l din nou.",
           "in_progress": "Se descarcă actualizarea.",
-          "progress": "Se descarcă actualizarea. ({0}%)"
+          "progress": "Se descarcă actualizarea. ({0}%)",
+          "ready": "Descărcare finalizată. Gata de instalare."
         },
         "failed": "Actualizarea nu a putut fi finalizată. Încercați din nou mai târziu.",
         "install": {

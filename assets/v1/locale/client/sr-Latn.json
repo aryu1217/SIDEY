@@ -1386,7 +1386,26 @@
           "release_notes": {
             "action": "Detalji ispravke"
           },
-          "title": "Ispravke"
+          "title": "Ispravke",
+          "auto_download": {
+            "title": "Automatski preuzimaj ispravke"
+          },
+          "available_action": {
+            "description": "Nova verzija je dostupna za preuzimanje."
+          },
+          "available_version": "Dostupan je SIDEY {0}",
+          "download": {
+            "action": "Preuzmi"
+          },
+          "install": {
+            "action": "Instaliraj"
+          },
+          "notify": {
+            "title": "Obavesti me o novim ispravkama"
+          },
+          "show_after": {
+            "title": "Prikaži detalje posle ažuriranja"
+          }
         }
       },
       "store": {
@@ -1528,11 +1547,12 @@
           "tooltip": "SIDEY · Nepročitane poruke: {0}"
         },
         "update": {
-          "available": "Dostupna je ispravka. {0}",
+          "available": "SIDEY {0} je dostupan. Otvorite Ažuriranja da biste ga preuzeli.",
           "check": "Proveri da li postoje ispravke…",
           "check_failed": "Nije moguće proveriti da li postoje ispravke. Pokušajte ponovo uskoro.",
           "installed": "SIDEY je ažuriran na verziju {0}. Kliknite da biste videli promene.",
-          "latest": "Koristite najnoviju verziju."
+          "latest": "Koristite najnoviju verziju.",
+          "ready_to_install": "SIDEY {0} je spreman za instalaciju. Otvorite Ažuriranja da biste ga instalirali."
         }
       },
       "update": {
@@ -1541,7 +1561,8 @@
         "download": {
           "hash_mismatch": "Datoteka ispravke nije potvrđena. Preuzmite je ponovo.",
           "in_progress": "Preuzimanje ispravke…",
-          "progress": "Preuzimanje ispravke… ({0}%)"
+          "progress": "Preuzimanje ispravke… ({0}%)",
+          "ready": "Preuzimanje je završeno. Spremno za instalaciju."
         },
         "failed": "Ispravka nije mogla da se dovrši. Pokušajte ponovo uskoro.",
         "install": {

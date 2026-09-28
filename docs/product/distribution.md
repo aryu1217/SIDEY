@@ -50,6 +50,8 @@ App Store Connect의 primary language는 별개의 계약이다. Metadata와 IAP
 
 ## Windows
 
+Windows 앱은 시작할 때와 사용자가 요청할 때 새 버전을 확인한다. 업데이트가 있으면 설정의 업데이트 영역에 최신 버전과 다운로드 동작을 표시하고, 시스템 알림에서 그 영역으로 이동할 수 있다. 자동 다운로드를 켜면 설치 파일을 검증해 준비하지만 설치는 사용자가 시작한다. 준비된 파일은 앱을 재시작해도 재사용하며, 새 버전이 정상 시작한 뒤 정리한다. 업데이트 후 변경 내용 표시를 켜면 설정의 `업데이트 내용` 링크와 같은 페이지를 브라우저에서 연다.
+
 Windows는 native app, launcher, assets, 필요한 installer helper와 .NET·Windows App SDK
 runtime을 포함한 self-contained Setup EXE로 배포한다. 현재 설치 경로는 사용자 PC의
 shared runtime을 prerequisite로 내려받거나 설치·등록하지 않는다. Installer는 포함된

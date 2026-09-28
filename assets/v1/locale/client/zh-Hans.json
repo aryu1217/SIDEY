@@ -1386,7 +1386,26 @@
           "release_notes": {
             "action": "更新说明"
           },
-          "title": "更新"
+          "title": "更新",
+          "auto_download": {
+            "title": "自动下载更新"
+          },
+          "available_action": {
+            "description": "新版本可供下载。"
+          },
+          "available_version": "可更新至 SIDEY {0}",
+          "download": {
+            "action": "下载"
+          },
+          "install": {
+            "action": "安装"
+          },
+          "notify": {
+            "title": "有新更新时通知我"
+          },
+          "show_after": {
+            "title": "更新后显示更新详情"
+          }
         }
       },
       "store": {
@@ -1528,11 +1547,12 @@
           "tooltip": "SIDEY · {0} 条未读消息"
         },
         "update": {
-          "available": "有可用更新。{0}",
+          "available": "SIDEY {0} 可供下载。打开“更新”进行下载。",
           "check": "检查更新…",
           "check_failed": "无法检查更新，请稍后重试。",
           "installed": "SIDEY 已更新至 {0}。单击鼠标左键可查看更新内容。",
-          "latest": "已是最新版本。"
+          "latest": "已是最新版本。",
+          "ready_to_install": "SIDEY {0} 已准备好安装。打开“更新”进行安装。"
         }
       },
       "update": {
@@ -1541,7 +1561,8 @@
         "download": {
           "hash_mismatch": "无法验证更新文件，请重新下载。",
           "in_progress": "正在下载更新…",
-          "progress": "正在下载更新…({0}%)"
+          "progress": "正在下载更新…({0}%)",
+          "ready": "下载完成，可以安装。"
         },
         "failed": "无法完成更新，请稍后重试。",
         "install": {
