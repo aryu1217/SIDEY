@@ -121,11 +121,12 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
     public async Task DownloadAndLaunchInstallerAsync(
         AvailableUpdate update,
         CancellationToken cancellationToken = default,
-        IProgress<int>? progress = null)
+        IProgress<int>? progress = null,
+        bool silent = false)
     {
         await DownloadInstallerAsync(update, cancellationToken, progress);
         string installerPath = _service.InstallerPath(update.UpdateVersion!);
-        WindowsUpdateService.LaunchInstaller(installerPath);
+        WindowsUpdateService.LaunchInstaller(installerPath, silent);
     }
 
     public async Task DownloadInstallerAsync(

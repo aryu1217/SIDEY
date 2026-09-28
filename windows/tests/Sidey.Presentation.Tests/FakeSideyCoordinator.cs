@@ -362,7 +362,7 @@ internal sealed class FakeMainWindowDialogService : IMainWindowDialogService
 
 internal sealed class FakeUpdateService : IUpdateService
 {
-    public UpdatePreferences Preferences { get; private set; } = new();
+    public UpdatePreferences Preferences { get; private set; } = new(AutoInstall: false);
 
     public void SavePreferences(UpdatePreferences preferences) => Preferences = preferences;
 
@@ -384,6 +384,8 @@ internal sealed class FakeUpdateService : IUpdateService
         CancellationToken cancellationToken = default) => Task.FromResult(InstallerReady);
 
     public int InstallerLaunchCount { get; private set; }
+
+    public bool LastInstallerLaunchWasSilent { get; private set; }
 
     public int DownloadCount { get; private set; }
 
@@ -411,10 +413,12 @@ internal sealed class FakeUpdateService : IUpdateService
     public Task DownloadAndLaunchInstallerAsync(
         AvailableUpdate update,
         CancellationToken cancellationToken = default,
-        IProgress<int>? progress = null)
+        IProgress<int>? progress = null,
+        bool silent = false)
     {
         _ = update;
         InstallerLaunchCount++;
+        LastInstallerLaunchWasSilent = silent;
         return DownloadInstallerAsync(update, cancellationToken, progress);
     }
 

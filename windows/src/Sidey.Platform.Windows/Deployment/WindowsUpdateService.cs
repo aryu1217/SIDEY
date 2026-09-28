@@ -383,14 +383,18 @@ public sealed partial class WindowsUpdateService
             $"SIDEY-Windows-x64-v{updateVersion}-Setup.exe");
     }
 
-    public static void LaunchInstaller(string installerPath)
+    public static void LaunchInstaller(string installerPath, bool silent = false)
     {
         if (!OperatingSystem.IsWindows())
         {
             throw new PlatformNotSupportedException("The Windows shell is required.");
         }
 
-        Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(installerPath)
+        {
+            UseShellExecute = true,
+            Arguments = silent ? "/S /RESTARTSIDEY" : string.Empty,
+        });
     }
 
     public static bool IsNewerVersion(string candidate, string current)

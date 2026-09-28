@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
 using Sidey.Core.Abstractions;
 using Sidey.Core.Domain;
 using Sidey.Core.Localization;
@@ -1850,7 +1851,7 @@ public sealed class MainWindowViewModelTests
             AvailableUpdate = new AvailableUpdate("0.3.0-alpha.3"),
             DownloadHandler = (_, _, _) => completion.Task,
         };
-        updates.SavePreferences(new UpdatePreferences(AutoDownload: true));
+        updates.SavePreferences(new UpdatePreferences(AutoDownload: true, AutoInstall: false));
         var viewModel = new MainWindowViewModel(coordinator, new FakeMainWindowDialogService(), updates);
         int found = 0;
         int ready = 0;
@@ -1888,7 +1889,7 @@ public sealed class MainWindowViewModelTests
                 return Task.CompletedTask;
             },
         };
-        updates.SavePreferences(new UpdatePreferences(AutoDownload: true));
+        updates.SavePreferences(new UpdatePreferences(AutoDownload: true, AutoInstall: false));
         var viewModel = new MainWindowViewModel(
             coordinator, new FakeMainWindowDialogService(), updates);
         viewModel.ManualUpdateFound += _ => found++;
@@ -1924,6 +1925,76 @@ public sealed class MainWindowViewModelTests
         Assert.True(viewModel.IsUpdateReady);
         Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
         Assert.Equal(0, updates.DownloadCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AutoInstallLaunchesVerifiedUpdateWithoutInstallClick(bool cachedInstaller)
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = cachedInstaller,
+        };
+        updates.SavePreferences(new UpdatePreferences());
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int readyNotifications = 0;
+
+        await viewModel.CheckForUpdatesOnStartupAsync(
+            onUpdateReady: _ => readyNotifications++);
+
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.Equal(1, updates.InstallerLaunchCount);
+        Assert.True(updates.LastInstallerLaunchWasSilent);
+        Assert.Equal(0, readyNotifications);
+        Assert.Equal(cachedInstaller ? 1 : 2, updates.DownloadCount);
+    }
+
+    [Fact]
+    public async Task AutoInstallDownloadFailureDoesNotLaunchInstaller()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            DownloadHandler = (_, _, _) => throw new IOException("download failed"),
+        };
+        updates.SavePreferences(new UpdatePreferences(AutoInstall: true));
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+
+        await viewModel.CheckForUpdatesOnStartupAsync();
+
+        Assert.False(viewModel.IsUpdateReady);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+        Assert.True(viewModel.DownloadUpdateCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task CancelledAutoInstallKeepsManualInstallReadyAndDisablesAutomaticRetry()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = true,
+            DownloadHandler = (_, _, _) => throw new Win32Exception(1223),
+        };
+        updates.SavePreferences(new UpdatePreferences(AutoInstall: true));
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int readyNotifications = 0;
+
+        await viewModel.CheckForUpdatesOnStartupAsync(
+            onUpdateReady: _ => readyNotifications++);
+
+        Assert.False(updates.Preferences.AutoInstall);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.Equal(1, readyNotifications);
+        Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
     }
 
     [Fact]
@@ -1965,10 +2036,38 @@ public sealed class MainWindowViewModelTests
             coordinator, new FakeMainWindowDialogService(), updates);
 
         viewModel.AutoDownloadUpdates = true;
+        viewModel.AutoInstallUpdates = true;
         viewModel.NotifyWhenUpdateAvailable = false;
         viewModel.ShowReleaseNotesAfterUpdate = false;
 
-        Assert.Equal(new UpdatePreferences(true, false, false), updates.Preferences);
+        Assert.Equal(new UpdatePreferences(true, false, false, true), updates.Preferences);
+    }
+
+    [Fact]
+    public void ExistingUpdatePreferencesUseEnabledAutoInstallDefault()
+    {
+        const string ExistingPreferences =
+            "{\"AutoDownload\":true,\"NotifyWhenAvailable\":false,\"ShowReleaseNotesAfterUpdate\":true}";
+
+        UpdatePreferences? preferences = JsonSerializer.Deserialize<UpdatePreferences>(
+            ExistingPreferences);
+
+        Assert.NotNull(preferences);
+        Assert.True(preferences.AutoDownload);
+        Assert.True(preferences.AutoInstall);
+    }
+
+    [Fact]
+    public void ExplicitAutoInstallOptOutRemainsDisabled()
+    {
+        const string Preferences =
+            "{\"AutoDownload\":true,\"AutoInstall\":false,\"NotifyWhenAvailable\":false,\"ShowReleaseNotesAfterUpdate\":true}";
+
+        UpdatePreferences? preferences = JsonSerializer.Deserialize<UpdatePreferences>(
+            Preferences);
+
+        Assert.NotNull(preferences);
+        Assert.False(preferences.AutoInstall);
     }
 
     [Fact]

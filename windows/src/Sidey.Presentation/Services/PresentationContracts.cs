@@ -22,7 +22,8 @@ public sealed record AvailableUpdate(
 public sealed record UpdatePreferences(
     bool AutoDownload = false,
     bool NotifyWhenAvailable = true,
-    bool ShowReleaseNotesAfterUpdate = true);
+    bool ShowReleaseNotesAfterUpdate = true,
+    bool AutoInstall = true);
 
 public interface IUpdateService
 {
@@ -52,7 +53,8 @@ public interface IUpdateService
     public Task DownloadAndLaunchInstallerAsync(
         AvailableUpdate update,
         CancellationToken cancellationToken = default,
-        IProgress<int>? progress = null);
+        IProgress<int>? progress = null,
+        bool silent = false);
 
     public Task OpenReleaseNotesAsync(Uri releaseNotesUri);
 }

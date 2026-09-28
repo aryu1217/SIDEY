@@ -210,6 +210,7 @@ LangString RegistrationFailed ${LANG_KOREAN} "SIDEY 바로가기 또는 Windows 
 !include "${__FILEDIR__}\InstallerErrors.nsh"
 
 Var InstallState
+Var RestartSideyAfterSilentUpgrade
 Var InstalledVersion
 Var VersionResult
 Var MaintenanceDialog
@@ -266,6 +267,7 @@ Function .onInit
   SetRegView 64
   SetShellVarContext all
   StrCpy $InstallerCompletedCleanly 0
+  StrCpy $RestartSideyAfterSilentUpgrade 0
   StrCpy $LegacyRelocation 0
   ReadRegStr $LANGUAGE HKLM "${PRODUCT_REGISTRY_KEY}" "Language"
   ${If} $LANGUAGE == ""
@@ -355,6 +357,19 @@ Function .onInit
       StrCpy $InstallState "same"
     ${Else}
       StrCpy $InstallState "upgrade"
+    ${EndIf}
+  ${EndIf}
+
+  ; Only an explicit updater launch may restart SIDEY after silent setup.
+  ; Ordinary /S installs and interactive upgrades retain their own behavior.
+  ${If} ${Silent}
+  ${AndIf} $InstallState == "upgrade"
+    ${GetParameters} $0
+    ClearErrors
+    ${GetOptions} $0 "/RESTARTSIDEY" $1
+    ${IfNot} ${Errors}
+    ${AndIf} $1 == ""
+      StrCpy $RestartSideyAfterSilentUpgrade 1
     ${EndIf}
   ${EndIf}
 FunctionEnd
@@ -840,6 +855,19 @@ Function .onInstFailed
     StrCpy $InstallerErrorMessage "$(TransactionStateUnknown)"
     Call ShowLifecycleError
     SetErrorLevel 1
+  ${ElseIf} $RestartSideyAfterSilentUpgrade == 1
+    ; A completed rollback restored the previous app; return it to the user.
+    StrCpy $2 $INSTDIR
+    ${If} $LegacyRelocation == 1
+      StrCpy $2 $LegacyInstallDirectory
+    ${EndIf}
+    ExecWait '"$2\Runtime\SIDEY.UninstallHelper.exe" --launch-sidey-as-desktop-user' $1
+  ${EndIf}
+FunctionEnd
+
+Function .onInstSuccess
+  ${If} $RestartSideyAfterSilentUpgrade == 1
+    Call LaunchSideyAsDesktopUser
   ${EndIf}
 FunctionEnd
 

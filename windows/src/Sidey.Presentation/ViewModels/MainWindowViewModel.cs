@@ -343,6 +343,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public partial bool AutoDownloadUpdates { get; set; }
 
     [ObservableProperty]
+    public partial bool AutoInstallUpdates { get; set; }
+
+    [ObservableProperty]
     public partial bool NotifyWhenUpdateAvailable { get; set; }
 
     [ObservableProperty]
@@ -368,6 +371,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool HasAvailableUpdate => !string.IsNullOrEmpty(AvailableVersionText);
 
     partial void OnAutoDownloadUpdatesChanged(bool value) => SaveUpdatePreferences();
+    partial void OnAutoInstallUpdatesChanged(bool value) => SaveUpdatePreferences();
     partial void OnNotifyWhenUpdateAvailableChanged(bool value) => SaveUpdatePreferences();
     partial void OnShowReleaseNotesAfterUpdateChanged(bool value) => SaveUpdatePreferences();
 
@@ -380,7 +384,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _updates.SavePreferences(new UpdatePreferences(
                 AutoDownloadUpdates,
                 NotifyWhenUpdateAvailable,
-                ShowReleaseNotesAfterUpdate));
+                ShowReleaseNotesAfterUpdate,
+                AutoInstallUpdates));
         }
         catch (Exception exception)
         {
@@ -395,6 +400,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             AutoDownloadUpdates = preferences.AutoDownload;
+            AutoInstallUpdates = preferences.AutoInstall;
             NotifyWhenUpdateAvailable = preferences.NotifyWhenAvailable;
             ShowReleaseNotesAfterUpdate = preferences.ShowReleaseNotesAfterUpdate;
         }
@@ -715,12 +721,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             RaiseNotice(I18n.Format("update.available", update.Version), NoticeKind.Informational);
             ManualUpdateFound?.Invoke(update);
-            if (_updates.Preferences.AutoDownload && !IsUpdateReady)
+            if ((_updates.Preferences.AutoDownload || _updates.Preferences.AutoInstall) && !IsUpdateReady)
             {
                 await DownloadUpdateAsync(update);
-                if (IsUpdateReady)
-                    ManualUpdateReady?.Invoke(update);
             }
+            if (IsUpdateReady
+                && (!_updates.Preferences.AutoInstall
+                    || !await LaunchInstallerAsync(update, silent: true)))
+                ManualUpdateReady?.Invoke(update);
         }
         catch (Exception)
         {
@@ -752,18 +760,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (update is not null)
             {
                 IsUpdateReady = await _updates.IsInstallerReadyAsync(update);
-                if (IsUpdateReady)
-                    onUpdateReady?.Invoke(update);
-                else
+                if (!IsUpdateReady)
                 {
                     onUpdateFound?.Invoke(update);
-                    if (_updates.Preferences.AutoDownload)
-                    {
+                    if (_updates.Preferences.AutoDownload || _updates.Preferences.AutoInstall)
                         await DownloadUpdateAsync(update);
-                        if (IsUpdateReady)
-                            onUpdateReady?.Invoke(update);
-                    }
                 }
+                if (IsUpdateReady
+                    && (!_updates.Preferences.AutoInstall
+                        || !await LaunchInstallerAsync(update, silent: true)))
+                    onUpdateReady?.Invoke(update);
             }
             return update;
         }
@@ -831,15 +837,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_lastAvailableUpdate is not { } update)
             return;
+        await LaunchInstallerAsync(update, silent: false);
+    }
+
+    private async Task<bool> LaunchInstallerAsync(AvailableUpdate update, bool silent)
+    {
         IsUpdateTransferInProgress = true;
         try
         {
-            await _updates.DownloadAndLaunchInstallerAsync(update);
+            await _updates.DownloadAndLaunchInstallerAsync(update, silent: silent);
             RaiseNotice(I18n.Get("update.install.launched"), NoticeKind.Success);
+            return true;
         }
         catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
         {
             RaiseNotice(I18n.Get("update.install.cancelled"), NoticeKind.Informational);
+            if (silent)
+                AutoInstallUpdates = false;
         }
         catch (Win32Exception)
         {
@@ -851,6 +865,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             RaiseNotice(I18n.Get("update.failed"), NoticeKind.Error);
         }
         finally { IsUpdateTransferInProgress = false; }
+        return false;
     }
 
     [RelayCommand]

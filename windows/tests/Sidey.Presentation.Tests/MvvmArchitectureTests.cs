@@ -503,6 +503,7 @@ public sealed class MvvmArchitectureTests
         foreach (string preference in new[]
         {
             "AutoDownloadUpdates",
+            "AutoInstallUpdates",
             "NotifyWhenUpdateAvailable",
             "ShowReleaseNotesAfterUpdate",
         })
