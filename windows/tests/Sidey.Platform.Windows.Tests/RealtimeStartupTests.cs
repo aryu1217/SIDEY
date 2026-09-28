@@ -927,6 +927,73 @@ public sealed class RealtimeStartupTests
     }
 
     [Fact]
+    public async Task FourRoomReconnectJoinsOneRoomAtATimeDespiteSlowReplies()
+    {
+        Guid[] roomIds = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
+        Guid[] orderedRoomIds = [.. roomIds.Order()];
+        Dictionary<Guid, long> rooms = roomIds.ToDictionary(roomId => roomId, _ => 1L);
+        await using var server = new LocalServer(async (socket, connection, token) =>
+        {
+            Task<JsonElement>? pendingNextJoin = null;
+            foreach (Guid roomId in orderedRoomIds)
+            {
+                JsonElement first = pendingNextJoin is null
+                    ? await ReadAsync(socket, token)
+                    : await pendingNextJoin;
+                JsonElement second = await ReadAsync(socket, token);
+                Assert.Equal("phx_join", first.GetProperty("event").GetString());
+                Assert.Equal("phx_join", second.GetProperty("event").GetString());
+                string[] expectedTopics = [.. RealtimeEpochSubscriptionPlan.Descriptors(roomId, 1)
+                    .Select(descriptor => descriptor.PhoenixTopic)
+                    .Order(StringComparer.Ordinal)];
+                string[] actualTopics = [.. new[] { first, second }
+                    .Select(join => join.GetProperty("topic").GetString()!)
+                    .Order(StringComparer.Ordinal)];
+                Assert.Equal(expectedTopics, actualTopics);
+
+                pendingNextJoin = connection > 1 && roomId != orderedRoomIds[^1]
+                    ? ReadAsync(socket, token)
+                    : null;
+                if (connection > 1)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(700), token);
+                }
+
+                await ReplyAsync(socket, first, token);
+                if (connection > 1)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(700), token);
+                    Assert.True(pendingNextJoin is null || !pendingNextJoin.IsCompleted,
+                        "The next room joined before both current room channels were acknowledged.");
+                }
+
+                await ReplyAsync(socket, second, token);
+            }
+        });
+        await using SupabaseRealtimeTransport transport = CreateTransport(
+            server,
+            watchdogInterval: TimeSpan.FromSeconds(30));
+        await transport.SynchronizeAsync(rooms, roomIds[0], PresenceState.Online, server.Token);
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+
+        transport.RequestReconnect();
+        Assert.False(transport.ConnectionStatus.TransportConnected);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(9));
+        await foreach (BackendEvent item in transport.ReadEventsAsync(deadline.Token))
+        {
+            if (item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: true }
+                && transport.ConnectionStatus.ActiveRoomTransportConnected
+                && server.ConnectionCount == 2)
+            {
+                break;
+            }
+        }
+
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+        Assert.Equal(2, server.ConnectionCount);
+    }
+
+    [Fact]
     public async Task RepeatedAccessRejectionPausesAcrossWatchdogAndNetworkHintsUntilManualRetry()
     {
         await using var server = new LocalServer(async (socket, connection, token) =>

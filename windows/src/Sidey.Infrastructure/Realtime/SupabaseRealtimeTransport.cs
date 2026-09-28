@@ -205,8 +205,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 : delta.Joins;
             try
             {
-                await Task.WhenAll(joins.Select(descriptor => JoinTopicAsync(descriptor, cancellationToken)))
-                    .ConfigureAwait(false);
+                await JoinTopicsAsync(joins, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is WebSocketException or TimeoutException
                 or RealtimeSubscriptionException or HttpRequestException or UnauthorizedAccessException
@@ -432,6 +431,19 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 ? $" status={(int)statusCode}"
                 : string.Empty;
         return $"Realtime WebSocket connection failed: category={category} type={current.GetType().Name}{detail}";
+    }
+
+    private async Task JoinTopicsAsync(
+        IEnumerable<RealtimeRoomDescriptor> descriptors,
+        CancellationToken cancellationToken)
+    {
+        // Private topic replies can arrive one by one. Complete both channels for
+        // each room before starting the next room so later rooms get a fresh timeout.
+        foreach (IGrouping<Guid, RealtimeRoomDescriptor> room in descriptors.GroupBy(descriptor => descriptor.RoomId))
+        {
+            await Task.WhenAll(room.Select(descriptor => JoinTopicAsync(descriptor, cancellationToken)))
+                .ConfigureAwait(false);
+        }
     }
 
     private async Task JoinTopicAsync(
@@ -837,9 +849,10 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 {
                     await DisconnectSocketWithinGateAsync().ConfigureAwait(false);
                     await EnsureConnectedWithinGateAsync(cancellationToken).ConfigureAwait(false);
-                    await Task.WhenAll(_desiredRoomEpochs.OrderBy(pair => pair.Key)
-                        .SelectMany(room => RealtimeEpochSubscriptionPlan.Descriptors(room.Key, room.Value))
-                        .Select(descriptor => JoinTopicAsync(descriptor, cancellationToken)))
+                    await JoinTopicsAsync(
+                        _desiredRoomEpochs.OrderBy(pair => pair.Key)
+                            .SelectMany(room => RealtimeEpochSubscriptionPlan.Descriptors(room.Key, room.Value)),
+                        cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
