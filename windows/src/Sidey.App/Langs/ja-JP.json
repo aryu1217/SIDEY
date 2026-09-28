@@ -619,6 +619,13 @@
       "title": "テーマ"
     },
     "update": {
+      "auto_download": {
+        "title": "更新を自動的にダウンロード"
+      },
+      "available_action": {
+        "description": "新しいバージョンをダウンロードできます。"
+      },
+      "available_version": "SIDEY {0} を利用できます",
       "check": {
         "action": "アップデートを確認"
       },
@@ -626,14 +633,26 @@
         "tooltip": "新しいバージョンがあるか確認します。"
       },
       "description": "新しいバージョンがあるか確認できます。",
+      "download": {
+        "action": "ダウンロード"
+      },
+      "install": {
+        "action": "インストール"
+      },
       "last_checked": {
         "never": "まだ確認していません",
         "today": "今日 {0}",
         "value": "最終確認：{0}",
         "yesterday": "昨日 {0}"
       },
+      "notify": {
+        "title": "新しい更新の通知を表示"
+      },
       "release_notes": {
         "action": "更新内容"
+      },
+      "show_after": {
+        "title": "更新後に更新内容を表示"
       },
       "title": "アップデート"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · 未読 {0}件"
     },
     "update": {
-      "available": "アップデートがあります。{0}",
+      "available": "SIDEY {0} を利用できます。［更新］を開いてダウンロードしてください。",
       "check": "アップデートを確認…",
       "check_failed": "アップデートを確認できませんでした。しばらくしてからお試しください。",
       "installed": "SIDEY {0} へのアップデートが完了しました。左クリックして変更内容を確認できます。",
-      "latest": "最新バージョンです。"
+      "latest": "最新バージョンです。",
+      "ready_to_install": "SIDEY {0} をインストールできます。［更新］を開いてインストールしてください。"
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "アップデートファイルを確認できませんでした。もう一度ダウンロードしてください。",
       "in_progress": "アップデートをダウンロード中…",
-      "progress": "アップデートをダウンロード中…（{0}%）"
+      "progress": "アップデートをダウンロード中…（{0}%）",
+      "ready": "ダウンロードが完了しました。インストールできます。"
     },
     "failed": "アップデートを完了できませんでした。しばらくしてからお試しください。",
     "install": {

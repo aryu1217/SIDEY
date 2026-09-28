@@ -13,6 +13,7 @@ internal enum TrayUpdateNotification
     Latest = 2,
     Failed = 3,
     Installed = 4,
+    ReadyToInstall = 5,
 }
 
 public enum TrayCommand
@@ -28,6 +29,7 @@ public enum TrayCommand
     Settings = 1008,
     Store = 1009,
     ReleaseNotes = 1010,
+    OpenUpdates = 1011,
     Exit = 1099,
 }
 
@@ -186,6 +188,13 @@ public sealed class TrayIconService : IDisposable
         PostUpdateNotification(TrayUpdateNotification.Installed);
     }
 
+    public void NotifyUpdateReadyToInstall(string version)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(version);
+        _availableUpdateVersion = version;
+        PostUpdateNotification(TrayUpdateNotification.ReadyToInstall);
+    }
+
     private void PostUpdateNotification(TrayUpdateNotification notification)
     {
         if (_window != nint.Zero)
@@ -210,13 +219,20 @@ public sealed class TrayIconService : IDisposable
             TrayUpdateNotification.Installed => I18n.Format(
                 "tray.update.installed",
                 availableVersion),
+            TrayUpdateNotification.ReadyToInstall => I18n.Format(
+                "tray.update.ready_to_install",
+                availableVersion),
             _ => throw new ArgumentOutOfRangeException(nameof(notification)),
         };
 
     internal static TrayCommand NotificationClickCommand(TrayUpdateNotification notification) =>
-        notification == TrayUpdateNotification.Installed
-            ? TrayCommand.ReleaseNotes
-            : TrayCommand.Open;
+        notification switch
+        {
+            TrayUpdateNotification.Available or TrayUpdateNotification.ReadyToInstall =>
+                TrayCommand.OpenUpdates,
+            TrayUpdateNotification.Installed => TrayCommand.ReleaseNotes,
+            _ => TrayCommand.Open,
+        };
 
     public void Dispose()
     {
@@ -769,7 +785,8 @@ public sealed class TrayIconService : IDisposable
                     if (notification is not TrayUpdateNotification.Available
                         and not TrayUpdateNotification.Latest
                         and not TrayUpdateNotification.Failed
-                        and not TrayUpdateNotification.Installed)
+                        and not TrayUpdateNotification.Installed
+                        and not TrayUpdateNotification.ReadyToInstall)
                     {
                         return NativeMethods.DefWindowProc(window, message, wParam, lParam);
                     }

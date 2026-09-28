@@ -51,7 +51,7 @@ public sealed class TrayMenuStateTests
 
     [Theory]
     [InlineData((int)TrayUpdateNotification.Latest, "", "최신 버전입니다.")]
-    [InlineData((int)TrayUpdateNotification.Available, "1.2.2", "SIDEY 1.2.2 업데이트가 있습니다.")]
+    [InlineData((int)TrayUpdateNotification.Available, "1.2.2", "SIDEY 1.2.2 업데이트가 있습니다. 업데이트에서 다운로드하세요.")]
     [InlineData(
         (int)TrayUpdateNotification.Failed,
         "",
@@ -70,12 +70,24 @@ public sealed class TrayMenuStateTests
             TrayIconService.UpdateNotificationBody((TrayUpdateNotification)notification, version));
     }
 
+    [Fact]
+    public void DownloadedUpdateNotificationSaysInstallationIsReady()
+    {
+        string body = TrayIconService.UpdateNotificationBody(
+            TrayUpdateNotification.ReadyToInstall,
+            "1.2.2");
+
+        Assert.Contains("1.2.2", body);
+        Assert.Contains("설치", body);
+    }
+
     [Theory]
-    [InlineData((int)TrayUpdateNotification.Available, TrayCommand.Open)]
+    [InlineData((int)TrayUpdateNotification.Available, TrayCommand.OpenUpdates)]
+    [InlineData((int)TrayUpdateNotification.ReadyToInstall, TrayCommand.OpenUpdates)]
     [InlineData((int)TrayUpdateNotification.Latest, TrayCommand.Open)]
     [InlineData((int)TrayUpdateNotification.Failed, TrayCommand.Open)]
     [InlineData((int)TrayUpdateNotification.Installed, TrayCommand.ReleaseNotes)]
-    public void CompletedUpdateNotificationOpensReleaseNotes(
+    public void UpdateNotificationOpensTheRelevantDestination(
         int notification,
         TrayCommand expected)
     {

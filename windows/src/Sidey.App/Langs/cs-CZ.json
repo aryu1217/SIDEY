@@ -619,6 +619,13 @@
       "title": "Motiv"
     },
     "update": {
+      "auto_download": {
+        "title": "Automaticky stahovat aktualizace"
+      },
+      "available_action": {
+        "description": "Je k dispozici nová verze ke stažení."
+      },
+      "available_version": "Je k dispozici SIDEY {0}",
       "check": {
         "action": "Vyhledat aktualizace"
       },
@@ -626,14 +633,26 @@
         "tooltip": "Vyhledat novější verzi."
       },
       "description": "Zjistěte, jestli je dostupná novější verze.",
+      "download": {
+        "action": "Stáhnout"
+      },
+      "install": {
+        "action": "Nainstalovat"
+      },
       "last_checked": {
         "never": "Poslední kontrola: nikdy",
         "today": "Dnes v {0}",
         "value": "Poslední kontrola: {0}",
         "yesterday": "Včera v {0}"
       },
+      "notify": {
+        "title": "Upozorňovat na nové aktualizace"
+      },
       "release_notes": {
         "action": "Podrobnosti aktualizace"
+      },
+      "show_after": {
+        "title": "Po aktualizaci zobrazit podrobnosti"
       },
       "title": "Aktualizace"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · Nepřečtené zprávy: {0}"
     },
     "update": {
-      "available": "Je dostupná aktualizace. {0}",
+      "available": "SIDEY {0} je k dispozici. Otevřete Aktualizace a stáhněte jej.",
       "check": "Vyhledat aktualizace…",
       "check_failed": "Aktualizace se nepodařilo vyhledat. Zkuste to za chvíli.",
       "installed": "SIDEY byl aktualizován na verzi {0}. Kliknutím zobrazíte změny.",
-      "latest": "Používáte nejnovější verzi."
+      "latest": "Používáte nejnovější verzi.",
+      "ready_to_install": "SIDEY {0} je připraven k instalaci. Otevřete Aktualizace a nainstalujte jej."
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "Soubor aktualizace se nepodařilo ověřit. Stáhněte ho znovu.",
       "in_progress": "Stahování aktualizace…",
-      "progress": "Stahování aktualizace… ({0} %)"
+      "progress": "Stahování aktualizace… ({0} %)",
+      "ready": "Stahování dokončeno. Připraveno k instalaci."
     },
     "failed": "Aktualizaci se nepodařilo dokončit. Zkuste to za chvíli.",
     "install": {

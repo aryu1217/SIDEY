@@ -488,6 +488,26 @@ public sealed class MvvmArchitectureTests
             updateSection.Descendants(),
             element => element.Attribute("Text")?.Value
                 == "{Binding Value, Source={i18n:I18n Key=settings.update.title}, Mode=OneWay}");
+
+        foreach (string preference in new[]
+        {
+            "AutoDownloadUpdates",
+            "NotifyWhenUpdateAvailable",
+            "ShowReleaseNotesAfterUpdate",
+        })
+        {
+            Assert.Contains(view.Descendants(), element =>
+                element.Name.LocalName == "CheckBox"
+                && element.Attribute("IsChecked")?.Value
+                    == $"{{Binding {preference}, Mode=TwoWay}}");
+        }
+
+        foreach (string action in new[] { "DownloadUpdateCommand", "InstallUpdateCommand" })
+        {
+            Assert.Contains(view.Descendants(), element =>
+                element.Name.LocalName == "Button"
+                && element.Attribute("Command")?.Value == $"{{Binding {action}}}");
+        }
     }
 
     [Theory]

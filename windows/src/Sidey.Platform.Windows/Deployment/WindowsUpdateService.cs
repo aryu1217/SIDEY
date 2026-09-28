@@ -263,14 +263,16 @@ public sealed partial class WindowsUpdateService
         IProgress<int>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
-        string updateDirectory = Path.Combine(
-            _updateCacheDirectory,
-            manifest.UpdateVersion);
+        string installerPath = InstallerPath(manifest.UpdateVersion);
+        string updateDirectory = Path.GetDirectoryName(installerPath)!;
         Directory.CreateDirectory(updateDirectory);
-        string installerPath = Path.Combine(
-            updateDirectory,
-            $"SIDEY-Windows-x64-v{manifest.UpdateVersion}-Setup.exe");
         string partialPath = $"{installerPath}.download";
+
+        if (await IsInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
+        {
+            progress?.Report(100);
+            return installerPath;
+        }
 
         try
         {
@@ -347,6 +349,38 @@ public sealed partial class WindowsUpdateService
             File.Delete(partialPath);
             throw;
         }
+    }
+
+    public async Task<bool> IsInstallerReadyAsync(
+        WindowsUpdateManifest manifest,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        string installerPath = InstallerPath(manifest.UpdateVersion);
+        try
+        {
+            if (!File.Exists(installerPath)
+                || (File.GetAttributes(installerPath) & FileAttributes.ReparsePoint) != 0)
+            {
+                return false;
+            }
+
+            await using FileStream cached = File.OpenRead(installerPath);
+            string cachedHash = Convert.ToHexStringLower(
+                await SHA256.HashDataAsync(cached, cancellationToken).ConfigureAwait(false));
+            return StringComparer.OrdinalIgnoreCase.Equals(cachedHash, manifest.Sha256);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    public string InstallerPath(string updateVersion)
+    {
+        _ = ParsedVersion.Parse(updateVersion);
+        return Path.Combine(
+            _updateCacheDirectory,
+            updateVersion,
+            $"SIDEY-Windows-x64-v{updateVersion}-Setup.exe");
     }
 
     public static void LaunchInstaller(string installerPath)

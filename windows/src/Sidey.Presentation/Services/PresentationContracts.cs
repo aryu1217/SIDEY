@@ -19,6 +19,11 @@ public sealed record AvailableUpdate(
     string? UpdateVersion = null,
     string? UpdateTag = null);
 
+public sealed record UpdatePreferences(
+    bool AutoDownload = false,
+    bool NotifyWhenAvailable = true,
+    bool ShowReleaseNotesAfterUpdate = true);
+
 public interface IUpdateService
 {
     public string CurrentVersion { get; }
@@ -29,7 +34,20 @@ public interface IUpdateService
 
     public Uri CurrentReleaseNotesUri { get; }
 
+    public UpdatePreferences Preferences { get; }
+
+    public void SavePreferences(UpdatePreferences preferences);
+
     public Task<AvailableUpdate?> CheckAsync(CancellationToken cancellationToken = default);
+
+    public Task<bool> IsInstallerReadyAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default);
+
+    public Task DownloadInstallerAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default,
+        IProgress<int>? progress = null);
 
     public Task DownloadAndLaunchInstallerAsync(
         AvailableUpdate update,

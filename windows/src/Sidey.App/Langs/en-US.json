@@ -619,6 +619,13 @@
       "title": "Theme"
     },
     "update": {
+      "auto_download": {
+        "title": "Download updates automatically"
+      },
+      "available_action": {
+        "description": "A new version is available to download."
+      },
+      "available_version": "SIDEY {0} is available",
       "check": {
         "action": "Check for updates"
       },
@@ -626,14 +633,26 @@
         "tooltip": "Check for a newer version."
       },
       "description": "Check for a newer version.",
+      "download": {
+        "action": "Download"
+      },
+      "install": {
+        "action": "Install"
+      },
       "last_checked": {
         "never": "Last checked: never",
         "today": "Today at {0}",
         "value": "Last checked: {0}",
         "yesterday": "Yesterday at {0}"
       },
+      "notify": {
+        "title": "Notify me about new updates"
+      },
       "release_notes": {
         "action": "Update details"
+      },
+      "show_after": {
+        "title": "Show update details after updating"
       },
       "title": "Updates"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · {0} unread messages"
     },
     "update": {
-      "available": "An update is available. {0}",
+      "available": "SIDEY {0} is available. Open Updates to download it.",
       "check": "Check for updates…",
       "check_failed": "Couldn't check for updates. Try again shortly.",
       "installed": "SIDEY was updated to {0}. Click to see what changed.",
-      "latest": "You're using the latest version."
+      "latest": "You're using the latest version.",
+      "ready_to_install": "SIDEY {0} is ready to install. Open Updates to install it."
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "We couldn't verify the update file. Download it again.",
       "in_progress": "Downloading update…",
-      "progress": "Downloading update… ({0}%)"
+      "progress": "Downloading update… ({0}%)",
+      "ready": "Download complete. Ready to install."
     },
     "failed": "The update couldn’t be completed. Try again shortly.",
     "install": {

@@ -619,6 +619,13 @@
       "title": "테마"
     },
     "update": {
+      "auto_download": {
+        "title": "업데이트를 자동으로 다운로드"
+      },
+      "available_action": {
+        "description": "새 버전을 다운로드할 수 있습니다."
+      },
+      "available_version": "SIDEY {0} 업데이트가 있습니다",
       "check": {
         "action": "업데이트 확인"
       },
@@ -626,14 +633,26 @@
         "tooltip": "새 버전이 있는지 확인합니다."
       },
       "description": "새 버전이 있는지 확인할 수 있습니다.",
+      "download": {
+        "action": "다운로드"
+      },
+      "install": {
+        "action": "설치"
+      },
       "last_checked": {
         "never": "마지막 확인: 아직 확인하지 않음",
         "today": "오늘 {0}",
         "value": "마지막 확인: {0}",
         "yesterday": "어제 {0}"
       },
+      "notify": {
+        "title": "새 업데이트 알림 표시"
+      },
       "release_notes": {
         "action": "업데이트 내용"
+      },
+      "show_after": {
+        "title": "업데이트 후 업데이트 내용 표시"
       },
       "title": "업데이트"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · 읽지 않은 메시지 {0}개"
     },
     "update": {
-      "available": "SIDEY {0} 업데이트가 있습니다.",
+      "available": "SIDEY {0} 업데이트가 있습니다. 업데이트에서 다운로드하세요.",
       "check": "업데이트 확인…",
       "check_failed": "업데이트를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "installed": "SIDEY {0} 업데이트를 완료했습니다. 왼쪽 클릭하여 변경 내용을 확인해 주세요.",
-      "latest": "최신 버전입니다."
+      "latest": "최신 버전입니다.",
+      "ready_to_install": "SIDEY {0} 업데이트를 설치할 준비가 되었습니다. 설치하시겠습니까?"
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "다운로드한 업데이트 파일을 확인하지 못했습니다. 다시 다운로드해 주세요.",
       "in_progress": "업데이트를 다운로드하는 중입니다.",
-      "progress": "업데이트를 다운로드하는 중입니다. ({0}%)"
+      "progress": "업데이트를 다운로드하는 중입니다. ({0}%)",
+      "ready": "다운로드가 완료되었습니다. 설치할 준비가 되었습니다."
     },
     "failed": "업데이트를 진행하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     "install": {

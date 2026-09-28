@@ -87,7 +87,8 @@ public sealed class WindowsUpdateServiceTests
         {
             Content = new ByteArrayContent(installerBytes),
         };
-        using var client = new HttpClient(new StubHandler(response));
+        var handler = new StubHandler(response);
+        using var client = new HttpClient(handler);
         WindowsUpdateService service = CreateService(client, "1.0.10", "1.0.10");
         var manifest = new WindowsUpdateManifest(
             "production",
@@ -109,6 +110,12 @@ public sealed class WindowsUpdateServiceTests
             Assert.False(File.Exists($"{expectedPath}.download"));
             Assert.Equal(0, reportedPercentages.First());
             Assert.Equal(100, reportedPercentages.Last());
+            Assert.True(await service.IsInstallerReadyAsync(manifest));
+            Assert.Equal(expectedPath, await service.DownloadInstallerAsync(manifest));
+            Assert.Equal(1, handler.RequestCount);
+
+            await File.WriteAllTextAsync(expectedPath, "incomplete replacement");
+            Assert.False(await service.IsInstallerReadyAsync(manifest));
         }
         finally
         {
@@ -393,12 +400,15 @@ public sealed class WindowsUpdateServiceTests
 
     private sealed class StubHandler(HttpResponseMessage response) : HttpMessageHandler
     {
+        public int RequestCount { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             _ = request;
             _ = cancellationToken;
+            RequestCount++;
             return Task.FromResult(response);
         }
     }

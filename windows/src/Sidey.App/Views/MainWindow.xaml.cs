@@ -47,6 +47,7 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
     private bool _refreshingThemeSelection;
     private Action? _cancelHotkeyEditor;
     private string? _pageRequestedAfterHotkeyEditor;
+    private bool _scrollToUpdatesAfterHotkeyEditor;
     private string _currentNavigationTag = "profile";
     private readonly Stack<string> _navigationHistory = new();
     private readonly WindowsMinimumSizeController _minimumSizeController;
@@ -453,7 +454,12 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
             if (_pageRequestedAfterHotkeyEditor is { } requestedPage)
             {
                 _pageRequestedAfterHotkeyEditor = null;
+                bool scrollToUpdates = _scrollToUpdatesAfterHotkeyEditor
+                    && requestedPage == "about";
+                _scrollToUpdatesAfterHotkeyEditor = false;
                 ShowPage(requestedPage);
+                if (scrollToUpdates)
+                    ShowUpdates();
             }
         }
     }
@@ -725,10 +731,17 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
         }
     }
 
-    public void ShowUpdatesAndCheck()
+    public void ShowUpdates()
     {
         if (_isClosed)
         {
+            return;
+        }
+
+        if (_cancelHotkeyEditor is not null)
+        {
+            _scrollToUpdatesAfterHotkeyEditor = true;
+            ShowPage("about");
             return;
         }
 
@@ -741,17 +754,14 @@ public sealed partial class MainWindow : Window, IMainWindowDialogService
             }
 
             AboutPage.UpdateLayout();
-            UpdateSection.StartBringIntoView(new BringIntoViewOptions
-            {
-                AnimationDesired = _coordinator.AnimationsEnabled,
-                VerticalAlignmentRatio = 0,
-            });
+            double offset = UpdateSection.TransformToVisual(AboutPageContent)
+                .TransformPoint(new Windows.Foundation.Point()).Y;
+            AboutPage.ChangeView(
+                null,
+                Math.Clamp(offset, 0, AboutPage.ScrollableHeight),
+                null,
+                disableAnimation: true);
         });
-
-        if (ViewModel.CheckForUpdatesCommand.CanExecute(null))
-        {
-            ViewModel.CheckForUpdatesCommand.Execute(null);
-        }
     }
 
     public async Task<bool> ConfirmInviteCodeRotationAsync()

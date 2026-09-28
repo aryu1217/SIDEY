@@ -41,12 +41,14 @@ public partial class App : Application
 #endif
     private bool _startupUpdateCheckStarted;
     private bool _trayUpdateCheckInProgress;
+    private bool _releaseNotesOpenedAfterUpdate;
     private bool _monitorConnectionFailures;
     private bool _connectionFailureNotificationArmed = true;
     private DateTimeOffset? _lastConnectionFailureNotificationAt;
     private DispatcherQueueTimer? _connectionFailureNotificationTimer;
     private DispatcherQueueTimer? _displayTopologyRefreshTimer;
     private string? _pendingUpdateNotificationVersion;
+    private string? _pendingReadyToInstallNotificationVersion;
     private Timer? _uiResponsivenessTimer;
     private bool _shuttingDown;
     private bool _launchPresentationReady;
@@ -208,6 +210,10 @@ public partial class App : Application
             {
                 PostUpdateNotification(pendingVersion);
             }
+            if (_pendingReadyToInstallNotificationVersion is { } readyVersion)
+            {
+                PostUpdateReadyToInstallNotification(readyVersion);
+            }
         }
         catch (Exception exception)
         {
@@ -216,10 +222,19 @@ public partial class App : Application
             if (!backgroundLaunch)
                 EnsureMainWindow().ShowFatalError(error);
         }
-        if (completedUpdateVersion is null || _tray is not null)
+        if (completedUpdateVersion is null
+            || _tray is not null
+            || _updateService.Preferences.ShowReleaseNotesAfterUpdate)
         {
+            bool markedLaunched = _updateCompletionTracker.TryMarkLaunched(_updateService.CurrentUpdateVersion);
             StartupDiagnostics.Stage(
-                $"update-completion-state-saved result={_updateCompletionTracker.TryMarkLaunched(_updateService.CurrentUpdateVersion).ToString().ToLowerInvariant()}");
+                $"update-completion-state-saved result={markedLaunched.ToString().ToLowerInvariant()}");
+            if (completedUpdateVersion is not null
+                && markedLaunched
+                && _updateService.Preferences.ShowReleaseNotesAfterUpdate)
+            {
+                _ = OpenReleaseNotesAfterUpdateAsync();
+            }
         }
 #if DEBUG
         _developmentUpdate = DevelopmentUpdateService.Start(OnDevelopmentUpdateAccepted);
@@ -327,6 +342,13 @@ public partial class App : Application
         }
 
         _mainWindow = new MainWindow(_coordinator, _updateService);
+        _mainWindow.ViewModel.ManualUpdateFound += update =>
+        {
+            if (_updateService.Preferences.NotifyWhenAvailable)
+                PostUpdateNotification(update.Version);
+        };
+        _mainWindow.ViewModel.ManualUpdateReady += update =>
+            PostUpdateReadyToInstallNotification(update.Version);
         StartupDiagnostics.Stage("settings-window-created result=success");
         _mainWindow.Closed += OnMainWindowClosed;
         _mainWindow.HotkeyRecordingChanged += OnHotkeyRecordingChanged;
@@ -340,14 +362,24 @@ public partial class App : Application
         try
         {
             StartupDiagnostics.Stage("startup-update-check-started");
-            AvailableUpdate? update = await mainWindow.ViewModel.CheckForUpdatesOnStartupAsync();
+            await mainWindow.ViewModel.CheckForUpdatesOnStartupAsync(
+                onUpdateFound: update =>
+                {
+                    if (!_shuttingDown
+                        && ReferenceEquals(_mainWindow, mainWindow)
+                        && _updateService.Preferences.NotifyWhenAvailable)
+                    {
+                        PostUpdateNotification(update.Version);
+                    }
+                },
+                onUpdateReady: update =>
+                {
+                    if (!_shuttingDown && ReferenceEquals(_mainWindow, mainWindow))
+                    {
+                        PostUpdateReadyToInstallNotification(update.Version);
+                    }
+                });
             StartupDiagnostics.Stage("startup-update-checked");
-            if (!_shuttingDown
-                && ReferenceEquals(_mainWindow, mainWindow)
-                && update is not null)
-            {
-                PostUpdateNotification(update.Version);
-            }
         }
         catch (Exception exception)
         {
@@ -373,44 +405,71 @@ public partial class App : Application
         StartupDiagnostics.Stage("update-available-notification-posted");
     }
 
-    private async Task CheckForUpdatesFromTrayAsync()
+    private void PostUpdateReadyToInstallNotification(string version)
     {
-        if (_shuttingDown || _trayUpdateCheckInProgress)
+        if (_shuttingDown)
         {
             return;
         }
 
+        if (_tray is null)
+        {
+            _pendingReadyToInstallNotificationVersion = version;
+            return;
+        }
+
+        _pendingReadyToInstallNotificationVersion = null;
+        _tray.NotifyUpdateReadyToInstall(version);
+        StartupDiagnostics.Stage("update-ready-to-install-notification-posted");
+    }
+
+    private async Task CheckForUpdatesFromTrayAsync()
+    {
+        if (_shuttingDown || _trayUpdateCheckInProgress)
+            return;
+
         _trayUpdateCheckInProgress = true;
         try
         {
-            AvailableUpdate? update = await _updateService.CheckAsync();
-            if (_shuttingDown)
-            {
+            MainWindow window = EnsureMainWindow();
+            window.ShowUpdates();
+            if (window.ViewModel.IsCheckingForUpdates)
                 return;
-            }
-
-            if (update is null)
-            {
+            AvailableUpdate? update = await window.ViewModel.CheckForUpdatesOnStartupAsync(
+                onUpdateFound: found =>
+                {
+                    if (_updateService.Preferences.NotifyWhenAvailable)
+                        PostUpdateNotification(found.Version);
+                },
+                onUpdateReady: ready => PostUpdateReadyToInstallNotification(ready.Version));
+            if (update is null && !_shuttingDown)
                 _tray?.NotifyLatestVersion();
-                StartupDiagnostics.Stage("tray-update-notification-posted result=latest");
-            }
-            else
-            {
-                _tray?.NotifyUpdateAvailable(update.Version);
-                StartupDiagnostics.Stage("tray-update-notification-posted result=available");
-            }
         }
         catch (Exception exception)
         {
             StartupDiagnostics.NonFatal("tray-update-check", exception);
             if (!_shuttingDown)
-            {
                 _tray?.NotifyUpdateCheckFailed();
-            }
         }
-        finally
+        finally { _trayUpdateCheckInProgress = false; }
+    }
+
+    private async Task OpenReleaseNotesAfterUpdateAsync()
+    {
+        if (_releaseNotesOpenedAfterUpdate)
         {
-            _trayUpdateCheckInProgress = false;
+            return;
+        }
+
+        _releaseNotesOpenedAfterUpdate = true;
+        try
+        {
+            await _updateService.OpenReleaseNotesAsync(_updateService.CurrentReleaseNotesUri);
+            StartupDiagnostics.Stage("update-release-notes-opened");
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.NonFatal("update-release-notes-open", exception);
         }
     }
 
@@ -1336,6 +1395,9 @@ public partial class App : Application
                 break;
             case TrayCommand.CheckUpdates:
                 _ = CheckForUpdatesFromTrayAsync();
+                break;
+            case TrayCommand.OpenUpdates:
+                EnsureMainWindow().ShowUpdates();
                 break;
             case TrayCommand.Settings:
                 EnsureMainWindow().ShowPage("settings");

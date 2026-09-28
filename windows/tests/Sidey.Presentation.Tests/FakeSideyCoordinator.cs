@@ -362,6 +362,10 @@ internal sealed class FakeMainWindowDialogService : IMainWindowDialogService
 
 internal sealed class FakeUpdateService : IUpdateService
 {
+    public UpdatePreferences Preferences { get; private set; } = new();
+
+    public void SavePreferences(UpdatePreferences preferences) => Preferences = preferences;
+
     public string CurrentVersion { get; set; } = "1.0.6";
 
     public string CurrentUpdateVersion { get; set; } = "1.0.6";
@@ -373,11 +377,30 @@ internal sealed class FakeUpdateService : IUpdateService
 
     public AvailableUpdate? AvailableUpdate { get; set; }
 
+    public bool InstallerReady { get; set; }
+
+    public Task<bool> IsInstallerReadyAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default) => Task.FromResult(InstallerReady);
+
     public int InstallerLaunchCount { get; private set; }
+
+    public int DownloadCount { get; private set; }
 
     public int ReleaseNotesLaunchCount { get; private set; }
 
     public Func<AvailableUpdate, IProgress<int>?, CancellationToken, Task>? DownloadHandler { get; set; }
+
+    public async Task DownloadInstallerAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default,
+        IProgress<int>? progress = null)
+    {
+        DownloadCount++;
+        if (DownloadHandler is not null)
+            await DownloadHandler(update, progress, cancellationToken);
+        InstallerReady = true;
+    }
 
     public Task<AvailableUpdate?> CheckAsync(CancellationToken cancellationToken = default)
     {
@@ -392,7 +415,7 @@ internal sealed class FakeUpdateService : IUpdateService
     {
         _ = update;
         InstallerLaunchCount++;
-        return DownloadHandler?.Invoke(update, progress, cancellationToken) ?? Task.CompletedTask;
+        return DownloadInstallerAsync(update, cancellationToken, progress);
     }
 
     public Task OpenReleaseNotesAsync(Uri releaseNotesUri)

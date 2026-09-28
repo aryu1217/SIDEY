@@ -1774,7 +1774,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task ManualUpdateCheckDownloadsOnlyAfterConfirmation()
+    public async Task ManualUpdateCheckKeepsAvailableVersionUntilDownloadRequested()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         var dialogs = new FakeMainWindowDialogService();
@@ -1786,12 +1786,24 @@ public sealed class MainWindowViewModelTests
 
         await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
 
-        Assert.Equal("0.3.0-alpha.3", dialogs.ConfirmedUpdateVersion);
+        Assert.Null(dialogs.ConfirmedUpdateVersion);
+        Assert.True(viewModel.HasAvailableUpdate);
+        Assert.Equal(0, updates.DownloadCount);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+
+        await viewModel.DownloadUpdateCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, updates.DownloadCount);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+
+        await viewModel.InstallUpdateCommand.ExecuteAsync(null);
+
         Assert.Equal(1, updates.InstallerLaunchCount);
     }
 
     [Fact]
-    public async Task UpdateDownloadKeepsAVisibleActivityStateUntilTheInstallerLaunches()
+    public async Task UpdateDownloadKeepsAVisibleActivityStateUntilReady()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1809,53 +1821,162 @@ public sealed class MainWindowViewModelTests
             new FakeMainWindowDialogService(),
             updates);
 
-        Task pending = viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        Task pending = viewModel.DownloadUpdateCommand.ExecuteAsync(null);
         await Task.Yield();
 
-        Assert.True(viewModel.IsCheckingForUpdates);
+        Assert.True(viewModel.IsUpdateTransferInProgress);
         Assert.True(viewModel.HasUpdateActivity);
         Assert.Equal("업데이트를 다운로드하는 중입니다. (42%)", viewModel.UpdateActivityText);
+        Assert.False(viewModel.DownloadUpdateCommand.CanExecute(null));
         Assert.False(viewModel.CheckForUpdatesCommand.CanExecute(null));
 
         completion.SetResult();
         await pending;
 
-        Assert.False(viewModel.IsCheckingForUpdates);
+        Assert.False(viewModel.IsUpdateTransferInProgress);
         Assert.False(viewModel.HasUpdateActivity);
         Assert.Equal(string.Empty, viewModel.UpdateActivityText);
-        Assert.True(viewModel.CheckForUpdatesCommand.CanExecute(null));
+        Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
     }
 
     [Fact]
-    public async Task ManualUpdateCheckDoesNotDownloadWhenDeclined()
+    public async Task StartupAutoDownloadNotifiesAvailabilityBeforeDownloadCompletes()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
-        var dialogs = new FakeMainWindowDialogService { ConfirmUpdateDownload = false };
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var updates = new FakeUpdateService
         {
             AvailableUpdate = new AvailableUpdate("0.3.0-alpha.3"),
+            DownloadHandler = (_, _, _) => completion.Task,
         };
-        var viewModel = new MainWindowViewModel(coordinator, dialogs, updates);
+        updates.SavePreferences(new UpdatePreferences(AutoDownload: true));
+        var viewModel = new MainWindowViewModel(coordinator, new FakeMainWindowDialogService(), updates);
+        int found = 0;
+        int ready = 0;
 
-        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        Task pending = viewModel.CheckForUpdatesOnStartupAsync(
+            _ => found++, _ => ready++);
+        await Task.Yield();
 
+        Assert.Equal(1, found);
+        Assert.Equal(0, ready);
+        Assert.True(viewModel.HasAvailableUpdate);
+        Assert.True(viewModel.IsUpdateTransferInProgress);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+
+        completion.SetResult();
+        await pending;
+
+        Assert.Equal(1, ready);
+        Assert.True(viewModel.IsUpdateReady);
         Assert.Equal(0, updates.InstallerLaunchCount);
     }
 
-    [Theory]
-    [InlineData(1223, "업데이트 설치를 취소했습니다.", NoticeKind.Informational)]
-    [InlineData(5, "설치 프로그램을 열지 못했습니다. 업데이트 확인을 눌러 다시 시도해 주세요.", NoticeKind.Error)]
-    [InlineData(0, "업데이트를 진행하지 못했습니다. 잠시 후 다시 시도해 주세요.", NoticeKind.Error)]
-    public async Task UpdateFailuresShowFriendlyNoticesAndAllowRetry(
-        int nativeErrorCode,
-        string expectedMessage,
-        NoticeKind expectedKind)
+    [Fact]
+    public async Task ManualCheckAutomaticallyDownloadsWithoutLaunchingInstallerWhenEnabled()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        int found = 0;
+        int ready = 0;
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            DownloadHandler = (_, _, _) =>
+            {
+                Assert.Equal(1, found);
+                return Task.CompletedTask;
+            },
+        };
+        updates.SavePreferences(new UpdatePreferences(AutoDownload: true));
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        viewModel.ManualUpdateFound += _ => found++;
+        viewModel.ManualUpdateReady += _ => ready++;
+
+        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, updates.DownloadCount);
+        Assert.Equal(1, found);
+        Assert.Equal(1, ready);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.Equal(0, updates.InstallerLaunchCount);
+    }
+
+    [Fact]
+    public async Task StartupRecognizesVerifiedCachedInstallerAfterRestart()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = true,
+        };
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int found = 0;
+        int ready = 0;
+
+        await viewModel.CheckForUpdatesOnStartupAsync(_ => found++, _ => ready++);
+
+        Assert.Equal(0, found);
+        Assert.Equal(1, ready);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
+        Assert.Equal(0, updates.DownloadCount);
+    }
+
+    [Fact]
+    public async Task LanguageRefreshUpdatesAvailableVersionWithoutLosingDownloadState()
+    {
+        string previousLanguage = I18n.Language;
+        try
+        {
+            I18n.SetLanguage("ko-KR");
+            (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+            var updates = new FakeUpdateService
+            {
+                AvailableUpdate = new AvailableUpdate("2.1.0"),
+                InstallerReady = true,
+            };
+            var viewModel = new MainWindowViewModel(
+                coordinator, new FakeMainWindowDialogService(), updates);
+            await viewModel.CheckForUpdatesOnStartupAsync();
+            Assert.Equal(I18n.Format("settings.update.available_version", "2.1.0"),
+                viewModel.AvailableVersionText);
+
+            I18n.SetLanguage("en-US");
+            viewModel.RefreshLocalizedText();
+
+            Assert.Equal(I18n.Format("settings.update.available_version", "2.1.0"),
+                viewModel.AvailableVersionText);
+            Assert.True(viewModel.IsUpdateReady);
+            Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
+        }
+        finally { I18n.SetLanguage(previousLanguage); }
+    }
+
+    [Fact]
+    public void UpdateOptionsAreSavedIndependently()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService();
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+
+        viewModel.AutoDownloadUpdates = true;
+        viewModel.NotifyWhenUpdateAvailable = false;
+        viewModel.ShowReleaseNotesAfterUpdate = false;
+
+        Assert.Equal(new UpdatePreferences(true, false, false), updates.Preferences);
+    }
+
+    [Fact]
+    public async Task UpdateDownloadFailuresShowFriendlyNoticesAndAllowRetry()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
         const string InternalDetails = @"An error occurred trying to start process C:\Users\private\Temp\Setup.exe";
-        Exception failure = nativeErrorCode == 0
-            ? new IOException(InternalDetails)
-            : new Win32Exception(nativeErrorCode, InternalDetails);
+        Exception failure = new IOException(InternalDetails);
         var updates = new FakeUpdateService
         {
             AvailableUpdate = new AvailableUpdate("1.0.10"),
@@ -1866,12 +1987,37 @@ public sealed class MainWindowViewModelTests
         viewModel.NoticeRaised += value => notice = value;
 
         await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        await viewModel.DownloadUpdateCommand.ExecuteAsync(null);
 
-        Assert.Equal(expectedMessage, notice?.Message);
-        Assert.Equal(expectedKind, notice?.Kind);
+        Assert.Equal(Sidey.Core.Localization.I18n.Get("update.failed"), notice?.Message);
+        Assert.Equal(NoticeKind.Error, notice?.Kind);
         Assert.False(viewModel.HasUpdateActivity);
-        Assert.False(viewModel.IsCheckingForUpdates);
-        Assert.True(viewModel.CheckForUpdatesCommand.CanExecute(null));
+        Assert.False(viewModel.IsUpdateTransferInProgress);
+        Assert.True(viewModel.DownloadUpdateCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task CancelledInstallerLaunchKeepsTheVerifiedUpdateReady()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = true,
+            DownloadHandler = (_, _, _) => throw new Win32Exception(1223),
+        };
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        NoticeMessage? notice = null;
+        viewModel.NoticeRaised += value => notice = value;
+
+        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        await viewModel.InstallUpdateCommand.ExecuteAsync(null);
+
+        Assert.Equal(I18n.Get("update.install.cancelled"), notice?.Message);
+        Assert.Equal(NoticeKind.Informational, notice?.Kind);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
     }
 
     [Fact]

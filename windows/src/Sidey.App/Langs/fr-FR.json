@@ -619,6 +619,13 @@
       "title": "Thème"
     },
     "update": {
+      "auto_download": {
+        "title": "Télécharger automatiquement les mises à jour"
+      },
+      "available_action": {
+        "description": "Une nouvelle version est disponible au téléchargement."
+      },
+      "available_version": "SIDEY {0} est disponible",
       "check": {
         "action": "Rechercher les mises à jour"
       },
@@ -626,14 +633,26 @@
         "tooltip": "Recherchez une version plus récente."
       },
       "description": "Recherchez une version plus récente.",
+      "download": {
+        "action": "Télécharger"
+      },
+      "install": {
+        "action": "Installer"
+      },
       "last_checked": {
         "never": "Dernière vérification : jamais",
         "today": "Aujourd’hui à {0}",
         "value": "Dernière vérification : {0}",
         "yesterday": "Hier à {0}"
       },
+      "notify": {
+        "title": "M'avertir des nouvelles mises à jour"
+      },
       "release_notes": {
         "action": "Détails de la mise à jour"
+      },
+      "show_after": {
+        "title": "Afficher les détails après la mise à jour"
       },
       "title": "Mises à jour"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · {0} messages non lus"
     },
     "update": {
-      "available": "Une mise à jour est disponible. {0}",
+      "available": "SIDEY {0} est disponible. Ouvrez Mises à jour pour le télécharger.",
       "check": "Rechercher les mises à jour…",
       "check_failed": "Impossible de rechercher les mises à jour. Réessayez dans quelques instants.",
       "installed": "SIDEY a été mis à jour vers la version {0}. Cliquez pour afficher les nouveautés.",
-      "latest": "Vous utilisez la dernière version."
+      "latest": "Vous utilisez la dernière version.",
+      "ready_to_install": "SIDEY {0} est prêt à être installé. Ouvrez Mises à jour pour l'installer."
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "Impossible de vérifier le fichier de mise à jour. Téléchargez-le à nouveau.",
       "in_progress": "Téléchargement de la mise à jour…",
-      "progress": "Téléchargement de la mise à jour… ({0} %)"
+      "progress": "Téléchargement de la mise à jour… ({0} %)",
+      "ready": "Téléchargement terminé. Prêt à être installé."
     },
     "failed": "Impossible de terminer la mise à jour. Réessayez dans quelques instants.",
     "install": {

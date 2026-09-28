@@ -619,6 +619,13 @@
       "title": "Tema"
     },
     "update": {
+      "auto_download": {
+        "title": "Baixar atualizações automaticamente"
+      },
+      "available_action": {
+        "description": "Uma nova versão está disponível para download."
+      },
+      "available_version": "O SIDEY {0} está disponível",
       "check": {
         "action": "Verificar se há atualizações"
       },
@@ -626,14 +633,26 @@
         "tooltip": "Verificar se há uma versão mais recente."
       },
       "description": "Verificar se há uma versão mais recente.",
+      "download": {
+        "action": "Baixar"
+      },
+      "install": {
+        "action": "Instalar"
+      },
       "last_checked": {
         "never": "Última verificação: nunca",
         "today": "Hoje às {0}",
         "value": "Última verificação: {0}",
         "yesterday": "Ontem às {0}"
       },
+      "notify": {
+        "title": "Notificar sobre novas atualizações"
+      },
       "release_notes": {
         "action": "Detalhes da atualização"
+      },
+      "show_after": {
+        "title": "Mostrar detalhes após a atualização"
       },
       "title": "Atualizações"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · {0} mensagens não lidas"
     },
     "update": {
-      "available": "Há uma atualização disponível. {0}",
+      "available": "O SIDEY {0} está disponível. Abra Atualizações para baixá-lo.",
       "check": "Verificar se há atualizações…",
       "check_failed": "Não foi possível verificar se há atualizações. Tente novamente em instantes.",
       "installed": "O SIDEY foi atualizado para a versão {0}. Clique para ver as alterações.",
-      "latest": "Você está usando a versão mais recente."
+      "latest": "Você está usando a versão mais recente.",
+      "ready_to_install": "O SIDEY {0} está pronto para instalar. Abra Atualizações para instalá-lo."
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "Não foi possível verificar o arquivo de atualização. Baixe-o novamente.",
       "in_progress": "Baixando atualização…",
-      "progress": "Baixando atualização… ({0}%)"
+      "progress": "Baixando atualização… ({0}%)",
+      "ready": "Download concluído. Pronto para instalar."
     },
     "failed": "Não foi possível concluir a atualização. Tente novamente em instantes.",
     "install": {

@@ -1,7 +1,7 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json;
 using Sidey.Core.Localization;
 using Sidey.Core.Storage;
 using Sidey.Platform.Windows;
@@ -17,6 +17,10 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
         SideyStoragePaths.LocalApplicationDataRoot(),
         "SIDEY",
         "update-last-checked.txt");
+    private static readonly string s_preferencesPath = Path.Combine(
+        SideyStoragePaths.LocalApplicationDataRoot(),
+        "SIDEY",
+        "update-preferences.json");
     private readonly WindowsUpdateService _service;
 
     public WindowsUpdateServiceAdapter()
@@ -35,6 +39,7 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
             currentProductVersion: productVersion,
             currentUpdateVersion: parsedFileVersion.ToString(3));
         LastCheckedAt = ReadLastCheckedAt();
+        Preferences = ReadPreferences();
     }
 
     public string CurrentVersion => _service.EffectiveCurrentProductVersion;
@@ -44,6 +49,34 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
     public DateTimeOffset? LastCheckedAt { get; private set; }
 
     public Uri CurrentReleaseNotesUri => s_releaseNotesUri;
+
+    public UpdatePreferences Preferences { get; private set; }
+
+    public void SavePreferences(UpdatePreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        string? directory = Path.GetDirectoryName(s_preferencesPath);
+        if (directory is null)
+        {
+            throw new InvalidOperationException("The update preferences path is invalid.");
+        }
+
+        Directory.CreateDirectory(directory);
+        string temporaryPath = s_preferencesPath + ".tmp";
+        try
+        {
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(preferences));
+            File.Move(temporaryPath, s_preferencesPath, overwrite: true);
+            Preferences = preferences;
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
 
     public async Task CleanupInstalledUpdatesAsync()
     {
@@ -90,6 +123,35 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
         CancellationToken cancellationToken = default,
         IProgress<int>? progress = null)
     {
+        await DownloadInstallerAsync(update, cancellationToken, progress);
+        string installerPath = _service.InstallerPath(update.UpdateVersion!);
+        WindowsUpdateService.LaunchInstaller(installerPath);
+    }
+
+    public async Task DownloadInstallerAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default,
+        IProgress<int>? progress = null)
+    {
+        WindowsUpdateManifest manifest = ToManifest(update);
+        try
+        {
+            await _service.DownloadInstallerAsync(manifest, cancellationToken, progress);
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.NonFatal("update-download-install", exception);
+            throw;
+        }
+    }
+
+    public Task<bool> IsInstallerReadyAsync(
+        AvailableUpdate update,
+        CancellationToken cancellationToken = default) =>
+        _service.IsInstallerReadyAsync(ToManifest(update), cancellationToken);
+
+    private static WindowsUpdateManifest ToManifest(AvailableUpdate update)
+    {
         ArgumentNullException.ThrowIfNull(update);
         if (update.InstallerUri is null
             || string.IsNullOrWhiteSpace(update.Sha256)
@@ -99,31 +161,25 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
             throw new InvalidDataException(I18n.Get("update.install.missing"));
         }
 
-        var manifest = new WindowsUpdateManifest(
+        return new WindowsUpdateManifest(
             "production",
             update.Version,
             update.UpdateVersion,
             update.UpdateTag,
             update.InstallerUri,
             update.Sha256);
+    }
+
+    private static UpdatePreferences ReadPreferences()
+    {
         try
         {
-            string installerPath = await _service.DownloadInstallerAsync(
-                manifest,
-                cancellationToken,
-                progress);
-            WindowsUpdateService.LaunchInstaller(installerPath);
+            return JsonSerializer.Deserialize<UpdatePreferences>(File.ReadAllText(s_preferencesPath))
+                ?? new UpdatePreferences();
         }
-        catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
-        {
-            StartupDiagnostics.Stage("update-install-cancelled");
-            throw;
-        }
-        catch (Exception exception)
-        {
-            StartupDiagnostics.NonFatal("update-download-install", exception);
-            throw;
-        }
+        catch (IOException) { return new UpdatePreferences(); }
+        catch (UnauthorizedAccessException) { return new UpdatePreferences(); }
+        catch (JsonException) { return new UpdatePreferences(); }
     }
 
     public Task OpenReleaseNotesAsync(Uri releaseNotesUri)

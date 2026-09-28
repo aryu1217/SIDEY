@@ -619,6 +619,13 @@
       "title": "主題"
     },
     "update": {
+      "auto_download": {
+        "title": "自動下載更新"
+      },
+      "available_action": {
+        "description": "有新版本可供下載。"
+      },
+      "available_version": "可更新至 SIDEY {0}",
       "check": {
         "action": "檢查更新"
       },
@@ -626,14 +633,26 @@
         "tooltip": "檢查是否有新版本。"
       },
       "description": "檢查是否有新版本。",
+      "download": {
+        "action": "下載"
+      },
+      "install": {
+        "action": "安裝"
+      },
       "last_checked": {
         "never": "上次檢查: 從未",
         "today": "今天 {0}",
         "value": "上次檢查: {0}",
         "yesterday": "昨天 {0}"
       },
+      "notify": {
+        "title": "有新更新時通知我"
+      },
       "release_notes": {
         "action": "更新內容"
+      },
+      "show_after": {
+        "title": "更新後顯示更新詳情"
       },
       "title": "更新"
     },
@@ -904,11 +923,12 @@
       "tooltip": "SIDEY · {0} 則未讀訊息"
     },
     "update": {
-      "available": "有可用的更新。{0}",
+      "available": "SIDEY {0} 可供下載。開啟「更新」以下載。",
       "check": "檢查更新…",
       "check_failed": "無法檢查更新，請稍後再試。",
       "installed": "SIDEY 已更新至 {0}。按一下滑鼠左鍵即可查看更新內容。",
-      "latest": "目前已是最新版本。"
+      "latest": "目前已是最新版本。",
+      "ready_to_install": "SIDEY {0} 已準備好安裝。開啟「更新」以安裝。"
     }
   },
   "update": {
@@ -917,7 +937,8 @@
     "download": {
       "hash_mismatch": "無法驗證更新檔案，請重新下載。",
       "in_progress": "正在下載更新…",
-      "progress": "正在下載更新…({0}%)"
+      "progress": "正在下載更新…({0}%)",
+      "ready": "下載完成，可以安裝。"
     },
     "failed": "無法完成更新，請稍後再試。",
     "install": {

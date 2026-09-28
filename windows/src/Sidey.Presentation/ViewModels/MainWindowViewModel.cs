@@ -178,6 +178,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _syncedProfileNickname = string.Empty;
     private string _syncedProfileCharacterId = PixelCharacterCatalog.FallbackId;
     private AvailableUpdate? _lastAvailableUpdate;
+    private bool _isApplyingUpdatePreferences;
     private string? _updateActivityKey;
     private object?[] _updateActivityArguments = [];
 
@@ -322,6 +323,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CheckForUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
     public partial bool IsCheckingForUpdates { get; set; }
 
     [ObservableProperty]
@@ -335,6 +338,68 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string LastUpdateCheckText { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool AutoDownloadUpdates { get; set; }
+
+    [ObservableProperty]
+    public partial bool NotifyWhenUpdateAvailable { get; set; }
+
+    [ObservableProperty]
+    public partial bool ShowReleaseNotesAfterUpdate { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
+    public partial bool IsUpdateReady { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckForUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
+    public partial bool IsUpdateTransferInProgress { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAvailableUpdate))]
+    [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
+    public partial string AvailableVersionText { get; set; } = string.Empty;
+
+    public bool HasAvailableUpdate => !string.IsNullOrEmpty(AvailableVersionText);
+
+    partial void OnAutoDownloadUpdatesChanged(bool value) => SaveUpdatePreferences();
+    partial void OnNotifyWhenUpdateAvailableChanged(bool value) => SaveUpdatePreferences();
+    partial void OnShowReleaseNotesAfterUpdateChanged(bool value) => SaveUpdatePreferences();
+
+    private void SaveUpdatePreferences()
+    {
+        if (_isApplyingUpdatePreferences)
+            return;
+        try
+        {
+            _updates.SavePreferences(new UpdatePreferences(
+                AutoDownloadUpdates,
+                NotifyWhenUpdateAvailable,
+                ShowReleaseNotesAfterUpdate));
+        }
+        catch (Exception exception)
+        {
+            ApplyUpdatePreferences(_updates.Preferences);
+            RaiseNotice(exception.Message, NoticeKind.Error);
+        }
+    }
+
+    private void ApplyUpdatePreferences(UpdatePreferences preferences)
+    {
+        _isApplyingUpdatePreferences = true;
+        try
+        {
+            AutoDownloadUpdates = preferences.AutoDownload;
+            NotifyWhenUpdateAvailable = preferences.NotifyWhenAvailable;
+            ShowReleaseNotesAfterUpdate = preferences.ShowReleaseNotesAfterUpdate;
+        }
+        finally { _isApplyingUpdatePreferences = false; }
+    }
 
     [ObservableProperty]
     public partial string ValidationPathText { get; set; } = I18n.Get("renderer_metrics.error.not_started");
@@ -359,6 +424,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
         _dialogs = dialogs ?? throw new ArgumentNullException(nameof(dialogs));
         _updates = updates ?? throw new ArgumentNullException(nameof(updates));
+        ApplyUpdatePreferences(_updates.Preferences);
         IsRemoteContentLoading = coordinator.IsRemoteContentLoading;
         StoreProducts = [.. WindowsCommerceCatalog.Products.Select(CreateStorePreview)];
         foreach (StoreProductPreviewViewModel product in StoreProducts.Where(product => product.Kind == CommerceProductKind.Character))
@@ -371,9 +437,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ApplyState(coordinator.State);
         UpdateCharacterSelectionState();
         RefreshUpdateInformation();
+        RefreshAvailableUpdateText();
     }
 
     public event Action<NoticeMessage>? NoticeRaised;
+    public event Action<AvailableUpdate>? ManualUpdateFound;
+    public event Action<AvailableUpdate>? ManualUpdateReady;
     public event Action<StoreProductPreviewViewModel>? StorePreviewRequested;
 
     public ObservableCollection<CharacterSelectionItemViewModel> CharacterSelections { get; } = [];
@@ -553,6 +622,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         ApplyState(_coordinator.State);
         RefreshUpdateInformation();
+        RefreshAvailableUpdateText();
         SetUpdateActivity(_updateActivityKey, _updateActivityArguments);
     }
 
@@ -634,40 +704,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             AvailableUpdate? update = await _updates.CheckAsync();
-            _lastAvailableUpdate = update;
+            SetAvailableUpdate(update);
+            if (update is not null)
+                IsUpdateReady = await _updates.IsInstallerReadyAsync(update);
             if (update is null)
             {
                 RaiseNotice(I18n.Get("update.latest"), NoticeKind.Success);
                 return;
             }
 
-            SetUpdateActivity(null);
-            if (!await _dialogs.ConfirmUpdateDownloadAsync(update.Version))
+            RaiseNotice(I18n.Format("update.available", update.Version), NoticeKind.Informational);
+            ManualUpdateFound?.Invoke(update);
+            if (_updates.Preferences.AutoDownload && !IsUpdateReady)
             {
-                return;
+                await DownloadUpdateAsync(update);
+                if (IsUpdateReady)
+                    ManualUpdateReady?.Invoke(update);
             }
-
-            SetUpdateActivity("update.download.in_progress");
-            var downloadProgress = new Progress<int>(percentage =>
-            {
-                SetUpdateActivity(
-                    "update.download.progress",
-                    percentage);
-            });
-            await _updates.DownloadAndLaunchInstallerAsync(
-                update,
-                progress: downloadProgress);
-            RaiseNotice(
-                I18n.Get("update.install.launched"),
-                NoticeKind.Success);
-        }
-        catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
-        {
-            RaiseNotice(I18n.Get("update.install.cancelled"), NoticeKind.Informational);
-        }
-        catch (Win32Exception)
-        {
-            RaiseNotice(I18n.Get("update.install.launch_failed"), NoticeKind.Error);
         }
         catch (Exception)
         {
@@ -681,7 +734,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    public async Task<AvailableUpdate?> CheckForUpdatesOnStartupAsync()
+    public async Task<AvailableUpdate?> CheckForUpdatesOnStartupAsync(
+        Action<AvailableUpdate>? onUpdateFound = null,
+        Action<AvailableUpdate>? onUpdateReady = null)
     {
         if (IsCheckingForUpdates)
         {
@@ -693,7 +748,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             AvailableUpdate? update = await _updates.CheckAsync();
-            _lastAvailableUpdate = update;
+            SetAvailableUpdate(update);
+            if (update is not null)
+            {
+                IsUpdateReady = await _updates.IsInstallerReadyAsync(update);
+                if (IsUpdateReady)
+                    onUpdateReady?.Invoke(update);
+                else
+                {
+                    onUpdateFound?.Invoke(update);
+                    if (_updates.Preferences.AutoDownload)
+                    {
+                        await DownloadUpdateAsync(update);
+                        if (IsUpdateReady)
+                            onUpdateReady?.Invoke(update);
+                    }
+                }
+            }
             return update;
         }
         finally
@@ -702,6 +773,84 @@ public sealed partial class MainWindowViewModel : ObservableObject
             SetUpdateActivity(null);
             IsCheckingForUpdates = false;
         }
+    }
+
+    private void SetAvailableUpdate(AvailableUpdate? update)
+    {
+        if (_lastAvailableUpdate?.UpdateVersion != update?.UpdateVersion)
+            IsUpdateReady = false;
+        _lastAvailableUpdate = update;
+        RefreshAvailableUpdateText();
+    }
+
+    private void RefreshAvailableUpdateText() => AvailableVersionText =
+        _lastAvailableUpdate is null
+            ? string.Empty
+            : I18n.Format("settings.update.available_version", _lastAvailableUpdate.Version);
+
+    private bool CanDownloadUpdate() =>
+        _lastAvailableUpdate is not null && !IsCheckingForUpdates
+        && !IsUpdateReady && !IsUpdateTransferInProgress;
+
+    [RelayCommand(CanExecute = nameof(CanDownloadUpdate))]
+    private async Task DownloadUpdateAsync()
+    {
+        if (_lastAvailableUpdate is { } update)
+            await DownloadUpdateAsync(update);
+    }
+
+    private async Task DownloadUpdateAsync(AvailableUpdate update)
+    {
+        IsUpdateTransferInProgress = true;
+        SetUpdateActivity("update.download.in_progress");
+        try
+        {
+            var progress = new Progress<int>(percentage =>
+                SetUpdateActivity("update.download.progress", percentage));
+            await _updates.DownloadInstallerAsync(update, progress: progress);
+            IsUpdateReady = true;
+            RaiseNotice(I18n.Get("update.download.ready"), NoticeKind.Success);
+        }
+        catch (Exception)
+        {
+            RaiseNotice(I18n.Get("update.failed"), NoticeKind.Error);
+        }
+        finally
+        {
+            SetUpdateActivity(null);
+            IsUpdateTransferInProgress = false;
+        }
+    }
+
+    private bool CanInstallUpdate() =>
+        _lastAvailableUpdate is not null && !IsCheckingForUpdates
+        && IsUpdateReady && !IsUpdateTransferInProgress;
+
+    [RelayCommand(CanExecute = nameof(CanInstallUpdate))]
+    private async Task InstallUpdateAsync()
+    {
+        if (_lastAvailableUpdate is not { } update)
+            return;
+        IsUpdateTransferInProgress = true;
+        try
+        {
+            await _updates.DownloadAndLaunchInstallerAsync(update);
+            RaiseNotice(I18n.Get("update.install.launched"), NoticeKind.Success);
+        }
+        catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
+        {
+            RaiseNotice(I18n.Get("update.install.cancelled"), NoticeKind.Informational);
+        }
+        catch (Win32Exception)
+        {
+            RaiseNotice(I18n.Get("update.install.launch_failed"), NoticeKind.Error);
+        }
+        catch (Exception)
+        {
+            IsUpdateReady = false;
+            RaiseNotice(I18n.Get("update.failed"), NoticeKind.Error);
+        }
+        finally { IsUpdateTransferInProgress = false; }
     }
 
     [RelayCommand]
@@ -1119,7 +1268,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedMonitorIdentifierChanged(string? value) => ApplyRegionPreference();
 
-    private bool CanCheckForUpdates() => !IsCheckingForUpdates;
+    private bool CanCheckForUpdates() => !IsCheckingForUpdates && !IsUpdateTransferInProgress;
 
     private async Task ActivateStoreProductAsync(string productId)
     {
