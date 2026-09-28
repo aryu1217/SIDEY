@@ -288,7 +288,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(
             Path(result['path']).read_bytes(), b'verified new installer',
         )
-        self.assertEqual(result['removed_installers'], [str(old)])
+        self.assertEqual(result['removed_installers'], [str(old.resolve())])
         self.assertFalse(old.exists())
         self.assertEqual(same_version.read_bytes(), b'verified new installer')
         self.assertEqual(unrelated.read_bytes(), b'keep')
@@ -1026,36 +1026,6 @@ class WorkflowTests(unittest.TestCase):
             ])),
             {'shared', 'macos', 'windows', 'web'},
         )
-
-    def test_required_check_accepts_current_and_transition_names(self):
-        checks = (
-            {'name': 'Required checks', 'workflow': 'SIDEY CI'},
-            {
-                'name': 'Required checks',
-                'workflow': '.github/workflows/ci.yml',
-            },
-            {
-                'name': 'Required validation',
-                'workflow': 'Validate change',
-            },
-            {
-                'name': 'Required validation',
-                'workflow': '.github/workflows/validate-change.yml',
-            },
-        )
-        for check in checks:
-            with self.subTest(check=check):
-                self.assertTrue(w.is_required_validation(check))
-
-    def test_non_gate_checks_cannot_replace_required_validation(self):
-        checks = (
-            {'name': 'Repository checks', 'workflow': 'SIDEY CI'},
-            {'name': 'macOS build and tests', 'workflow': 'SIDEY CI'},
-            {'name': 'Required checks', 'workflow': 'Other workflow'},
-        )
-        for check in checks:
-            with self.subTest(check=check):
-                self.assertFalse(w.is_required_validation(check))
 
     def test_policy_and_contributor_changes_are_repository_only(self):
         self.assertEqual(

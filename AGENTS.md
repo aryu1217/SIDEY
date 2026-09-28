@@ -35,9 +35,9 @@ values in documentation.
 
 ## Backend ownership
 
-Backend implementation lives in the private [sidey-app/sidey-backend](https://github.com/sidey-app/sidey-backend) repository. Supabase migrations, RLS, Edge Functions, App Store verification, database tests, operational metrics and backend deployment tools must be changed and verified in a current checkout of that repository under its own `AGENTS.md` and CI. Do not recreate backend implementation here or deploy from historical SIDEY copies.
+Backend implementation lives in the private [sidey-app/sidey-backend](https://github.com/sidey-app/sidey-backend) repository. Supabase migrations, RLS, Edge Functions, App Store verification, database tests, operational metrics and backend deployment tools must be changed and verified in a current checkout of that repository under its own `AGENTS.md` and local checks. Do not recreate backend implementation here or deploy from historical SIDEY copies.
 
-Keep native Supabase clients, the public website and client-facing product contracts here. The canonical product and asset definitions remain `assets/v1/commerce-catalog.json` and `assets/v1/manifest.json`; backend catalog updates use a reviewed public commit snapshot with recorded provenance. This repository generates only public web and native mirrors. See [docs/BACKEND.md](docs/BACKEND.md) for repository boundaries and catalog handoff. Repository migration does not itself deploy backend changes or remove previously public Git history.
+Keep native Supabase clients, the public website source and client-facing product contracts here. The canonical product and asset definitions remain `assets/v1/commerce-catalog.json` and `assets/v1/manifest.json`; backend catalog updates use a reviewed private source commit snapshot with recorded provenance. This repository generates only public web and native mirrors. See [docs/BACKEND.md](docs/BACKEND.md) for repository boundaries and catalog handoff. Repository migration does not itself deploy backend changes or remove previously public Git history.
 
 ## Work lifecycle
 
@@ -54,7 +54,7 @@ Use an isolated, task-owned worktree on a branch whose platform prefix matches t
 [CONTRIBUTING.md](CONTRIBUTING.md) is the human-readable source of truth for
 issues, branch boundaries, commit messages, validation and pull request
 content. Apply it to both manual and agent-assisted work. Deterministic rules
-remain enforced by the tracked validators, `scripts/skills/workflow.py` and CI.
+remain enforced by the tracked validators and `scripts/skills/workflow.py`.
 
 Use [.agents/skills/commit/SKILL.md](.agents/skills/commit/SKILL.md) when asked
 to prepare a commit message or create a local commit. Use
@@ -83,7 +83,7 @@ Codex-assisted new commits must include `Co-authored-by: codex <codex@openai.com
 - A `windows/*` branch must not edit, move, delete, format, generate, build, test, or release macOS implementation files. This includes `macos/**` and macOS-specific scripts, workflows, packages, assets, and documentation.
 - Shared changes belong on `shared/*`. Do not mix new shared-file edits into a platform implementation commit. Land the shared change independently, then merge or cherry-pick that reviewed commit into the platform branch that needs it.
 - Exception for an atomic Product Version transition: a `shared/*` branch may update `release/version.json` together with its generated macOS and Windows version mirrors (`release/macos.json`, `macos/Config/Version.xcconfig`, `release/windows.json`, and `windows/Version.props`) and the matching release version in `release/app-store-localizations.json`. The Product Version must increase, `windowsRevision` must reset to `0`, and `macBuild` must stay unchanged. The workflow verifies the source change against the branch base, checks the generated mirrors, and permits only the release version field to change in the App Store localization manifest; other platform paths remain isolated.
-- Exception for a macOS build counter only: a `macos/*` branch may update `release/version.json` together with its generated `release/macos.json` and `macos/Config/Version.xcconfig` mirrors. Its `productVersion`, `windowsRevision`, schema and keys must stay unchanged, and `macBuild` must increase. The workflow and CI compare the exact source against the branch base before accepting this exception.
+- Exception for a macOS build counter only: a `macos/*` branch may update `release/version.json` together with its generated `release/macos.json` and `macos/Config/Version.xcconfig` mirrors. Its `productVersion`, `windowsRevision`, schema and keys must stay unchanged, and `macBuild` must increase. The workflow compares the exact source against the branch base before accepting this exception.
 - If a platform task reveals work needed on the other platform, record a follow-up instead of implementing it on the current branch.
 - Do not switch or clean a dirty worktree owned by another task or agent. Create an isolated worktree on the correctly prefixed branch.
 - macOS remains the reference implementation. Windows follows through its own branch without rewriting or opportunistically modifying macOS code.

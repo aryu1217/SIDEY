@@ -397,8 +397,8 @@ def local_checks(root, platform):
         'scripts/skills/release-notes/tests',
         capture=False,
     )
-    # Native and website checks are required remotely by scope-aware
-    # validation.
+    # Platform, website and device checks are recorded separately by the
+    # maintainer; GitHub Actions is disabled.
     if platform == 'shared':
         run(
             root,
@@ -844,20 +844,6 @@ def verify_windows_run(remote, metadata, jobs):
         )
 
 
-def is_required_validation(check):
-    """Recognize the gate before and after its workflow reaches main."""
-
-    return (
-        check.get('name') in {'Required checks', 'Required validation'}
-        and check.get('workflow') in {
-            'SIDEY CI',
-            '.github/workflows/ci.yml',
-            'Validate change',
-            '.github/workflows/validate-change.yml',
-        }
-    )
-
-
 def recover_merged_task(root, task, remote):
     # The server may merge successfully even if the client receives a
     # timeout/503.
@@ -1297,32 +1283,6 @@ def finish(root, args):
     if not prs:
         raise WorkflowError('No task PR exists; run publish before finish')
     number = require_exact_task_pr(root, prs)
-    # A named gate must actually exist and succeed; empty required
-    # checks never pass.
-    checks = json.loads(
-        run(
-            root,
-            'gh',
-            'pr',
-            'checks',
-            number,
-            '--repo',
-            repository,
-            '--json',
-            'name,bucket,workflow',
-        )
-    )
-    gate = [check for check in checks if is_required_validation(check)]
-    if len(gate) != 1 or gate[0]['bucket'] != 'pass':
-        raise WorkflowError(
-            f'PR #{number} Required checks are pending or failed; rerun '
-            'finish '
-            'after validation passes'
-        )
-    # SIDEY-source is a private repository on GitHub Free, so it deliberately
-    # has no branch-protection "required checks" for `gh pr checks --required`
-    # to discover. The scope-aware `Required checks` job above is the canonical
-    # integration gate and has already proved both existence and success.
     checked_head = task['checked']['head']
     checked_base = task['checked']['base']
     details = json.loads(

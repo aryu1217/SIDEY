@@ -19,9 +19,9 @@
 - 공개 `sidey-app/SIDEY` 저장소는 공식 website의 생성 결과, 공개 정책 문서,
   release metadata와 설치 artifact, 계속 배포하는 과거 AGPL binary에 필요한 정확한
   Corresponding Source archive를 제공한다. 현재 제품 source의 원본이 아니다.
-- Private source는 GitHub Free에서 운영하며 유료 private ruleset이나 Actions environment에
-  의존하지 않는다. Repository-level secret과 variable로 공개 저장소 전용 GitHub App을
-  사용한다. 공개 저장소의 branch 보호는 public ruleset으로 설정하고 유지한다.
+- Private source와 backend의 GitHub Actions는 비활성화한다. 기존 workflow YAML은
+  실행되지 않는 참고 자료로 보존하며 검사 결과는 해당 소스와 실제 기기에서 확인한다.
+  공개 `SIDEY` 저장소의 사이트와 다운로드 주소는 유지한다.
 - Supabase schema·migration·RLS·Edge Functions, App Store 거래 검증, 서버 운영 도구는
   비공개 [`sidey-app/sidey-backend`](https://github.com/sidey-app/sidey-backend)가
   소유한다. 공개/비공개 저장소의 작업 경계와 catalog handoff는

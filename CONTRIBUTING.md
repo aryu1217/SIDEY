@@ -133,7 +133,10 @@ creation are authorized, use the checked workflow:
 python3 scripts/skills/workflow.py publish <task> --title "<title>" --body-file <path>
 ```
 
-Required checks must pass before integration. GitHub creates the squash
+The recorded local checks and exact reviewed head are required before integration.
+GitHub Actions is disabled, so its archived workflows provide no validation.
+Run platform and device checks separately and record their results in the pull
+request. GitHub creates the squash
 commit title and body from the repository's merge message settings. After
 review feedback, make a focused follow-up commit and validate the new exact
 head; an amended or rebuilt equivalent does not inherit the prior review or
@@ -154,9 +157,9 @@ for manual testing before integration:
 python3 scripts/skills/workflow.py test-installer <task>
 ```
 
-Completing `finish` with a successful current-main Windows run rebuilds the
-test Setup from that same `main`. Both routes copy the verified installer into
-the maintainer's Downloads folder, then remove older SIDEY Windows Setup files
+The legacy current-main Windows Actions run option is unavailable while Actions
+is disabled. The local Setup route copies the verified installer into
+the maintainer's Downloads folder, then removes older SIDEY Windows Setup files
 there. A failed build or changed source leaves the previous installers in
 place.
 

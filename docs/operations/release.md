@@ -5,17 +5,15 @@
 submission, upload, website deployment와 production backend deployment는 각각 명시적인
 사용자 승인이 필요하다.
 
-현재 source와 release workflow는 비공개 `sidey-app/SIDEY-source`에서 관리한다. 공개
+현재 source와 과거 release workflow 파일은 비공개 `sidey-app/SIDEY-source`에서 관리한다. 공개
 `sidey-app/SIDEY`는 website output, 공개 정책, release metadata, 설치 artifact와
 계속 배포하는 과거 AGPL binary에 필요한 source archive를 받는 배포 저장소다. Public
 저장소의 파일을 source-of-truth로 역수정하지 않는다.
 
-Private source는 GitHub Free 조직에서 운영하므로 publication job에 Actions environment를
-사용하지 않는다. `SIDEY_PUBLIC_PUBLISHER_APP_ID` repository variable과
-`SIDEY_PUBLIC_PUBLISHER_PRIVATE_KEY` repository secret으로 공개 저장소에만 설치된 GitHub
-App token을 만든다. App 설치 범위는 공개 `sidey-app/SIDEY` 하나로 제한하고 repository
-권한은 `Contents: read/write`, `Metadata: read`만 허용한다. Organization-level secret이나
-private environment 보호에는 의존하지 않는다.
+Private source와 backend의 GitHub Actions는 꺼져 있다. `.github/workflows/` 파일은
+과거 절차의 기록이며 CI, Windows release, website deployment, backend 다운로드 집계가
+실행되지 않는다. 공개 저장소의 기존 사이트·릴리스는 유지되지만 새 게시 절차는 별도로
+검증하고 승인받아야 한다.
 
 ## 1. 범위와 version 확인
 
@@ -76,13 +74,11 @@ Metadata와 binary를 같은 review에 제출할 때도 upload, submission과 ma
 
 ### Windows
 
-Private source `main`의 수동
-[SIDEY Windows release workflow](../../.github/workflows/windows-release.yml)를
-사용한다. Workflow가 전체 Windows 검사, installer 생성, draft asset 재다운로드와 hash
-대조를 한 runner에서 마친 뒤에만 공개 배포 저장소에 publish한다. Local build나 artifact
-존재만으로 공개 release를 대체하지 않는다. 교차 저장소 게시 자격 증명은 공개
-`SIDEY`의 content만 쓸 수 있는 최소 권한으로 제한하며 source repository 접근 권한을
-부여하지 않는다.
+기존 [SIDEY Windows release workflow](../../.github/workflows/windows-release.yml)는
+참고용으로 남겨 두며 실행하지 않는다. 현재 자동 게시 경로는 없으므로 새 Windows
+릴리스에는 정확한 source의 실기 검사, installer 생성·검증, 공개 자산 재다운로드와
+SHA-256 대조를 포함한 별도 수동 절차를 확정해야 한다. Local build나 artifact 존재만으로
+공개 release를 대체하지 않는다.
 
 AGPL-covered historical binary를 계속 공개하는 release에는 binary를 만든 정확한 commit의
 Corresponding Source archive, AGPL license와 필요한 notice가 함께 있어야 한다. Archive가
