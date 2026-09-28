@@ -281,20 +281,11 @@ class UILocalizationTests(unittest.TestCase):
             for path in sorted((tool.ROOT / "windows/src").rglob("*"))
             if path.suffix in {".cs", ".xaml"}
         )
-        # These labels ship before the Windows UI that consumes them. Keep the
-        # exception limited to these staged handoffs.
+        # These labels ship before the Windows monitor and SettingsCard UI that
+        # consumes them. Keep the exception limited to this staged handoff.
         staged_windows_keys = {
             "settings.placement.monitor.display_name",
             "settings.placement.monitor.display_name_friendly",
-            "settings.update.auto_download.title",
-            "settings.update.available_action.description",
-            "settings.update.available_version",
-            "settings.update.download.action",
-            "settings.update.install.action",
-            "settings.update.notify.title",
-            "settings.update.show_after.title",
-            "tray.update.ready_to_install",
-            "update.download.ready",
         }
         stale = sorted(
             key for key in self.source["windows"]
