@@ -48,6 +48,7 @@ PRODUCT_VERSION_MIRRORS = {
     "macos/Config/Version.xcconfig",
     "release/windows.json",
     "windows/Version.props",
+    "release/app-store-localizations.json",
 }
 STABLE_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 
@@ -103,6 +104,32 @@ def validate_product_version_transition(
     next_version = tuple(map(int, after["productVersion"].split(".")))
     if next_version <= previous_version:
         raise WorkflowError("Shared Product Version must increase")
+
+    localization_path = "release/app-store-localizations.json"
+    try:
+        localization_before = json.loads(git(root, "show", f"{base}:{localization_path}"))
+        localization_after = json.loads(git(root, "show", f"{revision}:{localization_path}"))
+    except (json.JSONDecodeError, WorkflowError) as error:
+        raise WorkflowError(
+            f"Cannot compare App Store localization release to the base: {error}"
+        ) from error
+    if (
+        not isinstance(localization_before, dict)
+        or not isinstance(localization_after, dict)
+        or not isinstance(localization_before.get("release"), dict)
+        or not isinstance(localization_after.get("release"), dict)
+        or localization_before["release"] != {
+            "version": before["productVersion"], "build": before["macBuild"]
+        }
+        or localization_after["release"] != {
+            "version": after["productVersion"], "build": after["macBuild"]
+        }
+        or {k: v for k, v in localization_before.items() if k != "release"}
+        != {k: v for k, v in localization_after.items() if k != "release"}
+    ):
+        raise WorkflowError(
+            "App Store localization manifest may change only its matching release version"
+        )
 
     for platform in ("macos", "windows"):
         run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)

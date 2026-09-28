@@ -216,6 +216,7 @@ class GateTests(unittest.TestCase):
             "macos/Config/Version.xcconfig",
             "release/windows.json",
             "windows/Version.props",
+            "release/app-store-localizations.json",
             "docs/releases/windows-v2.1.0.md",
         ]
         before = {
@@ -225,13 +226,15 @@ class GateTests(unittest.TestCase):
             "macBuild": 37,
         }
         after = {**before, "productVersion": "2.1.0", "windowsRevision": 0}
+        localization_before = {"release": {"version": "2.0.0", "build": 37}, "app": {"bundle_id": "sidey"}}
+        localization_after = {"release": {"version": "2.1.0", "build": 37}, "app": {"bundle_id": "sidey"}}
         root = Path(".")
 
         def check(candidate):
             with (
                 patch(
                     "sidey_tools.repository.git",
-                    side_effect=[json.dumps(before), json.dumps(candidate)],
+                    side_effect=[json.dumps(before), json.dumps(candidate), json.dumps(localization_before), json.dumps(localization_after)],
                 ) as git,
                 patch("sidey_tools.repository.run") as run,
             ):
@@ -244,6 +247,8 @@ class GateTests(unittest.TestCase):
                 [
                     call(root, "show", "base:release/version.json"),
                     call(root, "show", "head:release/version.json"),
+                    call(root, "show", "base:release/app-store-localizations.json"),
+                    call(root, "show", "head:release/app-store-localizations.json"),
                 ],
             )
             self.assertEqual(
@@ -281,7 +286,7 @@ class GateTests(unittest.TestCase):
                     )
                 run.assert_not_called()
 
-        for removed in paths[1:5]:
+        for removed in paths[1:6]:
             with self.subTest(removed=removed):
                 with self.assertRaisesRegex(WorkflowError, "platform boundary"):
                     validate_paths(
@@ -302,6 +307,24 @@ class GateTests(unittest.TestCase):
                 root=root, base="base", revision="head",
             )
 
+        with (
+            patch(
+                "sidey_tools.repository.git",
+                side_effect=[
+                    json.dumps(before), json.dumps(after),
+                    json.dumps(localization_before),
+                    json.dumps({**localization_after, "app": {"bundle_id": "other"}}),
+                ],
+            ),
+            patch("sidey_tools.repository.run") as run,
+            self.assertRaisesRegex(WorkflowError, "App Store localization manifest"),
+        ):
+            validate_paths(
+                "shared/product-version", paths,
+                root=root, base="base", revision="head",
+            )
+        run.assert_not_called()
+
     def test_shared_product_version_transition_rejects_stale_mirror(self):
         paths = [
             "release/version.json",
@@ -309,16 +332,22 @@ class GateTests(unittest.TestCase):
             "macos/Config/Version.xcconfig",
             "release/windows.json",
             "windows/Version.props",
+            "release/app-store-localizations.json",
         ]
         before = {
             "schema": 1, "productVersion": "2.0.0",
             "windowsRevision": 0, "macBuild": 37,
         }
         after = {**before, "productVersion": "2.1.0"}
+        localization_before = {"release": {"version": "2.0.0", "build": 37}}
+        localization_after = {"release": {"version": "2.1.0", "build": 37}}
         with (
             patch(
                 "sidey_tools.repository.git",
-                side_effect=[json.dumps(before), json.dumps(after)],
+                side_effect=[
+                    json.dumps(before), json.dumps(after),
+                    json.dumps(localization_before), json.dumps(localization_after),
+                ],
             ),
             patch(
                 "sidey_tools.repository.run",
