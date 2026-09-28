@@ -57,7 +57,9 @@ function Get-TransactionArguments(
     [string]$Action,
     [string]$StagingDirectory = $staging,
     [switch]$UseRealParentPolicy,
-    [string]$InstallDirectory = $install
+    [string]$InstallDirectory = $install,
+    [string]$LogFile = $logPath,
+    [switch]$OmitLogPath
 ) {
     $arguments = @(
         '--action', (ConvertTo-NativeArgument $Action),
@@ -65,9 +67,11 @@ function Get-TransactionArguments(
         '--staging-directory', (ConvertTo-NativeArgument $StagingDirectory),
         '--rollback-directory', (ConvertTo-NativeArgument ($InstallDirectory + '.sidey-rollback')),
         '--product-version', (ConvertTo-NativeArgument $productVersion),
-        '--update-version', (ConvertTo-NativeArgument $updateVersion),
-        '--log-path', (ConvertTo-NativeArgument $logPath)
+        '--update-version', (ConvertTo-NativeArgument $updateVersion)
     )
+    if (-not $OmitLogPath) {
+        $arguments += @('--log-path', (ConvertTo-NativeArgument $LogFile))
+    }
     if (-not $UseRealParentPolicy) {
         $arguments += '--allow-user-writable-parent-for-tests'
     }
@@ -132,6 +136,29 @@ function New-Payload([string]$Marker) {
     [IO.File]::WriteAllText((Join-Path $staging 'Runtime/SIDEY.Host.exe'), $Marker)
     [IO.File]::WriteAllText((Join-Path $staging 'Runtime/SIDEY.UninstallHelper.exe'), $Marker)
     [IO.File]::WriteAllText((Join-Path $staging 'Uninstall.exe'), $Marker)
+}
+
+function Assert-FailureDiagnostic(
+    [string]$Action,
+    [string]$Step,
+    [string]$ExceptionType
+) {
+    Assert-True ([IO.File]::Exists($logPath)) `
+        "A failed $Action transaction did not write a support diagnostic."
+    $diagnostic = [IO.File]::ReadAllText($logPath)
+    $lines = @($diagnostic -split '\r?\n')
+    Assert-True ($lines -ccontains '[InstallTransaction]') `
+        "A failed $Action transaction did not identify the helper."
+    Assert-True ($lines -ccontains "action=$Action") `
+        "A failed $Action transaction did not identify its action."
+    Assert-True ($lines -ccontains "step=$Step") `
+        "A failed $Action transaction did not identify the failed substep."
+    Assert-True ($lines -ccontains "exception=$ExceptionType") `
+        "A failed $Action transaction did not identify its exception type."
+    Assert-True ($diagnostic -cmatch '(?m)^hresult=0x[0-9A-F]{8}\r?$') `
+        "A failed $Action transaction did not record a hexadecimal HRESULT."
+    Assert-True (-not $diagnostic.Contains($probeRoot)) `
+        "A failed $Action diagnostic exposed the local test directory."
 }
 
 function Set-DeletionRestrictedPayload([string]$Path) {
@@ -338,6 +365,63 @@ try {
             -ceq 'framework-dependent-host') `
         'A persistent activation lock changed the existing framework-dependent install.'
     Invoke-Transaction Rollback
+
+    Invoke-Transaction Prepare
+    New-Payload 'dual-failure-diagnostic'
+    [IO.File]::Delete($logPath)
+    $lockedHostForRollbackFailure = [IO.File]::Open(
+        (Join-Path $install 'Runtime/SIDEY.Host.exe'),
+        [IO.FileMode]::Open,
+        [IO.FileAccess]::Read,
+        [IO.FileShare]::None)
+    $lockedStagingForRollbackFailure = [IO.File]::Open(
+        (Join-Path $staging 'Runtime/SIDEY.Host.exe'),
+        [IO.FileMode]::Open,
+        [IO.FileAccess]::Read,
+        [IO.FileShare]::None)
+    $dualFailureProcess = $null
+    try {
+        $dualFailureProcess = Start-TransactionProcess 'Activate'
+        Assert-True (Wait-TransactionPhase $dualFailureProcess 'prepared' 5000) `
+            'Activate did not reach the prepared phase for the dual-failure diagnostic.'
+        Assert-True (-not $dualFailureProcess.WaitForExit(500)) `
+            'Activate did not retry the locked live directory before rollback.'
+        Assert-True ($dualFailureProcess.WaitForExit(10000)) `
+            'Activate did not finish after the bounded move retry and failed rollback.'
+        Assert-True ($dualFailureProcess.ExitCode -eq 1) `
+            'A failed activation with failed rollback did not return the transaction failure code.'
+        $dualFailureLog = [IO.File]::ReadAllText($logPath)
+        $diagnostics = @([regex]::Matches(
+            $dualFailureLog,
+            '(?s)\[InstallTransaction\]\r?\n.*?(?:\r?\n){2}'))
+        Assert-True ($diagnostics.Count -eq 2) `
+            'Activation and rollback failures did not produce two diagnostic records.'
+        Assert-True ($diagnostics[0].Value.Contains('step=activate.move-live')) `
+            'The first diagnostic did not identify the activation move failure.'
+        Assert-True ($diagnostics[0].Value -match '(?m)^exception=(IOException|UnauthorizedAccessException)\r?$') `
+            'The first diagnostic did not identify the activation move exception.'
+        Assert-True ($diagnostics[1].Value.Contains('step=activate.undo.remove-staging')) `
+            'The second diagnostic did not identify the rollback staging-removal failure.'
+        Assert-True ($diagnostics[1].Value -match '(?m)^exception=(IOException|UnauthorizedAccessException)\r?$') `
+            'The second diagnostic did not identify the rollback exception.'
+        Assert-True (-not $dualFailureLog.Contains($probeRoot)) `
+            'A dual-failure diagnostic exposed the local test directory.'
+    }
+    finally {
+        if ($null -ne $dualFailureProcess) {
+            if (-not $dualFailureProcess.HasExited) {
+                $dualFailureProcess.Kill()
+                $dualFailureProcess.WaitForExit()
+            }
+            $dualFailureProcess.Dispose()
+        }
+        $lockedHostForRollbackFailure.Dispose()
+        $lockedStagingForRollbackFailure.Dispose()
+    }
+    Invoke-Transaction Rollback
+    Assert-True ((Get-Content -LiteralPath (Join-Path $install 'Runtime/SIDEY.Host.exe') -Raw) `
+            -ceq 'framework-dependent-host') `
+        'Cleanup after the diagnostic test changed the previous installation.'
     Remove-Item -LiteralPath $install -Recurse -Force
     [IO.Directory]::CreateDirectory($install) | Out-Null
     [IO.File]::WriteAllText((Join-Path $install 'marker.txt'), 'old')
@@ -389,9 +473,11 @@ try {
         [IO.FileAccess]::Read,
         [IO.FileShare]::None)
     try {
+        [IO.File]::Delete($logPath)
         $cleanupExitCode = Invoke-Transaction Complete -AllowFailure
         Assert-True ($cleanupExitCode -eq 10) `
             'Complete did not report retryable cleanup failure with exit code 10.'
+        Assert-FailureDiagnostic 'Complete' 'complete.remove-rollback' 'IOException'
         Assert-True ([IO.File]::Exists($install + '.sidey-transaction.json')) `
             'A failed cleanup removed transaction state needed for retry.'
     }
@@ -536,6 +622,69 @@ try {
         -StagingDirectory (Join-Path $probeRoot 'not-a-sidey-stage') -AllowFailure
     Assert-True ($unsafeExitCode -ne 0) `
         'The transaction accepted an unrelated staging directory.'
+
+    [IO.File]::Delete($logPath)
+    [IO.Directory]::CreateDirectory($rollback) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $rollback 'marker.txt'), 'preserve')
+    $prepareFailure = Invoke-Transaction Prepare -AllowFailure
+    Assert-True ($prepareFailure -eq 1) `
+        'Prepare did not report an orphaned rollback directory as a failure.'
+    Assert-FailureDiagnostic 'Prepare' 'prepare.recover' 'InvalidOperationException'
+    Assert-True ([IO.File]::Exists((Join-Path $rollback 'marker.txt'))) `
+        'A failed Prepare removed an unrecognized rollback directory.'
+    Remove-Item -LiteralPath $rollback -Recurse -Force
+
+    Invoke-Transaction Prepare
+    [IO.File]::WriteAllText((Join-Path $staging 'SIDEY.exe'), 'incomplete')
+    [IO.File]::Delete($logPath)
+    $activateFailure = Invoke-Transaction Activate -AllowFailure
+    Assert-True ($activateFailure -eq 1) `
+        'Activate did not reject an incomplete staged payload.'
+    Assert-FailureDiagnostic 'Activate' 'activate.verify-payload.host' 'InvalidOperationException'
+    Assert-True ([IO.File]::Exists((Join-Path $install 'SIDEY.exe'))) `
+        'A failed Activate replaced the existing installation.'
+    Invoke-Transaction Rollback
+
+    [IO.File]::WriteAllText($statePath, 'not-json')
+    [IO.File]::Delete($logPath)
+    $recoverFailure = Invoke-Transaction Recover -AllowFailure
+    Assert-True ($recoverFailure -eq 71) `
+        'Recover did not preserve the invalid-state exit code.'
+    Assert-FailureDiagnostic 'Recover' 'recover.read-state' 'InvalidOperationException'
+    Assert-True ([IO.File]::Exists($statePath)) `
+        'A failed Recover removed the invalid state file.'
+
+    [IO.File]::Delete($logPath)
+    $rollbackFailure = Invoke-Transaction Rollback -AllowFailure
+    Assert-True ($rollbackFailure -eq 1) `
+        'Rollback did not report an invalid transaction state as a failure.'
+    Assert-FailureDiagnostic 'Rollback' 'rollback.read-state' 'InvalidOperationException'
+    Assert-True ([IO.File]::Exists($statePath)) `
+        'A failed Rollback removed the invalid state file.'
+
+    $unwritableLogPath = Join-Path $probeRoot 'log-path-is-a-directory'
+    [IO.Directory]::CreateDirectory($unwritableLogPath) | Out-Null
+    $unwritableLogResult = Invoke-Helper (Get-TransactionArguments `
+        'Recover' -LogFile $unwritableLogPath)
+    Assert-True ($unwritableLogResult.ExitCode -eq 71) `
+        'A support-log write failure replaced the original recovery exit code.'
+    $missingLogResult = Invoke-Helper (Get-TransactionArguments `
+        'Recover' -OmitLogPath)
+    Assert-True ($missingLogResult.ExitCode -eq 71) `
+        'Omitting the optional support log changed the original recovery exit code.'
+    Assert-True ([IO.File]::Exists($statePath)) `
+        'A recovery diagnostic failure removed the invalid state file.'
+    [IO.File]::Delete($statePath)
+
+    [IO.File]::Delete($logPath)
+    $privateArgument = Join-Path $probeRoot 'private-argument'
+    $invalidLoggedResult = Invoke-Helper ((Get-TransactionArguments 'Recover') +
+        ' --unsupported ' + (ConvertTo-NativeArgument $privateArgument))
+    Assert-True ($invalidLoggedResult.ExitCode -eq 64) `
+        'An unsupported argument with a support log did not return the parse exit code.'
+    Assert-FailureDiagnostic 'Parse' 'parse.arguments' 'ArgumentException'
+    Assert-True (-not ([IO.File]::ReadAllText($logPath)).Contains($privateArgument)) `
+        'An invalid-argument diagnostic exposed the rejected argument value.'
 
     $invalidResult = Invoke-Helper '--unsupported'
     Assert-True ($invalidResult.ExitCode -eq 64) `

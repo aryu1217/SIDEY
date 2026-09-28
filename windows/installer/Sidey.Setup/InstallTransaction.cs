@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -46,20 +47,57 @@ namespace Sidey.Installer
             {
                 options = TransactionOptions.Parse(arguments);
                 transaction = new InstallTransaction(options);
-                return transaction.Run();
+                int result = transaction.Run();
+                if (transaction.LastFailure != null)
+                {
+                    WriteFailureDiagnostic(options, transaction, transaction.LastFailure);
+                }
+                return result;
             }
             catch (ArgumentException exception) when (options == null)
             {
-                WriteFailureDiagnostic(options, transaction, exception);
+                WriteFailureDiagnostic(
+                    new TransactionOptions
+                    {
+                        Action = "Parse",
+                        LogPath = FindDiagnosticLogPath(arguments),
+                    },
+                    "parse.arguments",
+                    null,
+                    exception);
                 Console.Error.WriteLine(exception.Message);
                 return InvalidArguments;
             }
             catch (Exception exception)
             {
+                if (transaction != null && transaction.EarlierFailure != null)
+                {
+                    WriteFailureDiagnostic(
+                        options,
+                        transaction.EarlierFailureStep,
+                        transaction,
+                        transaction.EarlierFailure);
+                }
                 WriteFailureDiagnostic(options, transaction, exception);
                 Console.Error.WriteLine(exception.Message);
                 return FailureExitCode(options, transaction, exception);
             }
+        }
+
+        private static string FindDiagnosticLogPath(string[] arguments)
+        {
+            if (arguments == null)
+            {
+                return null;
+            }
+            for (int index = 0; index + 1 < arguments.Length; index++)
+            {
+                if (string.Equals(arguments[index], "--log-path", StringComparison.OrdinalIgnoreCase))
+                {
+                    return arguments[index + 1];
+                }
+            }
+            return null;
         }
 
         private static int FailureExitCode(
@@ -104,6 +142,19 @@ namespace Sidey.Installer
             InstallTransaction transaction,
             Exception exception)
         {
+            WriteFailureDiagnostic(
+                options,
+                transaction == null ? "initialize" : transaction.Step,
+                transaction,
+                exception);
+        }
+
+        private static void WriteFailureDiagnostic(
+            TransactionOptions options,
+            string step,
+            InstallTransaction transaction,
+            Exception exception)
+        {
             if (options == null || string.IsNullOrWhiteSpace(options.LogPath))
             {
                 return;
@@ -111,6 +162,7 @@ namespace Sidey.Installer
 
             try
             {
+                Win32Exception nativeException = exception as Win32Exception;
                 // Keep support logs useful without copying paths or account data from
                 // exception messages into a file that users may attach to an issue.
                 File.AppendAllText(options.LogPath,
@@ -118,8 +170,13 @@ namespace Sidey.Installer
                     + "action=" + options.Action + Environment.NewLine
                     + "operation=" + (transaction == null ? "initialize" : transaction.Operation)
                     + Environment.NewLine
+                    + "step=" + step + Environment.NewLine
                     + "exception=" + exception.GetType().Name + Environment.NewLine
                     + "hresult=0x" + exception.HResult.ToString("X8", CultureInfo.InvariantCulture)
+                    + Environment.NewLine
+                    + "nativeCode=" + (nativeException == null
+                        ? string.Empty
+                        : nativeException.NativeErrorCode.ToString(CultureInfo.InvariantCulture))
                     + Environment.NewLine + Environment.NewLine,
                     Encoding.ASCII);
             }
@@ -254,9 +311,14 @@ namespace Sidey.Installer
             private string completionId;
 
             public string Operation { get; private set; }
+            public string Step { get; private set; }
+            public Exception LastFailure { get; private set; }
+            public Exception EarlierFailure { get; private set; }
+            public string EarlierFailureStep { get; private set; }
 
             public InstallTransaction(TransactionOptions options)
             {
+                Step = "initialize.paths";
                 action = options.Action;
                 installPath = Normalize(options.InstallDirectory);
                 stagingPath = Normalize(options.StagingDirectory);
@@ -280,8 +342,10 @@ namespace Sidey.Installer
                 transactionStagingPath = stagingPath;
                 Operation = "run";
 
+                Step = "initialize.staging-path";
                 ValidateSiblingPath(stagingPath, expectedStagingPrefix, false,
                     "The SIDEY staging directory must be a reserved sibling of the install directory.");
+                Step = "initialize.rollback-path";
                 ValidateSiblingPath(rollbackPath, installPath + ".sidey-rollback", true,
                     "The SIDEY rollback directory must be the reserved sibling of the install directory.");
             }
@@ -305,6 +369,7 @@ namespace Sidey.Installer
                 if (EqualsAction("InspectLegacyLocation"))
                 {
                     Operation = "inspect-legacy.parent-security";
+                    Step = "inspect-legacy.parent-security";
                     try
                     {
                         AssertSecureTransactionParent();
@@ -313,6 +378,7 @@ namespace Sidey.Installer
                     catch (InsecureTransactionParentException)
                     {
                         Operation = "inspect-legacy.transaction-artifacts";
+                        Step = "inspect-legacy.transaction-artifacts";
                         if (HasTransactionArtifacts())
                         {
                             throw new InvalidOperationException(
@@ -324,8 +390,10 @@ namespace Sidey.Installer
                 if (EqualsAction("InspectRelocationTarget"))
                 {
                     Operation = "inspect-relocation.parent-security";
+                    Step = "inspect-relocation.parent-security";
                     AssertSecureTransactionParent();
                     Operation = "inspect-relocation.target";
+                    Step = "inspect-relocation.target";
                     if (Directory.Exists(installPath) || File.Exists(installPath)
                         || HasTransactionArtifacts())
                     {
@@ -337,58 +405,78 @@ namespace Sidey.Installer
                 if (EqualsAction("Recover"))
                 {
                     Operation = "recover.parent-security";
+                    Step = "recover.parent-security";
                     AssertSecureTransactionParent();
                     Operation = "recover.read-state";
+                    Step = "recover.read-state";
                     RecoverInterruptedTransaction();
                     Operation = "recover.pending-location";
+                    Step = "recover.pending-location";
                     ClearPendingInstallLocation();
                     return 0;
                 }
                 if (EqualsAction("Prepare"))
                 {
+                    Operation = "prepare";
+                    Step = "prepare.parent-security";
                     AssertSecureTransactionParent();
+                    Step = "prepare.recover";
                     RecoverInterruptedTransaction();
+                    Operation = "prepare";
+                    Step = "prepare.previous-registration";
                     transactionStagingPath = stagingPath;
                     completionId = Guid.NewGuid().ToString("N");
                     previousInstallExisted = Directory.Exists(installPath);
                     previousRegistration = GetPreviousRegistration();
+                    Step = "prepare.pending-location";
                     SetPendingInstallLocation();
+                    Step = "prepare.write-state";
                     WriteState("staging");
+                    Step = "prepare.create-staging";
                     Directory.CreateDirectory(stagingPath);
+                    Step = "prepare.protect-staging";
                     ProtectStagingDirectory();
                     return 0;
                 }
                 if (EqualsAction("Activate"))
                 {
+                    Operation = "activate";
                     Activate();
                     return 0;
                 }
                 if (EqualsAction("BeginRegistration"))
                 {
+                    Step = "begin-registration.read-state";
                     TransactionState state = ReadState();
+                    Step = "begin-registration.verify-active";
                     if (state == null || !PhaseEquals(state, "active")
                         || !File.Exists(Path.Combine(installPath, "SIDEY.exe")))
                     {
                         throw new InvalidOperationException(
                             "The SIDEY install transaction is not ready to register.");
                     }
+                    Step = "begin-registration.write-state";
                     WriteState("registering");
                     return 0;
                 }
                 if (EqualsAction("Commit"))
                 {
+                    Step = "commit.read-state";
                     TransactionState state = ReadState();
+                    Step = "commit.verify-registration";
                     if (state == null || !PhaseEquals(state, "registering")
                         || !File.Exists(Path.Combine(installPath, "SIDEY.exe")))
                     {
                         throw new InvalidOperationException(
                             "The SIDEY install transaction is not ready to commit.");
                     }
+                    Step = "commit.write-state";
                     WriteState("committed");
                     return 0;
                 }
                 if (EqualsAction("Rollback"))
                 {
+                    Step = "rollback.read-state";
                     TransactionState state = ReadState();
                     if (state != null)
                     {
@@ -396,14 +484,18 @@ namespace Sidey.Installer
                     }
                     else
                     {
+                        Step = "rollback.remove-staging";
                         RemoveTransactionDirectory(stagingPath);
+                        Step = "rollback.pending-location";
                         ClearPendingInstallLocation();
                     }
                     return 0;
                 }
                 if (EqualsAction("Complete"))
                 {
+                    Step = "complete.read-state";
                     TransactionState state = ReadState();
+                    Step = "complete.verify-commit";
                     if (state == null || !PhaseEquals(state, "committed"))
                     {
                         throw new InvalidOperationException(
@@ -411,20 +503,27 @@ namespace Sidey.Installer
                     }
                     try
                     {
+                        Step = "complete.desktop-registration";
                         CompleteDesktopRegistration(state);
+                        Step = "complete.remove-rollback";
                         RemoveTransactionDirectory(rollbackPath);
+                        Step = "complete.remove-staging";
                         RemoveTransactionDirectory(AssertStagingDirectoryPath(state.StagingDirectory));
+                        Step = "complete.remove-state";
                         RemoveState();
+                        Step = "complete.pending-location";
                         ClearPendingInstallLocation();
                         return 0;
                     }
                     catch (Exception exception)
                     {
+                        LastFailure = exception;
                         Console.Error.WriteLine(exception.Message);
                         return RetryableCleanupFailure;
                     }
                 }
 
+                Step = "uninstall.parent-security";
                 AssertSecureTransactionParent();
                 CleanupForUninstall();
                 return 0;
@@ -442,7 +541,9 @@ namespace Sidey.Installer
 
             private void Activate()
             {
+                Step = "activate.read-state";
                 TransactionState state = ReadState();
+                Step = "activate.verify-state";
                 if (state == null || !PhaseEquals(state, "staging")
                     || !PathComparer.Equals(Normalize(state.StagingDirectory), stagingPath))
                 {
@@ -457,42 +558,65 @@ namespace Sidey.Installer
                     Path.Combine(stagingPath, @"Runtime\SIDEY.UninstallHelper.exe"),
                     Path.Combine(stagingPath, "Uninstall.exe"),
                 };
-                foreach (string requiredPath in requiredPaths)
+                string[] requiredRoles = { "launcher", "host", "uninstall-helper", "uninstaller" };
+                for (int index = 0; index < requiredPaths.Length; index++)
                 {
-                    if (!File.Exists(requiredPath))
+                    Step = "activate.verify-payload." + requiredRoles[index];
+                    if (!File.Exists(requiredPaths[index]))
                     {
                         throw new InvalidOperationException(
-                            "The staged SIDEY payload is incomplete: " + requiredPath);
+                            "The staged SIDEY payload is incomplete: " + requiredPaths[index]);
                     }
                 }
 
+                Step = "activate.verify-staging-tree";
                 AssertNoReparseTree(stagingPath);
+                Step = "activate.verify-install-directory";
                 AssertOrdinaryDirectory(installPath);
+                Step = "activate.verify-rollback-directory";
                 if (Directory.Exists(rollbackPath))
                 {
                     throw new InvalidOperationException(
                         "The SIDEY rollback directory was not cleared before activation.");
                 }
 
+                Step = "activate.write-prepared";
                 WriteState("prepared");
                 try
                 {
                     if (Directory.Exists(installPath))
                     {
+                        Step = "activate.move-live";
                         MoveDirectoryForActivation(installPath, rollbackPath);
+                        Step = "activate.write-previous-moved";
                         WriteState("previous-moved");
                     }
+                    Step = "activate.write-activating";
                     WriteState("activating");
+                    Step = "activate.move-staging";
                     MoveDirectoryForActivation(stagingPath, installPath);
+                    Step = "activate.write-active";
                     WriteState("active");
                 }
-                catch
+                catch (Exception activationFailure)
                 {
-                    TransactionState failedState = ReadState();
-                    if (failedState != null)
+                    string activationStep = Step;
+                    try
                     {
-                        UndoTransaction(failedState);
+                        Step = "activate.rollback.read-state";
+                        TransactionState failedState = ReadState();
+                        if (failedState != null)
+                        {
+                            UndoTransaction(failedState);
+                        }
                     }
+                    catch
+                    {
+                        EarlierFailure = activationFailure;
+                        EarlierFailureStep = activationStep;
+                        throw;
+                    }
+                    Step = activationStep;
                     throw;
                 }
             }
@@ -522,14 +646,19 @@ namespace Sidey.Installer
 
             private void CleanupForUninstall()
             {
+                Step = "uninstall.read-state";
                 TransactionState state = ReadState();
                 if (state != null)
                 {
                     if (PhaseEquals(state, "committed"))
                     {
+                        Step = "uninstall.remove-rollback";
                         RemoveTransactionDirectory(rollbackPath);
+                        Step = "uninstall.remove-staging";
                         RemoveTransactionDirectory(AssertStagingDirectoryPath(state.StagingDirectory));
+                        Step = "uninstall.remove-state";
                         RemoveState();
+                        Step = "uninstall.pending-location";
                         ClearPendingInstallLocation();
                     }
                     else
@@ -539,8 +668,11 @@ namespace Sidey.Installer
                 }
                 else
                 {
+                    Step = "uninstall.remove-rollback";
                     RemoveTransactionDirectory(rollbackPath);
+                    Step = "uninstall.remove-staging";
                     RemoveTransactionDirectory(stagingPath);
+                    Step = "uninstall.pending-location";
                     ClearPendingInstallLocation();
                 }
             }
@@ -557,6 +689,7 @@ namespace Sidey.Installer
                             "An unrecognized SIDEY rollback directory already exists.");
                     }
                     Operation = "recover.remove-staging";
+                    Step = action.ToLowerInvariant() + ".recover.remove-staging";
                     RemoveTransactionDirectory(stagingPath);
                     return;
                 }
@@ -564,6 +697,7 @@ namespace Sidey.Installer
                 if (PhaseEquals(state, "committed"))
                 {
                     Operation = "recover.complete-committed";
+                    Step = action.ToLowerInvariant() + ".recover.validate-staging";
                     string recordedStaging = AssertStagingDirectoryPath(state.StagingDirectory);
                     if (!Directory.Exists(installPath))
                     {
@@ -571,8 +705,11 @@ namespace Sidey.Installer
                         return;
                     }
                     CompleteDesktopRegistration(state);
+                    Step = action.ToLowerInvariant() + ".recover.remove-rollback";
                     RemoveTransactionDirectory(rollbackPath);
+                    Step = action.ToLowerInvariant() + ".recover.remove-staging";
                     RemoveTransactionDirectory(recordedStaging);
+                    Step = action.ToLowerInvariant() + ".recover.remove-state";
                     RemoveState();
                     return;
                 }
@@ -600,12 +737,14 @@ namespace Sidey.Installer
                     && current > prior;
                 bool relocated = upgrade && !state.PreviousInstallExisted;
                 string markerPath = Path.Combine(installPath, "install-completion.txt");
+                Step = action.ToLowerInvariant() + ".desktop-registration.write-marker";
                 File.WriteAllLines(markerPath, new[]
                 {
                     fresh ? "fresh" : (relocated ? "relocate" : (upgrade ? "upgrade" : "repair")),
                     state.UpdateVersion,
                     state.CompletionId,
                 });
+                Step = action.ToLowerInvariant() + ".desktop-registration.start-helper";
                 using (Process helper = Process.Start(new ProcessStartInfo
                 {
                     FileName = Path.Combine(installPath, @"Runtime\SIDEY.UninstallHelper.exe"),
@@ -618,43 +757,56 @@ namespace Sidey.Installer
                     {
                         throw new InvalidOperationException("Desktop registration did not start.");
                     }
+                    Step = action.ToLowerInvariant() + ".desktop-registration.wait-helper";
                     helper.WaitForExit();
+                    Step = action.ToLowerInvariant() + ".desktop-registration.verify-helper";
                     if (helper.ExitCode != 0)
                     {
                         throw new InvalidOperationException("Desktop registration is pending recovery.");
                     }
                 }
+                Step = action.ToLowerInvariant() + ".desktop-registration.remove-marker";
                 File.Delete(markerPath);
             }
 
             private void UndoTransaction(TransactionState state)
             {
+                string prefix = action.ToLowerInvariant() + ".undo";
+                Step = prefix + ".validate-staging";
                 string stagingToRemove = AssertStagingDirectoryPath(state.StagingDirectory);
                 string startingPhase = state.Phase;
                 if (string.Equals(startingPhase, "rolled-back", StringComparison.Ordinal))
                 {
+                    Step = prefix + ".remove-rollback";
                     RemoveTransactionDirectory(rollbackPath);
+                    Step = prefix + ".remove-staging";
                     RemoveTransactionDirectory(stagingToRemove);
                     if (!PathComparer.Equals(stagingToRemove, stagingPath))
                     {
                         RemoveTransactionDirectory(stagingPath);
                     }
+                    Step = prefix + ".remove-state";
                     RemoveState();
+                    Step = prefix + ".pending-location";
                     ClearPendingInstallLocation();
                     return;
                 }
 
                 if (!string.Equals(startingPhase, "rolling-back", StringComparison.Ordinal))
                 {
+                    Step = prefix + ".write-rolling-back";
                     WriteState("rolling-back");
                 }
+                Step = prefix + ".verify-rollback";
                 AssertOrdinaryDirectory(rollbackPath);
                 if (Directory.Exists(rollbackPath))
                 {
                     if (Directory.Exists(installPath))
                     {
+                        Step = prefix + ".remove-live";
                         RemoveTransactionDirectory(installPath);
                     }
+                    Step = prefix + ".restore-live";
                     Directory.Move(rollbackPath, installPath);
                 }
                 else if (previousInstallExisted
@@ -672,9 +824,11 @@ namespace Sidey.Installer
                         || string.Equals(startingPhase, "committed", StringComparison.Ordinal)
                         || string.Equals(startingPhase, "rolling-back", StringComparison.Ordinal)))
                 {
+                    Step = prefix + ".remove-live";
                     RemoveTransactionDirectory(installPath);
                 }
 
+                Step = prefix + ".remove-staging";
                 RemoveTransactionDirectory(stagingToRemove);
                 if (!PathComparer.Equals(stagingToRemove, stagingPath))
                 {
@@ -684,10 +838,14 @@ namespace Sidey.Installer
                     || string.Equals(startingPhase, "committed", StringComparison.Ordinal)
                     || string.Equals(startingPhase, "rolling-back", StringComparison.Ordinal))
                 {
+                    Step = prefix + ".restore-registration";
                     RestorePreviousRegistration();
                 }
+                Step = prefix + ".write-rolled-back";
                 WriteState("rolled-back");
+                Step = prefix + ".remove-state";
                 RemoveState();
+                Step = prefix + ".pending-location";
                 ClearPendingInstallLocation();
             }
 
@@ -792,6 +950,8 @@ namespace Sidey.Installer
 
             private void AssertSecureTransactionParent()
             {
+                string stepPrefix = Step;
+                Step = stepPrefix + ".reparse";
                 AssertNoReparseAncestors(parentPath);
                 if (allowUserWritableParentForTests)
                 {
@@ -810,9 +970,11 @@ namespace Sidey.Installer
                     trustedInstaller,
                 };
 
+                Step = stepPrefix + ".read-acl";
                 DirectorySecurity security = Directory.GetAccessControl(
                     parentPath,
                     AccessControlSections.Access | AccessControlSections.Owner);
+                Step = stepPrefix + ".owner";
                 SecurityIdentifier owner = security.GetOwner(typeof(SecurityIdentifier))
                     as SecurityIdentifier;
                 if (owner == null || !privileged.Contains(owner.Value))
@@ -826,6 +988,7 @@ namespace Sidey.Installer
                     | FileSystemRights.DeleteSubdirectoriesAndFiles
                     | FileSystemRights.ChangePermissions
                     | FileSystemRights.TakeOwnership;
+                Step = stepPrefix + ".write-permissions";
                 AuthorizationRuleCollection rules = security.GetAccessRules(
                     true,
                     true,
@@ -1047,22 +1210,34 @@ namespace Sidey.Installer
                     RegistryHive.LocalMachine,
                     RegistryView.Registry64))
                 {
+                    Step = action.ToLowerInvariant() + ".restore-registration.remove-keys";
                     machine.DeleteSubKeyTree(InstallerRegistryPath, false);
                     machine.DeleteSubKeyTree(UninstallRegistryPath, false);
                     machine.DeleteSubKeyTree(ProtocolRegistryPath, false);
 
+                    Step = action.ToLowerInvariant() + ".restore-registration.shortcuts";
                     string startMenu = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
                         "SIDEY");
-                    RemoveTransactionDirectory(startMenu);
+                    // The folder can contain files we do not own. Only remove the
+                    // shortcuts that this installer creates before restoring them.
+                    AssertOrdinaryDirectory(startMenu);
+                    File.Delete(Path.Combine(startMenu, "SIDEY.lnk"));
+                    File.Delete(Path.Combine(startMenu, "Uninstall SIDEY.lnk"));
                     if (!previousRegistration.Existed)
                     {
+                        if (Directory.Exists(startMenu)
+                            && Directory.GetFileSystemEntries(startMenu).Length == 0)
+                        {
+                            Directory.Delete(startMenu, false);
+                        }
                         return;
                     }
 
                     string location = previousRegistration.Location;
                     string priorProductVersion = previousRegistration.ProductVersion;
                     string priorUpdateVersion = previousRegistration.UpdateVersion;
+                    Step = action.ToLowerInvariant() + ".restore-registration.write-keys";
                     using (RegistryKey installer = machine.CreateSubKey(InstallerRegistryPath))
                     using (RegistryKey uninstall = machine.CreateSubKey(UninstallRegistryPath))
                     using (RegistryKey protocol = machine.CreateSubKey(ProtocolRegistryPath))
@@ -1113,6 +1288,7 @@ namespace Sidey.Installer
                         }
                     }
 
+                    Step = action.ToLowerInvariant() + ".restore-registration.create-shortcuts";
                     Directory.CreateDirectory(startMenu);
                     CreateShortcut(
                         Path.Combine(startMenu, "SIDEY.lnk"),
