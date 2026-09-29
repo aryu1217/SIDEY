@@ -13,7 +13,7 @@ These instructions apply to `macos/**`. Read the repository-root `AGENTS.md` fir
 
 ## Build and validation
 
-The `macOS build and tests` job in `.github/workflows/ci.yml` is the canonical automatic check. Start with the narrowest affected XCTest, Python asset/provenance test or structural check. When a change can affect the shipped macOS application, run the maintained native route from the repository root:
+GitHub Actions is disabled, so validate macOS changes locally on a Mac from the exact task worktree. Start with the narrowest affected XCTest, Python asset/provenance test or structural check. When a change can affect the shipped macOS application, run the maintained native route from the repository root:
 
 ```sh
 ./scripts/macos/tests/test_native.sh
