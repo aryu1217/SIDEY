@@ -2,6 +2,88 @@ import XCTest
 @testable import SIDEY
 
 final class RuntimeConfigurationTests: XCTestCase {
+    #if DEBUG
+    func testLocalMembershipTestModeIsLimitedToFourIsolatedLoopbackClients() throws {
+        var services: Set<String> = []
+        var suites: Set<String> = []
+        for slot in 1...4 {
+            let environment = [
+                "SIDEY_LOCAL_MEMBERSHIP_TEST": "1",
+                "SIDEY_LOCAL_CLIENT_SLOT": String(slot),
+                "SIDEY_SUPABASE_URL": "http://127.0.0.1:61321",
+                "SIDEY_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local"
+            ]
+            let channel = AppReleaseChannel.resolve(environment: environment)
+            XCTAssertEqual(channel, .localMembershipTest(slot: slot))
+            XCTAssertTrue(channel.isLocalMembershipTest)
+            XCTAssertFalse(channel.requiresAppleAuthentication)
+            XCTAssertFalse(channel.storeAvailability.allowsCommerceActions)
+            services.insert(channel.keychainService)
+            suites.insert(try XCTUnwrap(channel.preferencesSuiteName))
+
+            let configuration = try RuntimeConfiguration.resolve(
+                releaseChannel: channel,
+                environment: environment,
+                bundleInfo: [:]
+            )
+            XCTAssertEqual(configuration.supabaseURL.absoluteString, "http://127.0.0.1:61321")
+            XCTAssertEqual(configuration.realtimeTransportPreference, .legacySupabase)
+            XCTAssertFalse(configuration.isProductionBackend)
+        }
+        XCTAssertEqual(services.count, 4)
+        XCTAssertEqual(suites.count, 4)
+        XCTAssertFalse(services.contains(AppReleaseChannel.appStore.keychainService))
+        XCTAssertFalse(suites.contains(AppReleaseChannel.appStore.preferencesSuiteName ?? ""))
+    }
+
+    func testLocalMembershipTestModeRejectsInvalidSlotsAndNonLoopbackBackends() {
+        let valid = [
+            "SIDEY_LOCAL_MEMBERSHIP_TEST": "1",
+            "SIDEY_LOCAL_CLIENT_SLOT": "1",
+            "SIDEY_SUPABASE_URL": "http://127.0.0.1:61321",
+            "SIDEY_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local"
+        ]
+        for slot in ["", "0", "5", "01", "missing"] {
+            var environment = valid
+            environment["SIDEY_LOCAL_CLIENT_SLOT"] = slot
+            let channel = AppReleaseChannel.resolve(environment: environment)
+            XCTAssertThrowsError(try RuntimeConfiguration.resolve(
+                releaseChannel: channel,
+                environment: environment,
+                bundleInfo: [:]
+            ))
+        }
+        for url in [
+            "https://example.supabase.co", "https://whtejsviizgejauasqqt.supabase.co",
+            "http://192.168.0.10:61321", "http://127.0.0.1",
+            "http://127.0.0.1:61321/path", "http://user@127.0.0.1:61321"
+        ] {
+            var environment = valid
+            environment["SIDEY_SUPABASE_URL"] = url
+            XCTAssertThrowsError(try RuntimeConfiguration.resolve(
+                releaseChannel: .localMembershipTest(slot: 1),
+                environment: environment,
+                bundleInfo: [:]
+            ))
+        }
+        var firebase = valid
+        firebase["SIDEY_REALTIME_TRANSPORT"] = "firebase-v2"
+        XCTAssertThrowsError(try RuntimeConfiguration.resolve(
+            releaseChannel: .localMembershipTest(slot: 1),
+            environment: firebase,
+            bundleInfo: [:]
+        ))
+        var secret = valid
+        secret["SIDEY_SUPABASE_PUBLISHABLE_KEY"] = "sb_secret_do-not-use"
+        XCTAssertThrowsError(try RuntimeConfiguration.resolve(
+            releaseChannel: .localMembershipTest(slot: 1),
+            environment: secret,
+            bundleInfo: [:]
+        ))
+        XCTAssertTrue(AppReleaseChannel.resolve(environment: [:]).requiresAppleAuthentication)
+    }
+    #endif
+
     func testAcceptsCompleteHTTPSPublishableConfiguration() throws {
         let configuration = try RuntimeConfiguration.resolve(releaseChannel: .staging, environment: [
             "SIDEY_SUPABASE_URL": "https://example.supabase.co",

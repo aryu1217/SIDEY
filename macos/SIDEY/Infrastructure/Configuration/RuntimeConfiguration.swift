@@ -31,6 +31,29 @@ struct RuntimeConfiguration: Equatable, Sendable {
             throw RuntimeConfigurationError.invalidRealtimeTransport
         }
 
+        #if DEBUG
+        if case .localMembershipTest(let slot) = releaseChannel {
+            guard environment["SIDEY_LOCAL_MEMBERSHIP_TEST"] == "1",
+                  (1...4).contains(slot),
+                  environment["SIDEY_LOCAL_CLIENT_SLOT"] == String(slot),
+                  let rawURL = environment["SIDEY_SUPABASE_URL"],
+                  let url = URL(string: rawURL),
+                  Self.isLocalMembershipBackendURL(url),
+                  let key = environment["SIDEY_SUPABASE_PUBLISHABLE_KEY"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !key.isEmpty,
+                  realtimeTransportPreference == nil || realtimeTransportPreference == .legacySupabase
+            else { throw RuntimeConfigurationError.invalidLocalMembershipTest }
+            guard !Self.looksLikeSecretKey(key) else {
+                throw RuntimeConfigurationError.secretKeyNotAllowed
+            }
+            return Self(
+                supabaseURL: url,
+                supabasePublishableKey: key,
+                realtimeTransportPreference: .legacySupabase
+            )
+        }
+        #endif
+
         if releaseChannel == .appStore {
             return Self(
                 supabaseURL: URL(string: "https://\(productionHost)")!,
@@ -89,6 +112,21 @@ struct RuntimeConfiguration: Equatable, Sendable {
         return scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(host)
     }
 
+    #if DEBUG
+    private static func isLocalMembershipBackendURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "http",
+              let host = url.host?.lowercased(),
+              ["localhost", "127.0.0.1", "::1"].contains(host),
+              url.port != nil,
+              url.user == nil,
+              url.password == nil,
+              url.query == nil,
+              url.fragment == nil
+        else { return false }
+        return url.path.isEmpty || url.path == "/"
+    }
+    #endif
+
     private static func looksLikeSecretKey(_ value: String) -> Bool {
         if value.hasPrefix("sb_secret_") || value.hasPrefix("service_role") {
             return true
@@ -112,6 +150,7 @@ enum RuntimeConfigurationError: LocalizedError, Equatable {
     case missingDevelopmentConfiguration
     case productionBackendNotAllowedInDevelopment
     case invalidRealtimeTransport
+    case invalidLocalMembershipTest
 
     var errorDescription: String? {
         switch self {
@@ -125,6 +164,8 @@ enum RuntimeConfigurationError: LocalizedError, Equatable {
             InternalL10n.text("configuration.error.production_backend_in_development")
         case .invalidRealtimeTransport:
             InternalL10n.text("configuration.error.unsupported_realtime_protocol")
+        case .invalidLocalMembershipTest:
+            "Local membership test requires a Debug build, slot 1–4, loopback Supabase URL, and publishable key."
         }
     }
 }

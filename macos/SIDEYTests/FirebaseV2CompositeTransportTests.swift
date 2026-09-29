@@ -300,6 +300,37 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }.count, 2)
     }
 
+    func testAccessRevisionRecoveryFailurePreservesSharedBackendForRetry() async throws {
+        let fixture = try Fixture()
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room], activeRoomID: fixture.room.id
+        )
+        await fixture.credentials.failNextRecovery()
+        let inboxPath = FirebaseV2Path.inbox(userID: fixture.ownID)
+        fixture.values.yield(
+            Data(#"{"a":"00000000000000000001","r":{}}"#.utf8),
+            at: inboxPath
+        )
+        fixture.values.yield(
+            Data(#"{"a":"00000000000000000002","r":{}}"#.utf8),
+            at: inboxPath
+        )
+
+        try await eventually {
+            await fixture.transport.diagnostics().shutDown
+        }
+        let shutdownCount = await fixture.supabase.shutdownCount
+        XCTAssertEqual(shutdownCount, 0)
+        let requests = await fixture.credentials.establishRequests
+        XCTAssertEqual(requests.last?.minimumAccessRevision?.rawValue,
+                       "00000000000000000002")
+        await assertThrowsAsync(FirebaseV2CompositeTransportError.shutDown) {
+            try await fixture.transport.publishCharacterPulse(
+                roomID: fixture.room.id, eventID: UUID()
+            )
+        }
+    }
+
     func testFirebaseSelectionConsumesFirebaseTransientsAndReconcilesChatHint() async throws {
         let fixture = try Fixture()
         _ = try await fixture.transport.synchronize(

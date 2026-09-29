@@ -11,7 +11,8 @@ enum FirebaseV2CommerceGrantPolicy {
 
 extension AppCoordinator {
     func refreshCommerceState(productID: String? = nil) {
-        guard releaseChannel.storeAvailability.allowsCommerceActions,
+        guard !releaseChannel.isLocalMembershipTest,
+              releaseChannel.storeAvailability.allowsCommerceActions,
               let backend
         else { return }
         let requestedIDs = productID.map { [$0] } ?? model.commerceProducts.map(\.id)
@@ -49,7 +50,8 @@ extension AppCoordinator {
                 $0.catalogItemID == requestedID
             }
         }
-        guard releaseChannel.storeAvailability.allowsCosmeticEquipment,
+        guard !releaseChannel.isLocalMembershipTest,
+              releaseChannel.storeAvailability.allowsCosmeticEquipment,
               kind != .character,
               let backend,
               let messagingTransport,
@@ -102,7 +104,8 @@ extension AppCoordinator {
 
 
     func purchase(productID: String) {
-        guard releaseChannel.storeAvailability.allowsCommerceActions,
+        guard !releaseChannel.isLocalMembershipTest,
+              releaseChannel.storeAvailability.allowsCommerceActions,
               let backend,
               let messagingTransport,
               let productState = model.commerceProduct(id: productID),

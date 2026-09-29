@@ -230,9 +230,9 @@ final class AppCoordinator {
 
         mainThreadProbe.start()
         statusItemController.install()
-        globalShortcuts.install()
+        if !releaseChannel.isLocalMembershipTest { globalShortcuts.install() }
         overlayWindows.restore(preference: model.preferences.overlayRegion)
-        model.launchAtLogin = launchAtLoginController.isEnabled
+        model.launchAtLogin = !releaseChannel.isLocalMembershipTest && launchAtLoginController.isEnabled
         model.preferences.launchAtLogin = model.launchAtLogin
 
         // Overlay rendering is gated on both completed onboarding and a restored
@@ -462,6 +462,7 @@ final class AppCoordinator {
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
+        guard !releaseChannel.isLocalMembershipTest else { return }
         do {
             try launchAtLoginController.setEnabled(enabled)
             model.launchAtLogin = launchAtLoginController.isEnabled
