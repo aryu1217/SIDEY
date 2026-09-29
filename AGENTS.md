@@ -43,6 +43,8 @@ Keep native Supabase clients, the public website source and client-facing produc
 
 Use an isolated, task-owned worktree on a branch whose platform prefix matches the complete change. Treat `scripts/skills/workflow.py` as the executable source of truth for freshness, ownership, changed-path classification, checks, exact-head integration and primary-main refresh. Use [.agents/skills/app-verification/SKILL.md](.agents/skills/app-verification/SKILL.md) when an integrated app change needs a runtime verdict from exact-main provenance. Public releases, store uploads and production deployments are separate operations that require explicit authorization.
 
+Before changing tracked files, use [.agents/skills/remote-branch-workflow/SKILL.md](.agents/skills/remote-branch-workflow/SKILL.md). Every task branch must exist on its owning remote before the first edit, and recoverable checkpoints must be pushed while work is in progress. A temporary worktree is never the only copy of unpublished work.
+
 - Do not make implementation changes directly on `main`, switch or clean another task's dirty worktree, or overwrite unrelated user or agent changes.
 - Keep the requested change focused. Do not include drive-by refactors, formatting, generated output, or documentation changes that are not required by the task.
 - A failed, skipped, stale, or unavailable required build or test is not a passing result. Fix it or report the gap; do not integrate while a required check is failing.
