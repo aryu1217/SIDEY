@@ -12,7 +12,7 @@ These instructions apply to `windows/**`. Read the repository-root `AGENTS.md` f
 
 ## Build and validation
 
-The `Windows build and tests` job in `.github/workflows/ci.yml` is the canonical automatic check. Start with the narrowest affected test, then run the non-installing solution checks from `windows/` so the .NET CLI applies `windows/global.json` when the change can affect the application:
+GitHub Actions is disabled. Start with the narrowest affected test, then run the required non-installing solution checks locally from `windows/` so the .NET CLI applies `windows/global.json` when the change can affect the application:
 
 ```powershell
 Push-Location windows
@@ -23,7 +23,7 @@ dotnet test SIDEY.Windows.slnx --configuration Release --no-restore --no-build
 Pop-Location
 ```
 
-Run the affected asset, PowerShell, publish-layout, prerequisite, installer, or startup checks used by the integration job when those contracts change. Read a script before executing it: `scripts/windows/tests/Test-WindowsBuild.ps1` publishes an application, can install missing runtimes, and starts the built executables, so it is an extended machine-level check rather than the default local command. Release, installation, GUI, elevation, network, or machine-state validation must remain within the user's authorized scope. Never integrate a Windows commit while a required check is failing or while the commit under review differs from the commit that produced the evidence.
+Run the affected asset, PowerShell, publish-layout, prerequisite, installer, or startup checks locally when those contracts change. After integration of an app-affecting Windows task, run `python3 scripts/skills/workflow.py verify-windows <task>` on a Windows host. That command verifies the exact current `main` source and invokes `scripts/windows/tests/Test-WindowsBuild.ps1` to build, publish, check the payload, and smoke-test the launcher and host before recording runtime completion. Read the script before executing it: it restores packages, publishes an application, and starts the built executables. Release, installation, GUI, elevation, network, or machine-state validation must remain within the user's authorized scope. Never integrate a Windows commit while a required check is failing or while the commit under review differs from the commit that produced the evidence.
 
 ## Specialist skills
 
