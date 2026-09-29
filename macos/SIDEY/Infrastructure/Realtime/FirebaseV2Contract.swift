@@ -434,6 +434,18 @@ enum FirebaseV2TransientObservation: Equatable, Sendable {
 
 struct FirebaseV2TransientHighWater: Equatable, Sendable {
     static let freshnessWindowMilliseconds: Int64 = 5_000
+    // RTDB's server offset is an estimate affected by network latency. A small
+    // future value is still a live interaction, not a reason to discard it.
+    static let futureToleranceMilliseconds: Int64 = 1_000
+
+    static func isFresh(
+        _ timestamp: FirebaseV2Timestamp,
+        receivedAtMilliseconds: Int64
+    ) -> Bool {
+        let (age, overflow) = receivedAtMilliseconds.subtractingReportingOverflow(timestamp.rawValue)
+        return !overflow
+            && (-futureToleranceMilliseconds...freshnessWindowMilliseconds).contains(age)
+    }
 
     private(set) var latestTimestamp: FirebaseV2Timestamp?
 
@@ -448,8 +460,7 @@ struct FirebaseV2TransientHighWater: Equatable, Sendable {
         guard timestamp > latestTimestamp else { return .duplicateOrStale }
 
         self.latestTimestamp = timestamp
-        let age = receivedAtMilliseconds - timestamp.rawValue
-        guard (0...Self.freshnessWindowMilliseconds).contains(age) else {
+        guard Self.isFresh(timestamp, receivedAtMilliseconds: receivedAtMilliseconds) else {
             return .outsideFreshnessWindow
         }
         return .animate

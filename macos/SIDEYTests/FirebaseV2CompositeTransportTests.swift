@@ -358,6 +358,88 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertEqual(synchronizeCount, 2)
     }
 
+    func testServerOffsetCorrectsBothClockDirectionsAndStopsOnShutdown() async throws {
+        // Ten minutes of wall-clock skew is outside both freshness windows and
+        // longer than the rollout lease. Only transient time must be corrected.
+        for offset: Int64 in [-600_000, 600_000] {
+            let offsets = CompositeServerOffsetStub()
+            let fixture = try Fixture(serverTimeOffsets: offsets)
+            _ = try await fixture.transport.synchronize(
+                rooms: [fixture.room], activeRoomID: fixture.room.id
+            )
+            let received = expectation(description: "fresh remote pulse and throw with offset \(offset)")
+            received.expectedFulfillmentCount = 2
+            let events = fixture.transport.events
+            let receiver = Task {
+                for await event in events {
+                    switch event {
+                    case .characterPulse(let pulse):
+                        XCTAssertEqual(pulse.userID, fixture.friendID)
+                        received.fulfill()
+                    case .characterThrow(let value):
+                        XCTAssertEqual(value.actorUserID, fixture.friendID)
+                        XCTAssertEqual(value.targetUserID, fixture.ownID)
+                        received.fulfill()
+                    default: break
+                    }
+                }
+            }
+            offsets.yield(offset)
+            try await eventually {
+                await fixture.transport.diagnostics().serverTimeOffsetMilliseconds == offset
+            }
+            let timestamp = 1_800_000_000_000 + offset
+            fixture.values.yield(Data("""
+            {"c":{"\(fixture.friendID.uuidString.lowercased())":\(timestamp)},
+             "x":{"\(fixture.friendID.uuidString.lowercased())":{
+               "k":"18","t":\(timestamp),"u":"\(fixture.ownID.uuidString.lowercased())"}}}
+            """.utf8), at: FirebaseV2Path.liveRoom(fixture.room.id))
+            await fulfillment(of: [received], timeout: 2)
+            let lease = await fixture.transport.rolloutLeaseStatus()
+            XCTAssertGreaterThan(try XCTUnwrap(lease).expiresIn, .seconds(250))
+            await fixture.transport.shutdown()
+            await receiver.value
+            try await eventually { offsets.isCancelled }
+            XCTAssertEqual(offsets.subscriptionCount, 1)
+        }
+    }
+
+    func testOffsetRefreshReschedulesTypingExpiry() async throws {
+        let offsets = CompositeServerOffsetStub()
+        let fixture = try Fixture(serverTimeOffsets: offsets)
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room], activeRoomID: fixture.room.id
+        )
+        let typingStarted = expectation(description: "typing began")
+        let typingStopped = expectation(description: "updated server time expired typing")
+        let pulseReceived = expectation(description: "pulse plays once")
+        let events = fixture.transport.events
+        let receiver = Task {
+            for await event in events {
+                switch event {
+                case .typing(_, _, let active):
+                    (active ? typingStarted : typingStopped).fulfill()
+                case .characterPulse:
+                    pulseReceived.fulfill()
+                default: break
+                }
+            }
+        }
+        let livePath = FirebaseV2Path.liveRoom(fixture.room.id)
+        let data = Data("""
+        {"c":{"\(fixture.friendID.uuidString.lowercased())":1800000000000},
+         "t":{"\(fixture.friendID.uuidString.lowercased())":{
+           "11111111-1111-4111-8111-111111111111":1800000000000}}}
+        """.utf8)
+        fixture.values.yield(data, at: livePath)
+        await fulfillment(of: [typingStarted, pulseReceived], timeout: 2)
+        offsets.yield(6_001)
+        await fulfillment(of: [typingStopped], timeout: 2)
+        await fixture.transport.shutdown()
+        await receiver.value
+        try await eventually { offsets.isCancelled }
+    }
+
     func testUnknownFirebaseThrowableWireCodeIsDroppedWithoutBlockingTyping() async throws {
         let fixture = try Fixture()
         _ = try await fixture.transport.synchronize(
@@ -728,7 +810,8 @@ private struct Fixture {
         automaticallyYieldLiveBaseline: Bool = true,
         liveReadinessTimeout: Duration = .seconds(1),
         initialLeaseExpiresAt: Int64 = 1_800_000_300_000,
-        leaseRefreshExpiresAt: Int64? = nil
+        leaseRefreshExpiresAt: Int64? = nil,
+        serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil
     ) throws {
         values = CompositeValueStreamStub(
             automaticallyYieldBaseline: automaticallyYieldLiveBaseline
@@ -822,6 +905,7 @@ private struct Fixture {
                 FirebaseV2WireCode(rawValue: "0")!: "patch_soft_ball",
                 throwWireCode: "throwable_leaf",
             ],
+            serverTimeOffsets: serverTimeOffsets,
             liveReadinessTimeout: liveReadinessTimeout,
             nowMilliseconds: { 1_800_000_000_000 }
         )
@@ -1125,5 +1209,33 @@ private actor CompositeChatCallerStub: FirebaseV2ChatCalling {
             sequence: Int64(callCount),
             timestamp: FirebaseV2Timestamp(rawValue: 1_800_000_000_000 + Int64(callCount))!
         )
+    }
+}
+
+private final class CompositeServerOffsetStub: @unchecked Sendable,
+    FirebaseV2ServerTimeOffsetStreaming {
+    private let lock = NSLock()
+    private var continuation: AsyncStream<Int64>.Continuation?
+    private var cancelled = false
+    private var subscriptions = 0
+
+    var isCancelled: Bool { lock.withLock { cancelled } }
+    var subscriptionCount: Int { lock.withLock { subscriptions } }
+
+    func offsets() -> AsyncStream<Int64> {
+        AsyncStream { continuation in
+            lock.withLock {
+                self.continuation = continuation
+                subscriptions += 1
+            }
+            continuation.onTermination = { [weak self] _ in
+                self?.lock.withLock { self?.cancelled = true }
+            }
+        }
+    }
+
+    func yield(_ offset: Int64) {
+        let continuation = lock.withLock { self.continuation }
+        continuation?.yield(offset)
     }
 }

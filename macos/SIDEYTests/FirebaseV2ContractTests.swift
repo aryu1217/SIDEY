@@ -229,4 +229,39 @@ final class FirebaseV2ContractTests: XCTestCase {
         )
         XCTAssertEqual(tracker.latestTimestamp, expired)
     }
+
+    func testTransientHighWaterToleratesSmallFutureSkewButKeepsBoundedFreshnessAndDeduplication() throws {
+        let baseline = try XCTUnwrap(FirebaseV2Timestamp(rawValue: 10_000))
+        let event = try XCTUnwrap(FirebaseV2Timestamp(rawValue: 20_000))
+        let cases: [(age: Int64, expected: FirebaseV2TransientObservation)] = [
+            (-1_001, .outsideFreshnessWindow),
+            (-1_000, .animate),
+            (-51, .animate),
+            (0, .animate),
+            (5_000, .animate),
+            (5_001, .outsideFreshnessWindow),
+        ]
+
+        for testCase in cases {
+            var tracker = FirebaseV2TransientHighWater()
+            XCTAssertEqual(
+                tracker.observe(baseline, receivedAtMilliseconds: 10_100),
+                .baseline
+            )
+            XCTAssertEqual(
+                tracker.observe(event, receivedAtMilliseconds: event.rawValue + testCase.age),
+                testCase.expected,
+                "Event age: \(testCase.age) ms"
+            )
+            XCTAssertEqual(
+                tracker.observe(event, receivedAtMilliseconds: 21_000),
+                .duplicateOrStale,
+                "An observed event must not replay when the clock catches up."
+            )
+            XCTAssertEqual(
+                tracker.observe(baseline, receivedAtMilliseconds: 21_000),
+                .duplicateOrStale
+            )
+        }
+    }
 }

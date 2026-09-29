@@ -206,8 +206,8 @@ struct FirebaseV2LiveReconciler: Sendable {
                 receivedAtMilliseconds: receivedAtMilliseconds
             )
             let firstPostBaselineValueIsFresh = !hadBaseline
-                && (0...FirebaseV2TransientHighWater.freshnessWindowMilliseconds).contains(
-                    receivedAtMilliseconds - timestamp.rawValue
+                && FirebaseV2TransientHighWater.isFresh(
+                    timestamp, receivedAtMilliseconds: receivedAtMilliseconds
                 )
             if observation == .animate || firstPostBaselineValueIsFresh {
                 actions.append(.pulse(userID: userID, timestamp: timestamp))
@@ -223,8 +223,8 @@ struct FirebaseV2LiveReconciler: Sendable {
                 receivedAtMilliseconds: receivedAtMilliseconds
             )
             let firstPostBaselineValueIsFresh = !hadBaseline
-                && (0...FirebaseV2TransientHighWater.freshnessWindowMilliseconds).contains(
-                    receivedAtMilliseconds - payload.timestamp.rawValue
+                && FirebaseV2TransientHighWater.isFresh(
+                    payload.timestamp, receivedAtMilliseconds: receivedAtMilliseconds
                 )
             if observation == .animate || firstPostBaselineValueIsFresh {
                 actions.append(.characterThrow(actorUserID: userID, payload: payload))
@@ -334,7 +334,7 @@ final class FirebaseV2DatabaseValueStream: @unchecked Sendable, FirebaseV2Databa
     }
 }
 
-private final class FirebaseV2ObserverCancellation: @unchecked Sendable {
+final class FirebaseV2ObserverCancellation: @unchecked Sendable {
     private let lock = NSLock()
     private let reference: DatabaseReference
     private let handle: DatabaseHandle

@@ -216,7 +216,8 @@ enum FirebaseV2ProductionFactory {
             databaseValues: databaseValues,
             databaseWrites: FirebaseV2DatabaseWriteAdapter(database: runtime.database),
             chatClient: chatClient,
-            throwableCatalogIDByWireCode: throwables
+            throwableCatalogIDByWireCode: throwables,
+            serverTimeOffsets: FirebaseV2ServerTimeOffsetStream(database: runtime.database)
         )
     }
 }

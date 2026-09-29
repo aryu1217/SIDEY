@@ -174,6 +174,7 @@ struct FirebaseV2CompositeDiagnostics: Equatable, Sendable {
     let inboxListenerCount: Int
     let liveListenerCount: Int
     let grantOpen: Bool
+    let serverTimeOffsetMilliseconds: Int64
     let shutDown: Bool
 }
 
@@ -194,6 +195,9 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private let throwableCatalogIDByWireCode: [FirebaseV2WireCode: String]
     private let throwableWireCodeByCatalogID: [String: FirebaseV2WireCode]
     private let nowMilliseconds: @Sendable () -> Int64
+    private let serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)?
+    private var serverClock = FirebaseV2ServerClock()
+    private var serverClockTask: Task<Void, Never>?
     private let liveReadinessTimeout: Duration
     private let credentialReplacementGate = RealtimeCredentialOperationGate()
     private let clock = ContinuousClock()
@@ -235,6 +239,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         databaseWrites: any FirebaseV2DatabaseWriteTransport,
         chatClient: FirebaseV2ChatClient,
         throwableCatalogIDByWireCode: [FirebaseV2WireCode: String],
+        serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil,
         liveReadinessTimeout: Duration = .seconds(10),
         nowMilliseconds: @escaping @Sendable () -> Int64 = {
             Int64(Date().timeIntervalSince1970 * 1_000)
@@ -256,6 +261,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         )
         self.liveReadinessTimeout = liveReadinessTimeout
         self.nowMilliseconds = nowMilliseconds
+        self.serverTimeOffsets = serverTimeOffsets
     }
 
     func synchronize(
@@ -377,6 +383,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         listenerGeneration &+= 1
         roomTransitionGeneration &+= 1
         inboxTask?.cancel()
+        serverClockTask?.cancel()
+        serverClockTask = nil
         cancelAllLiveListeners()
         supabaseEventTask?.cancel()
         typingExpiryTask?.cancel()
@@ -420,6 +428,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             inboxListenerCount: inboxTask == nil ? 0 : 1,
             liveListenerCount: liveTasksByRoom.count,
             grantOpen: grantBarrier.isOpen,
+            serverTimeOffsetMilliseconds: serverClock.offsetMilliseconds,
             shutDown: isShutDown
         )
     }
@@ -515,6 +524,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             minimumAccessRevision: nil
         )
         session = established
+        startServerClockIfNeeded()
         scheduleRolloutLeaseExpiry(for: established)
         startCredentialInvalidationMonitoringIfNeeded()
         grantBarrier.request(
@@ -527,6 +537,31 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             entitlementValid: true
         )
         return established
+    }
+
+    private func startServerClockIfNeeded() {
+        guard serverClockTask == nil, let serverTimeOffsets else { return }
+        let offsets = serverTimeOffsets.offsets()
+        serverClockTask = Task { [weak self] in
+            for await offset in offsets {
+                guard !Task.isCancelled else { return }
+                await self?.updateServerClock(offset)
+            }
+        }
+    }
+
+    private func updateServerClock(_ offsetMilliseconds: Int64) {
+        guard !isShutDown else { return }
+        serverClock.offsetMilliseconds = offsetMilliseconds
+        // Typing deadlines use the same estimated server time as live events.
+        // An offset update must also replace the old local timer delay.
+        if let roomID = activeRoomState.committedRealtimeActiveRoomID {
+            scheduleTypingExpiry(roomID: roomID, generation: listenerGeneration)
+        }
+    }
+
+    private func serverNowMilliseconds() -> Int64 {
+        serverClock.estimatedTime(localMilliseconds: nowMilliseconds())
     }
 
     private func startCredentialInvalidationMonitoringIfNeeded() {
@@ -827,7 +862,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         else { return }
         let actions = liveReconciler.consume(
             snapshot,
-            receivedAtMilliseconds: nowMilliseconds()
+            receivedAtMilliseconds: serverNowMilliseconds()
         )
         if liveReadinessContinuation != nil {
             pendingInitialLiveActions.append(contentsOf: actions)
@@ -916,7 +951,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             typingExpiryTask = nil
             return
         }
-        let delay = max(0, deadline - nowMilliseconds())
+        let delay = max(0, deadline - serverNowMilliseconds())
         typingExpiryTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .milliseconds(delay))
@@ -931,7 +966,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         guard generation == listenerGeneration,
               roomID == activeRoomState.committedRealtimeActiveRoomID else { return }
         let actions = liveReconciler.expireTyping(
-            receivedAtMilliseconds: nowMilliseconds()
+            receivedAtMilliseconds: serverNowMilliseconds()
         )
         for action in actions {
             _ = handleLiveAction(action, roomID: roomID)

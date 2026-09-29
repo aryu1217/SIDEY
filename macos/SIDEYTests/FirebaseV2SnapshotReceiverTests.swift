@@ -138,6 +138,72 @@ final class FirebaseV2SnapshotReceiverTests: XCTestCase {
         XCTAssertTrue(reconciler.consume(expired, receivedAtMilliseconds: 25_001).isEmpty)
     }
 
+    func testPulseAndThrowStayVisibleAcrossDeliveryJitterWithASlightlySlowReceiverClock() throws {
+        let actor = UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
+        let target = UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
+        let baseline = try liveSnapshot(actor: actor, target: target, timestamp: 10_000, sequence: 4)
+
+        for clockSkew: Int64 in [48, 51, 100, 250] {
+            for actorExistsInBaseline in [false, true] {
+                var reconciler = FirebaseV2LiveReconciler()
+                let initial = actorExistsInBaseline ? baseline : FirebaseV2LiveSnapshot(
+                    typingSessions: [:], pulses: [:], throwEvents: [:], chatEvent: baseline.chatEvent
+                )
+                XCTAssertTrue(
+                    reconciler.consume(initial, receivedAtMilliseconds: 10_100 - clockSkew).isEmpty,
+                    "Joining a room must never replay its persisted transient values."
+                )
+
+                for (index, deliveryDelay) in [Int64(350), 0, 50, 150, 350].enumerated() {
+                    let serverTime = Int64(12_000 + index * 2_000)
+                    let receivedAt = serverTime + deliveryDelay - clockSkew
+                    let next = try liveSnapshot(
+                        actor: actor, target: target, timestamp: serverTime, sequence: 4
+                    )
+                    XCTAssertEqual(
+                        reconciler.consume(next, receivedAtMilliseconds: receivedAt),
+                        [
+                            .pulse(userID: actor, timestamp: try XCTUnwrap(next.pulses[actor])),
+                            .characterThrow(actorUserID: actor, payload: try XCTUnwrap(next.throwEvents[actor])),
+                        ],
+                        "Clock skew: \(clockSkew) ms, delivery delay: \(deliveryDelay) ms"
+                    )
+                    XCTAssertTrue(
+                        reconciler.consume(next, receivedAtMilliseconds: receivedAt + 20).isEmpty,
+                        "Repeated room snapshots must not replay the same pulse or throw."
+                    )
+                }
+            }
+        }
+    }
+
+    func testFirstTransientFromANewActorUsesTheSameFreshnessBoundsWithoutLaterReplay() throws {
+        let actor = UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
+        let target = UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
+        let next = try liveSnapshot(actor: actor, target: target, timestamp: 20_000, sequence: 4)
+
+        for age: Int64 in [-1_001, -1_000, 5_000, 5_001] {
+            var reconciler = FirebaseV2LiveReconciler()
+            let baseline = FirebaseV2LiveSnapshot(
+                typingSessions: [:], pulses: [:], throwEvents: [:], chatEvent: next.chatEvent
+            )
+            XCTAssertTrue(reconciler.consume(baseline, receivedAtMilliseconds: 10_000).isEmpty)
+            let expected: [FirebaseV2LiveAction] = [-1_000, 5_000].contains(age) ? [
+                .pulse(userID: actor, timestamp: try XCTUnwrap(next.pulses[actor])),
+                .characterThrow(actorUserID: actor, payload: try XCTUnwrap(next.throwEvents[actor])),
+            ] : []
+            XCTAssertEqual(
+                reconciler.consume(next, receivedAtMilliseconds: 20_000 + age),
+                expected,
+                "First event age: \(age) ms"
+            )
+            XCTAssertTrue(
+                reconciler.consume(next, receivedAtMilliseconds: 21_000).isEmpty,
+                "Clock correction must not replay a previously observed event."
+            )
+        }
+    }
+
     func testTypingSlotExpiresAfterSixSecondsWithoutRemovalSnapshot() throws {
         let actor = UUID(uuidString: "22222222-2222-4222-8222-222222222222")!
         let target = UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
