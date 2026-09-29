@@ -66,6 +66,17 @@ class WorkflowTests(unittest.TestCase):
             w.main(['--repo', str(self.primary), 'start', name, '--platform', platform, '--worktree', str(path)])
         return path
 
+    def test_start_defaults_to_primary_workspace_container(self):
+        expected = self.primary / '_workspace' / 'windows-default-path'
+        with contextlib.redirect_stdout(io.StringIO()):
+            w.main([
+                '--repo', str(self.primary), 'start', 'default-path',
+                '--platform', 'windows',
+            ])
+        self.assertTrue(expected.is_dir())
+        self.assertEqual(w.read_state(expected)['default-path']['worktree'],
+                         str(expected.resolve()))
+
     def merged_native_worktree(self, platform='windows'):
         path = self.start('old', platform=platform)
         (path / 'old.txt').write_text('completed work\n')
@@ -463,6 +474,39 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(completed['app_review']['main'], remote)
         self.assertEqual(completed['app_review']['source'], str(primary))
 
+    def test_windows_review_completes_only_integrated_checked_tree(self):
+        path = self.start(platform='windows')
+        (path / 'windows').mkdir()
+        (path / 'windows/source.cs').write_text('reviewed Windows change\n')
+        self.commit(path, 'native task change')
+        task = w.read_state(path)['task']
+        checked_head = w.head(path)
+        task['checked'] = {
+            'head': checked_head,
+            'snapshot': w.snapshot(path),
+            'base': task['base'],
+        }
+        w.git(self.primary, 'merge', '--squash', 'windows/task')
+        self.commit(self.primary, 'squashed Windows change')
+        merged = w.head(self.primary)
+        w.git(self.primary, 'push', 'origin', 'main')
+        task.update(status='main-updated', merge=merged)
+        w.update_task(path, 'task', task)
+        evidence = {'main': merged, 'environment': 'local Windows'}
+        with patch.object(w, 'run_windows_local_review', return_value=evidence) as review:
+            result = w.verify_windows_task(path, 'task')
+        self.assertEqual(result['status'], 'complete')
+        self.assertEqual(w.read_state(path)['task']['app_review'], evidence)
+        review.assert_called_once_with(self.primary.resolve(), merged)
+
+        (path / 'unreviewed.txt').write_text('later change\n')
+        task['status'] = 'main-updated'
+        w.update_task(path, 'task', task)
+        with patch.object(w, 'run_windows_local_review') as review:
+            with self.assertRaisesRegex(w.WorkflowError, 'exact checked'):
+                w.verify_windows_task(path, 'task')
+        review.assert_not_called()
+
     def test_open_rejects_unverified_squash_and_wrong_app_without_launching(self):
         path, task = self.squashed_macos_task()
         invalid = [
@@ -767,12 +811,57 @@ class WorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
                 w.check_task(task, 'task')
 
+    def test_final_check_requires_matching_evidence_for_every_affected_host(self):
+        task = self.start()
+        asset = task / 'assets/v1/example.txt'
+        asset.parent.mkdir(parents=True)
+        asset.write_text('asset change\n')
+        self.commit(task, 'asset change')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'Missing final-head scope evidence'):
+                w.check_task(task, 'task')
+        checks.assert_not_called()
+
+        current_head = w.head(task)
+        current_snapshot = w.snapshot(task)
+        base = w.fetch_main(task)
+        paths = []
+        for scope, host in [('macos', 'darwin'), ('windows', 'win32'), ('web', 'win32')]:
+            file = self.root / f'{scope}.json'
+            file.write_text(json.dumps({
+                'schema': 1, 'scope': scope, 'status': 'passed',
+                'head': current_head, 'snapshot': current_snapshot,
+                'base': base, 'host': host,
+            }), encoding='utf-8')
+            paths.append(file)
+        with patch.object(w, 'local_checks'):
+            checked = w.check_task(task, 'task', paths)['checked']
+        self.assertEqual(checked['scopes'], ['macos', 'shared', 'web', 'windows'])
+        self.assertEqual(set(checked['scope_evidence']), {'macos', 'windows', 'web'})
+
+        (task / 'README.md').write_text('later change\n')
+        self.commit(task, 'later change')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'Stale or invalid scope evidence'):
+                w.check_task(task, 'task', paths)
+        checks.assert_not_called()
+
+    def test_final_check_rejects_uncommitted_implementation(self):
+        task = self.start()
+        (task / 'README.md').write_text('uncommitted change\n')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'clean committed task head'):
+                w.check_task(task, 'task')
+        checks.assert_not_called()
+
     def test_attestation_rejects_edit_after_check_and_staging(self):
         task = self.start()
         (task / 'README.md').write_text('task changes')
+        self.commit(task, 'task changes')
         with patch.object(w, 'local_checks'):
             state = w.check_task(task, 'task')
         w.attest(task, state, state['base'])
+        (task / 'README.md').write_text('later changes')
         w.git(task, 'add', 'README.md')
         with self.assertRaises(w.WorkflowError):
             w.attest(task, state, state['base'])
@@ -951,6 +1040,22 @@ class WorkflowTests(unittest.TestCase):
             python_commands,
         )
 
+    def test_platform_checks_use_native_host_routes(self):
+        with patch.object(w, 'run') as execute, patch.object(w.sys, 'platform', 'darwin'):
+            w.local_checks(self.primary, 'macos', ['macos/Sources/SIDEY/App.swift'])
+        self.assertIn(
+            str(self.primary / 'scripts/macos/tests/test_native.sh'),
+            [call.args[1] for call in execute.call_args_list],
+        )
+
+        with patch.object(w, 'run') as execute, patch.object(w.os, 'name', 'nt'):
+            w.local_checks(self.primary, 'windows', ['windows/src/Sidey.App/App.xaml.cs'])
+        commands = [call.args[1:4] for call in execute.call_args_list]
+        self.assertIn(('dotnet', 'restore', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'format', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'build', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'test', 'SIDEY.Windows.slnx'), commands)
+
     def test_release_manifests_run_the_matching_native_checks(self):
         self.assertEqual(
             w.required_scopes(['release/version.json']),
@@ -993,6 +1098,9 @@ class WorkflowTests(unittest.TestCase):
             )
         )
         self.assertFalse(w.app_review_required('shared', ['scripts/skills/workflow.py']))
+        self.assertFalse(w.app_review_required('windows', ['windows/AGENTS.md']))
+        self.assertFalse(w.app_review_required('macos', ['macos/AGENTS.md']))
+        self.assertFalse(w.app_review_required('windows', ['windows/docs/build.md']))
 
     def test_platform_app_inputs_still_require_app_review(self):
         self.assertTrue(w.app_review_required('macos', ['macos/Sources/SIDEY/App.swift']))
@@ -1004,6 +1112,8 @@ class WorkflowTests(unittest.TestCase):
                 '.github/workflows/macos-build-and-tests.yml',
                 'scripts/macos/archive_app_store.sh',
             ]))
+        self.assertTrue(w.app_review_required('macos', ['release/macos.json']))
+        self.assertTrue(w.app_review_required('windows', ['release/windows.json']))
 
     def test_ci_workflow_and_scope_logic_run_every_check(self):
         every_scope = {'shared', 'macos', 'windows', 'web'}

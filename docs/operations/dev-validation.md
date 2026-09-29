@@ -30,14 +30,18 @@ App Store 심사 제출은 별도 사용자 승인으로 진행한다.
 
 ## Windows
 
-GitHub Actions의 `SIDEY CI (Windows build and tests)`에서 `dev-window`를 선택해 실행한다.
-전체 검사·게시 앱 smoke·설치기 검사를 통과하면 해당 run의
-`sidey-windows-private-<commit SHA>` artifact의 암호화된 7z 파일을 받는다.
-평문 Setup EXE는 업로드하지 않는다. 저장소 관리자가 별도로 보관한 암호로 로컬에서
-압축을 풀고 설치한다. 공개 브랜치의 소스 공개 범위는 바뀌지 않는다.
-CI에는 `SIDEY_DEV_ARTIFACT_PASSWORD` secret이 필요하며, 누락되면 업로드 전에 실패한다.
-암호나 복호화한 설치 파일은 공개 이슈·로그·Release에 첨부하지 않는다.
-실패한 run이나 다른 SHA의 설치기를 해당 브랜치 검증 결과로 사용하지 않는다.
+Windows 호스트의 `dev-window` worktree에서 `windows/AGENTS.md`에 적힌
+`dotnet restore`, `format`, `build`, `test` 순서를 실행한다. 앱 시작이나 게시
+형식이 영향을 받았다면 `scripts/windows/tests/Test-WindowsBuild.ps1`로
+게시 앱의 launcher/host 시작 smoke까지 확인한다. 실행 전후에 브랜치 HEAD와
+작업 트리가 같은지 확인하고 명령·결과·정확한 SHA를 기록한다.
+
+설치 후보가 필요하면 `dev-window`에 통합하기 전, 검증된 `windows/*` 작업
+커밋에서
+`python3 scripts/skills/workflow.py test-installer <task>`를 Windows 호스트에서
+실행한다. 이 명령은 로컬 Setup을 Downloads에 복사하고 기존 SIDEY Setup을
+제거한다. 평문 Setup이나 비밀 정보를 공개 이슈·로그·Release에 첨부하지 않는다.
+다른 SHA에서 만든 설치기를 해당 브랜치의 검증 결과로 사용하지 않는다.
 후보의 source version은 공개 manifest보다 앞설 수 있으며 공개 업데이트는 자동 게시하지 않는다.
 
 새 설치와 기존 버전 업데이트, 시작 프로그램 OFF 보존, 일반/최대화 창, 다중 모니터와

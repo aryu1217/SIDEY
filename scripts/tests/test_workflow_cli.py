@@ -45,7 +45,7 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
         output = self.help_text("--help")
 
         self.assertIn(
-            "{doctor,start,test-installer,sync,check,publish,finish,open}",
+            "{doctor,start,test-installer,verify-scope,sync,check,publish,finish,verify-windows,open}",
             output,
         )
         self.assertIn("--repo REPO", output)
@@ -57,18 +57,17 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
                 "--worktree WORKTREE",
                 "--app {SIDEY,sidey-reals,windows}",
             ),
-            "check": (
-                "--ci",
-                "--base BASE",
-                "--head HEAD",
-                "--branch BRANCH",
-            ),
             "publish": (
                 "--title TITLE",
                 "--body-file BODY_FILE",
                 "--push-remote PUSH_REMOTE",
             ),
-            "finish": ("--windows-run WINDOWS_RUN",),
+            "verify-scope": (
+                "--scope {macos,windows,web}",
+                "--head HEAD",
+                "--output OUTPUT",
+            ),
+            "check": ("--evidence EVIDENCE",),
             "open": (
                 "--task TASK",
                 "--preview PREVIEW",
@@ -83,25 +82,20 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
                 for option in options:
                     self.assertIn(option, output)
 
-    def test_ci_check_prints_indented_utf8_json(self):
+        self.assertNotIn("required", self.help_text("start", "--help").split("--worktree WORKTREE", 1)[1].splitlines()[0])
+        self.assertNotIn("--ci", self.help_text("check", "--help"))
+        self.assertNotIn("--windows-run", self.help_text("finish", "--help"))
+        self.assertIn("task", self.help_text("verify-windows", "--help").lower())
+
+    def test_task_check_prints_indented_utf8_json(self):
         expected = {
-            "paths": ["docs/architecture.md"],
-            "scopes": ["shared"],
+            "status": "checked",
+            "branch": "shared/readability",
         }
 
         with (
             patch.object(workflow, "root_at", return_value=ROOT),
-            patch.object(
-                workflow,
-                "changed_paths",
-                return_value=expected["paths"],
-            ),
-            patch.object(workflow, "validate_paths"),
-            patch.object(
-                workflow,
-                "required_scopes",
-                return_value=expected["scopes"],
-            ),
+            patch.object(workflow, "check_task", return_value=expected) as check,
             patch("sys.stdout", new_callable=io.StringIO) as stdout,
         ):
             result = workflow.main(
@@ -109,17 +103,12 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
                     "--repo",
                     str(ROOT),
                     "check",
-                    "--ci",
-                    "--base",
-                    "base-sha",
-                    "--head",
-                    "head-sha",
-                    "--branch",
-                    "shared/readability",
+                    "readability",
                 ]
             )
 
         self.assertEqual(result, 0)
+        check.assert_called_once_with(ROOT, "readability", [])
         self.assertEqual(json.loads(stdout.getvalue()), expected)
         self.assertTrue(stdout.getvalue().endswith("\n"))
 
@@ -130,10 +119,10 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
                 str(WORKFLOW_PATH),
                 "--repo",
                 str(ROOT),
-                "check",
-                "--ci",
-                "--branch",
-                "shared/readability",
+                "start",
+                "INVALID",
+                "--platform",
+                "shared",
             ],
             cwd=ROOT,
             check=False,
@@ -144,8 +133,7 @@ class WorkflowCommandSurfaceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
         self.assertTrue(result.stderr.startswith("workflow: "))
-        self.assertIn("--base", result.stderr)
-        self.assertIn("--branch", result.stderr)
+        self.assertIn("Task ID", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()

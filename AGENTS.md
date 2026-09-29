@@ -43,12 +43,15 @@ Keep native Supabase clients, the public website source and client-facing produc
 
 Use an isolated, task-owned worktree on a branch whose platform prefix matches the complete change. Treat `scripts/skills/workflow.py` as the executable source of truth for freshness, ownership, changed-path classification, checks, exact-head integration and primary-main refresh. Use [.agents/skills/app-verification/SKILL.md](.agents/skills/app-verification/SKILL.md) when an integrated app change needs a runtime verdict from exact-main provenance. Public releases, store uploads and production deployments are separate operations that require explicit authorization.
 
+Create new task worktrees in the primary checkout's `_workspace` directory. The default `workflow.py start` path is `_workspace/<platform>-<task>`; use another path only when this location is unavailable.
+
 Before changing tracked files, use [.agents/skills/remote-branch-workflow/SKILL.md](.agents/skills/remote-branch-workflow/SKILL.md). Every task branch must exist on its owning remote before the first edit, and recoverable checkpoints must be pushed while work is in progress. A temporary worktree is never the only copy of unpublished work.
 
 - Do not make implementation changes directly on `main`, switch or clean another task's dirty worktree, or overwrite unrelated user or agent changes.
 - Keep the requested change focused. Do not include drive-by refactors, formatting, generated output, or documentation changes that are not required by the task.
 - A failed, skipped, stale, or unavailable required build or test is not a passing result. Fix it or report the gap; do not integrate while a required check is failing.
 - Review the full diff against its base before a commit or handoff. Validation must describe the exact commit and source snapshot tested. If source changes after validation, run the affected checks again.
+- Commit all implementation before final validation. Every affected macOS, Windows, or web scope selected by `required_scopes(paths)` must pass on the exact final HEAD before `workflow.py check` succeeds. Platform tasks run their matching native tests on the owning host; shared tasks supply matching-host evidence from `workflow.py verify-scope --scope <macos|windows|web> --head <sha>` to `check <task> --evidence <json>` (repeat `--evidence` for each required scope). macOS evidence requires a Mac, Windows evidence requires a Windows host, and web evidence runs the website pnpm tests. Evidence must match the task's HEAD, base, and source snapshot; rerun affected checks after any source change. Disabled GitHub Actions provide no validation.
 - Integrate only the reviewed and checked head. Do not substitute a rebuilt, amended, or merely similar commit without repeating review and validation.
 
 ## Contribution, commit and pull request policy

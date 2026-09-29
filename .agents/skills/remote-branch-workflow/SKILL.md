@@ -16,8 +16,9 @@ change, including the private app source and backend repositories.
    remote.
 2. Inspect the primary checkout and existing worktrees. Preserve unrelated
    dirty changes and create a durable, task-owned worktree with the
-   repository workflow command. Prefer the repository's `_workspace/`
-   location over `/private/tmp`.
+   repository workflow command. Its default location is the primary checkout's
+   `_workspace/<platform>-<task>` directory. Use an explicit
+   `--worktree` only when that location cannot be used.
 3. Immediately publish the new branch and set its upstream before changing a
    tracked file:
 

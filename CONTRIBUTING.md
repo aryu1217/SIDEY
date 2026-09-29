@@ -46,8 +46,12 @@ a clean primary checkout and give the task an isolated worktree:
 
 ```shell
 python3 scripts/skills/workflow.py doctor
-python3 scripts/skills/workflow.py start <task> --platform <shared|macos|windows> --worktree <path>
+python3 scripts/skills/workflow.py start <task> --platform <shared|macos|windows>
 ```
+
+`start` creates `_workspace/<platform>-<task>` inside the primary
+checkout by default. Use `--worktree <path>` only when that location is
+unavailable. Publish the new task branch to its owning remote before editing.
 
 Use `macos/<topic>` for macOS implementation, `windows/<topic>` for Windows
 implementation, and `shared/<topic>` for shared or repository-wide work.
@@ -108,14 +112,26 @@ provides the agent procedure for this work.
 
 ### Validation and pull requests
 
-Run the checks required by the changed paths and review the full diff against
-the task base. A failed, skipped, stale, or unavailable required check does
-not pass. If source changes after validation, rerun affected checks. The task
-workflow records the exact source and head it checked:
+Commit all implementation, then review the full diff against the task base.
+Every affected macOS, Windows, or web scope selected by `required_scopes(paths)`
+must pass on the exact final HEAD before the task check succeeds. A failed,
+skipped, stale, or unavailable required check does not pass. Run a platform
+task's matching native tests locally on its owning host. For a shared task
+affecting macOS, Windows, or web, generate portable evidence on a matching
+host from that exact commit and supply one file per required scope:
 
 ```shell
-python3 scripts/skills/workflow.py check <task>
+python3 scripts/skills/workflow.py verify-scope --scope <macos|windows|web> --head <sha>
+python3 scripts/skills/workflow.py check <task> --evidence <json> [--evidence <json> ...]
 ```
+
+macOS scope validation requires a Mac; Windows requires a Windows host; web
+runs the website pnpm tests. The task check binds every required result to the
+exact HEAD, base, and source snapshot. If source changes, commit it and rerun
+the affected checks and evidence generation. For a platform task without
+portable evidence, run `python3 scripts/skills/workflow.py check <task>` on
+its owning host. A shared task with no affected non-shared scope uses the same
+plain command.
 
 Start from the [general pull request template](.github/PULL_REQUEST_TEMPLATE/general.md)
 when useful. A custom description is also accepted. Write the title using the
@@ -135,9 +151,9 @@ python3 scripts/skills/workflow.py publish <task> --title "<title>" --body-file 
 
 The recorded local checks and exact reviewed head are required before integration.
 GitHub Actions is disabled, so its archived workflows provide no validation.
-Run platform and device checks separately and record their results in the pull
-request. GitHub creates the squash
-commit title and body from the repository's merge message settings. After
+Record the required scope results and any additional device checks in the pull
+request. GitHub creates the squash commit
+title and body from the repository's merge message settings. After
 review feedback, make a focused follow-up commit and validate the new exact
 head; an amended or rebuilt equivalent does not inherit the prior review or
 check result. The [$create-pr skill](.agents/skills/create-pr/SKILL.md)
@@ -157,8 +173,11 @@ for manual testing before integration:
 python3 scripts/skills/workflow.py test-installer <task>
 ```
 
-The legacy current-main Windows Actions run option is unavailable while Actions
-is disabled. The local Setup route copies the verified installer into
+After a Windows app change is integrated, run
+`python3 scripts/skills/workflow.py verify-windows <task>` on a Windows host.
+It runs the maintained build, publish, and startup
+smoke route against clean current `main` before marking the task complete.
+The local Setup route copies the verified installer into
 the maintainer's Downloads folder, then removes older SIDEY Windows Setup files
 there. A failed build or changed source leaves the previous installers in
 place.

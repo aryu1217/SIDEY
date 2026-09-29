@@ -29,16 +29,18 @@ that was not separately observed.
 
 ## Windows
 
-For an already integrated task awaiting app review, provide the successful current-`main` push
-run to `python3 scripts/skills/workflow.py finish <task> --windows-run <run-id>`. The evidence must
-identify the exact head SHA, `.github/workflows/integration.yml` run URL, successful `windows`
-job, and successful `Run Windows app smoke` step. That smoke proves the published launcher/host
-startup and its instrumented preview probes; report it as GitHub Actions Windows verification,
-not local or manual Windows execution.
+For an already integrated task awaiting app review, run
+`python3 scripts/skills/workflow.py verify-windows <task>` on a Windows host.
+It requires clean current `main`, runs the maintained Windows build, test,
+self-contained publish, and launcher/host startup smoke route, then records
+the source snapshot and published executable hashes. Report the exact main
+SHA, host, command, executable paths and hashes, and the startup observations.
+The scripted smoke proves only the checks it actually performs; separately
+record any requested visual or functional observations.
 
 Local Windows runtime, installer, elevation, or prerequisite checks are supplemental and may
-change machine state. Run them only when explicitly in scope and never substitute them for the
-required current-main integration provenance.
+change machine state. Run additional checks only when in scope. Archived
+GitHub Actions workflows and their old run records are not current validation.
 
 ## Verdict
 
@@ -47,7 +49,7 @@ Platform / target commit / distribution or target
 Environment / artifact or executable
 Source: freshness, commit, input hash
 Build: build ID, target, configuration
-Runtime: command or CI run, process/startup/window evidence
+Runtime: command, process/startup/window evidence
 Requested observations: PASS / FAIL / NOT RUN with method
 Limitations and reproduction evidence
 Verdict: PASS / FAIL / BLOCKED
