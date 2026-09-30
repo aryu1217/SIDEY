@@ -26,6 +26,12 @@ actor SideyBackend {
     nonisolated let events: AsyncStream<BackendEvent>
 
     private let client: SupabaseClient
+    // A retired SDK client must never rejoin a topic on its replacement socket.
+    private let makeRealtime: @Sendable () -> RealtimeClientV2
+    private var realtime: RealtimeClientV2
+    private var realtimeAuthTask: Task<Void, Never>?
+    private var topologyMutationInProgress = false
+    private var topologyWaiters: [(UUID, CheckedContinuation<Void, Error>)] = []
     private let keychain: KeychainStore
     private let legacyRefreshAccount: String
     private let inviteAccountPrefix: String
@@ -41,7 +47,9 @@ actor SideyBackend {
     private var desiredTopology = RealtimeDesiredTopology()
     private var realtimeGeneration = 0
     private var realtimeRecoveryTask: Task<Void, Never>?
+    private var realtimeRecoveryID: UUID?
     private var realtimeRecoveryAttempt = 0
+    private var lastRealtimeRecoverySuccess: ContinuousClock.Instant?
     private var rebuildingGeneration: Int?
     private var realtimeWatchdogTask: Task<Void, Never>?
     private var networkPathTask: Task<Void, Never>?
@@ -89,11 +97,23 @@ actor SideyBackend {
             emitLocalSessionAsInitialSession: true
         )
         let options = SupabaseClientOptions(auth: authOptions)
-        self.client = SupabaseClient(
+        let client = SupabaseClient(
             supabaseURL: configuration.supabaseURL,
             supabaseKey: configuration.supabasePublishableKey,
             options: options
         )
+        self.client = client
+        let realtimeURL = configuration.supabaseURL.appendingPathComponent("realtime/v1")
+        let makeRealtime: @Sendable () -> RealtimeClientV2 = {
+            RealtimeClientV2(url: realtimeURL, options: RealtimeClientOptions(
+                headers: client.headers,
+                connectOnSubscribe: false,
+                accessToken: { try await client.auth.session.accessToken },
+                handleAppLifecycle: false
+            ))
+        }
+        self.makeRealtime = makeRealtime
+        self.realtime = makeRealtime()
     }
 
     func boot(requireExistingSession: Bool = false) async throws -> BackendSnapshot {
@@ -227,7 +247,10 @@ actor SideyBackend {
     }
 
     func syncRealtime(rooms: [Room], activeRoomID: UUID?) async throws -> BackendReconciliation {
+        try await acquireTopologyMutation()
+        defer { releaseTopologyMutation() }
         guard !isShuttingDown else { throw CancellationError() }
+        startRealtimeAuthMonitoringIfNeeded()
         startNetworkPathMonitoringIfNeeded()
         do {
             try await configureChannels(rooms: rooms, activeRoomID: activeRoomID)
@@ -306,6 +329,9 @@ actor SideyBackend {
         realtimeGeneration += 1
         realtimeRecoveryTask?.cancel()
         realtimeRecoveryTask = nil
+        realtimeRecoveryID = nil
+        realtimeAuthTask?.cancel()
+        realtimeAuthTask = nil
         realtimeWatchdogTask?.cancel()
         realtimeWatchdogTask = nil
         networkPathTask?.cancel()
@@ -313,8 +339,11 @@ actor SideyBackend {
         networkPathMonitor.cancel()
         structuralSnapshotTask?.cancel()
         structuralSnapshotTask = nil
-        await removeAllChannels()
-        client.realtimeV2.disconnect(reason: "SIDEY shutdown")
+        realtime.disconnect(reason: "SIDEY shutdown")
+        // Invalidate immediately, then wait for any in-flight channel mutation.
+        await acquireTopologyMutationForCleanup()
+        await retireRealtime(reason: "SIDEY shutdown", replace: false)
+        releaseTopologyMutation()
         for task in typingExpiryTasks.values { task.cancel() }
         typingExpiryTasks.removeAll()
         await presencePublicationQueue.cancel()
@@ -760,7 +789,7 @@ actor SideyBackend {
 
 #if DEBUG
     func interruptRealtimeConnectionForTesting() {
-        client.realtimeV2.disconnect(reason: "SIDEY integration recovery test")
+        realtime.disconnect(reason: "SIDEY integration recovery test")
     }
 
     func simulateNetworkAvailabilityForTesting(_ availability: NetworkAvailability) async {
@@ -811,6 +840,143 @@ actor SideyBackend {
         }
     }
 
+    // Only outer operations acquire this permit. configure/reconcile call each
+    // other and must run under their caller's permit, never acquire it again.
+    private func acquireTopologyMutation() async throws {
+        try Task.checkCancellation()
+        if !topologyMutationInProgress {
+            topologyMutationInProgress = true
+            return
+        }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                topologyWaiters.append((id, continuation))
+            }
+        } onCancel: {
+            Task { await self.cancelTopologyWaiter(id) }
+        }
+        do {
+            try Task.checkCancellation()
+        } catch {
+            releaseTopologyMutation()
+            throw error
+        }
+    }
+
+    private func acquireTopologyMutationForCleanup() async {
+        if !topologyMutationInProgress {
+            topologyMutationInProgress = true
+            return
+        }
+        // Cleanup must finish even if its initiating task was cancelled.
+        try? await withCheckedThrowingContinuation { continuation in
+            topologyWaiters.append((UUID(), continuation))
+        }
+    }
+
+    private func cancelTopologyWaiter(_ id: UUID) {
+        guard let index = topologyWaiters.firstIndex(where: { $0.0 == id }) else { return }
+        topologyWaiters.remove(at: index).1.resume(throwing: CancellationError())
+    }
+
+    private func releaseTopologyMutation() {
+        if topologyWaiters.isEmpty {
+            topologyMutationInProgress = false
+        } else {
+            topologyWaiters.removeFirst().1.resume()
+        }
+    }
+
+    private func startRealtimeAuthMonitoringIfNeeded() {
+        guard realtimeAuthTask == nil else { return }
+        let changes = client.auth.authStateChanges
+        realtimeAuthTask = Task { [weak self] in
+            for await (event, session) in changes {
+                guard !Task.isCancelled else { return }
+                await self?.handleRealtimeAuthChange(event, session: session)
+            }
+        }
+    }
+
+    private func handleRealtimeAuthChange(_ event: AuthChangeEvent, session: Session?) async {
+        guard !isShuttingDown else { return }
+        if event == .signedOut {
+            guard client.auth.currentSession == nil else { return }
+            realtimeGeneration += 1
+            realtimeRecoveryTask?.cancel()
+            realtimeRecoveryTask = nil
+            realtimeRecoveryID = nil
+            rebuildingGeneration = nil
+            recoveryReconciled = false
+            markAllRoomsUnsubscribed()
+            realtime.disconnect(reason: "SIDEY signed out")
+            emitConnectionState()
+            await acquireTopologyMutationForCleanup()
+            defer { releaseTopologyMutation() }
+            guard !isShuttingDown, client.auth.currentSession == nil else { return }
+            await retireRealtime(reason: "SIDEY signed out")
+        } else if [.initialSession, .signedIn, .tokenRefreshed].contains(event),
+                  let session,
+                  session.accessToken == client.auth.currentSession?.accessToken {
+            // Capture the instance: a late auth update may only touch that client.
+            let current = realtime
+            await current.setAuth(session.accessToken)
+        }
+    }
+
+    private func connectRealtimeIfNeeded(generation: Int) async throws {
+        try ensureCurrentRealtimeGeneration(generation)
+        let current = realtime
+        let session = try await authenticatedSession()
+        try ensureCurrentRealtimeGeneration(generation)
+        await current.setAuth(session.accessToken)
+        try ensureCurrentRealtimeGeneration(generation)
+        if current.status != .connected { await current.connect() }
+        try ensureCurrentRealtimeGeneration(generation)
+        try Task.checkCancellation()
+        guard realtime === current, current.status == .connected else {
+            throw SideyBackendError.realtimeUnavailable
+        }
+    }
+
+    private func retireRealtime(reason: String, replace: Bool = true) async {
+        let retired = realtime
+        var retiredChannels = Array(retired.channels.values)
+        for pair in channels.values {
+            pair.tasks.forEach { $0.cancel() }
+            retiredChannels.append(contentsOf: [pair.database, pair.ephemeral])
+        }
+        channels.removeAll()
+        markAllRoomsUnsubscribed()
+        retired.disconnect(reason: reason)
+        if replace { realtime = makeRealtime() }
+        var seen = Set<ObjectIdentifier>()
+        let uniqueChannels = retiredChannels.filter { seen.insert(ObjectIdentifier($0)).inserted }
+        await withTaskGroup(of: Void.self) { group in
+            for channel in uniqueChannels {
+                group.addTask {
+                    // removeChannel alone skips an in-flight subscribe in SDK
+                    // 2.55.1. Cancel every state, on the retired instance only.
+                    await channel.unsubscribe()
+                    await retired.removeChannel(channel)
+                }
+            }
+        }
+    }
+
+    private func hasHealthyRealtimeTopology() -> Bool {
+        guard networkAvailability.current != .unavailable,
+              Set(channels.keys) == desiredTopology.roomIDs else { return false }
+        if desiredTopology.roomIDs.isEmpty { return true }
+        return realtime.status == .connected && channels.allSatisfy { roomID, pair in
+            pair.generation == realtimeGeneration
+                && pair.epoch == desiredTopology.epoch(for: roomID)
+                && pair.database.status == .subscribed
+                && pair.ephemeral.status == .subscribed
+        }
+    }
+
     private func configureChannels(rooms: [Room], activeRoomID: UUID?) async throws {
         let requestedRooms = Array(rooms.prefix(5))
         let requestedTopology = RealtimeTopology(rooms: requestedRooms)
@@ -851,6 +1017,7 @@ actor SideyBackend {
         if topologyChanged {
             realtimeRecoveryTask?.cancel()
             realtimeRecoveryTask = nil
+            realtimeRecoveryID = nil
             realtimeRecoveryAttempt = 0
             let generation = realtimeGeneration
             emitConnectionState()
@@ -888,6 +1055,7 @@ actor SideyBackend {
             await removeChannel(roomID)
         }
         try ensureCurrentRealtimeGeneration(generation)
+        if !rooms.isEmpty { try await connectRealtimeIfNeeded(generation: generation) }
         for room in rooms where plan.additions.contains(room.id) {
             try await addChannel(
                 roomID: room.id,
@@ -908,11 +1076,11 @@ actor SideyBackend {
         try ensureCurrentRealtimeGeneration(generation)
 
         let topicPrefix = "room:\(roomID.uuidString.lowercased()):\(epoch)"
-        let databaseChannel = client.channel("\(topicPrefix):db") { config in
+        let databaseChannel = realtime.channel("\(topicPrefix):db") { config in
             config.isPrivate = true
             config.broadcast.receiveOwnBroadcasts = false
         }
-        let ephemeralChannel = client.channel("\(topicPrefix):ephemeral") { config in
+        let ephemeralChannel = realtime.channel("\(topicPrefix):ephemeral") { config in
             config.isPrivate = true
             config.broadcast.receiveOwnBroadcasts = false
             config.presence = PresenceJoinConfig(key: userID.uuidString.lowercased())
@@ -1068,16 +1236,12 @@ actor SideyBackend {
         connectionTracker.setSubscribed(false, roomID: roomID)
         presenceReplay.invalidate(roomID: roomID)
         guard let roomChannels = channels.removeValue(forKey: roomID) else { return }
+        let current = realtime
         roomChannels.tasks.forEach { $0.cancel() }
-        await client.removeChannel(roomChannels.database)
-        await client.removeChannel(roomChannels.ephemeral)
-    }
-
-    private func removeAllChannels() async {
-        let channelGenerations = channels.map { ($0.key, $0.value.generation) }
-        for (roomID, generation) in channelGenerations {
-            await removeChannel(roomID, expectedGeneration: generation)
-        }
+        await roomChannels.database.unsubscribe()
+        await roomChannels.ephemeral.unsubscribe()
+        await current.removeChannel(roomChannels.database)
+        await current.removeChannel(roomChannels.ephemeral)
     }
 
     private func handleChannelStatus(
@@ -1087,6 +1251,14 @@ actor SideyBackend {
         isPresenceChannel: Bool
     ) async {
         guard isCurrentChannel(roomID: roomID, generation: generation) else { return }
+        guard let pair = channels[roomID] else { return }
+        let currentStatus = isPresenceChannel ? pair.ephemeral.status : pair.database.status
+        // AsyncStream can deliver an old reset after the SDK has rejoined.
+        guard status == currentStatus else { return }
+        if status == .unsubscribed {
+            let kind = isPresenceChannel ? "presence" : "database"
+            recoveryLogger.notice("channel unsubscribed generation=\(generation, privacy: .public) kind=\(kind, privacy: .public) socketConnected=\(self.realtime.status == .connected, privacy: .public)")
+        }
         // The database notification channel can resubscribe independently of
         // the live Presence channel. Only the latter owns this snapshot.
         if isPresenceChannel, status != .subscribed {
@@ -1095,6 +1267,11 @@ actor SideyBackend {
         switch status {
         case .subscribed:
             updateRoomSubscription(roomID: roomID)
+            if rebuildingGeneration == nil, !recoveryReconciled, hasHealthyRealtimeTopology() {
+                // The SDK may have finished rejoining between watchdog ticks.
+                // Complete reconciliation even if no .unsubscribed was observed.
+                scheduleRealtimeRecovery(trigger: .reconciliation, immediate: true)
+            }
             emitConnectionState()
         case .unsubscribed:
             connectionTracker.setSubscribed(false, roomID: roomID)
@@ -1139,7 +1316,7 @@ actor SideyBackend {
         guard let userID = client.auth.currentUser?.id else {
             throw SideyBackendError.realtimeUnavailable
         }
-        guard client.realtimeV2.status == .connected else {
+        guard realtime.status == .connected else {
             throw SideyBackendError.realtimeUnavailable
         }
         let generation = realtimeGeneration
@@ -1175,7 +1352,7 @@ actor SideyBackend {
                   !Task.isCancelled,
                   generation == realtimeGeneration,
                   client.auth.currentUser?.id == userID,
-                  client.realtimeV2.status == .connected,
+                  realtime.status == .connected,
                   connectionTracker.desiredRoomIDs == desiredRoomIDs,
                   desiredRoomIDs.allSatisfy({ roomID in
                       guard let original = publicationChannels[roomID],
@@ -1195,7 +1372,7 @@ actor SideyBackend {
     }
 
     private func subscribedChannels(roomID: UUID) -> RoomRealtimeChannels? {
-        guard client.realtimeV2.status == .connected,
+        guard realtime.status == .connected,
               let roomChannels = channels[roomID],
               roomChannels.generation == realtimeGeneration,
               roomChannels.database.status == .subscribed,
@@ -1227,7 +1404,7 @@ actor SideyBackend {
               networkAvailability.current != .unavailable,
               rebuildingGeneration == nil
         else { return }
-        let socketConnected = client.realtimeV2.status == .connected
+        let socketConnected = realtime.status == .connected
         for roomID in connectionTracker.desiredRoomIDs {
             let subscribed = socketConnected
                 && channels[roomID]?.generation == realtimeGeneration
@@ -1239,6 +1416,9 @@ actor SideyBackend {
                 scheduleRealtimeRecovery(trigger: .watchdog, immediate: false)
             }
         }
+        if !recoveryReconciled, hasHealthyRealtimeTopology() {
+            scheduleRealtimeRecovery(trigger: .reconciliation, immediate: true)
+        }
         emitConnectionState()
     }
 
@@ -1247,15 +1427,21 @@ actor SideyBackend {
         immediate: Bool
     ) {
         guard !isShuttingDown,
+              client.auth.currentSession != nil,
               networkAvailability.current != .unavailable,
               realtimeRecoveryTask == nil
         else { return }
 
         recoveryReconciled = false
-        markAllRoomsUnsubscribed()
         cancelTypingExpiryTasks()
+        if let lastRealtimeRecoverySuccess,
+           lastRealtimeRecoverySuccess.duration(to: ContinuousClock().now) >= .seconds(30) {
+            realtimeRecoveryAttempt = 0
+        }
+        lastRealtimeRecoverySuccess = nil
         realtimeRecoveryAttempt += 1
-        realtimeGeneration += 1
+        let recoveryID = UUID()
+        realtimeRecoveryID = recoveryID
         let attempt = realtimeRecoveryAttempt
         let generation = realtimeGeneration
         let delay = immediate
@@ -1272,80 +1458,86 @@ actor SideyBackend {
                 return
             }
             guard !Task.isCancelled else { return }
-            await self?.recoverRealtimeTopology(generation: generation, attempt: attempt)
+            await self?.recoverRealtimeTopology(recoveryID: recoveryID, attempt: attempt)
         }
     }
 
-    private func recoverRealtimeTopology(generation: Int, attempt: Int) async {
-        guard !isShuttingDown,
-              generation == realtimeGeneration,
-              networkAvailability.current != .unavailable
-        else { return }
+    private func recoverRealtimeTopology(recoveryID: UUID, attempt: Int) async {
+        do { try await acquireTopologyMutation() } catch { return }
+        defer { releaseTopologyMutation() }
+        guard !isShuttingDown, !Task.isCancelled,
+              realtimeRecoveryID == recoveryID,
+              networkAvailability.current != .unavailable else { return }
 
+        var generation = realtimeGeneration
         rebuildingGeneration = generation
         recoveryLogger.notice(
             "started generation=\(generation, privacy: .public) attempt=\(attempt, privacy: .public)"
         )
         do {
-            await presencePublicationQueue.cancel()
-            await removeAllChannels()
-            client.realtimeV2.disconnect(reason: "SIDEY topology recovery")
-            try await Task.sleep(for: .milliseconds(150))
-            try ensureCurrentRealtimeGeneration(generation)
-
             let snapshot = try await loadSnapshot()
             try ensureCurrentRealtimeGeneration(generation)
+            try Task.checkCancellation()
             let rooms = Array(snapshot.rooms.prefix(5))
-            desiredTopology.replace(rooms: rooms)
-            connectionTracker.replaceDesiredRoomIDs(desiredTopology.roomIDs)
-            activeRoomID = activeRoomID.flatMap { requestedID in
-                desiredTopology.roomIDs.contains(requestedID) ? requestedID : nil
-            } ?? rooms.first?.id
-
-            await client.realtimeV2.connect()
-            try ensureCurrentRealtimeGeneration(generation)
-            guard client.realtimeV2.status == .connected else {
-                throw SideyBackendError.realtimeUnavailable
-            }
-
-            for room in rooms {
-                try await addChannel(
-                    roomID: room.id,
-                    epoch: room.realtimeEpoch,
-                    generation: generation
-                )
+            let matchingTopology = RealtimeTopology(rooms: rooms)
+                == RealtimeTopology(channelEpochs: desiredTopology.roomEpochs)
+            let preservedConnection = matchingTopology && hasHealthyRealtimeTopology()
+            if !preservedConnection {
+                // Invalidate only when rebuilding, leaving SDK self-recovery
+                // callbacks usable during the grace period.
+                realtimeGeneration += 1
+                generation = realtimeGeneration
+                rebuildingGeneration = generation
+                await presencePublicationQueue.cancel()
                 try ensureCurrentRealtimeGeneration(generation)
+                await retireRealtime(reason: "SIDEY topology recovery")
+                try ensureCurrentRealtimeGeneration(generation)
+                try Task.checkCancellation()
+                desiredTopology.replace(rooms: rooms)
+                connectionTracker.replaceDesiredRoomIDs(desiredTopology.roomIDs)
+                activeRoomID = activeRoomID.flatMap {
+                    desiredTopology.roomIDs.contains($0) ? $0 : nil
+                } ?? rooms.first?.id
+                if !rooms.isEmpty { try await connectRealtimeIfNeeded(generation: generation) }
+                for room in rooms {
+                    try await addChannel(roomID: room.id, epoch: room.realtimeEpoch, generation: generation)
+                    try ensureCurrentRealtimeGeneration(generation)
+                }
             }
-            guard connectionTracker.isConnected else {
-                throw SideyBackendError.realtimeUnavailable
-            }
+            guard hasHealthyRealtimeTopology() else { throw SideyBackendError.realtimeUnavailable }
+            for roomID in desiredTopology.roomIDs { updateRoomSubscription(roomID: roomID) }
             try await publishPresence()
             try ensureCurrentRealtimeGeneration(generation)
             let reconciliation = try await makeReconciliation(snapshot: snapshot)
             try ensureCurrentRealtimeGeneration(generation)
+            try Task.checkCancellation()
+            guard realtimeRecoveryID == recoveryID, hasHealthyRealtimeTopology() else {
+                throw SideyBackendError.realtimeUnavailable
+            }
 
             rebuildingGeneration = nil
             realtimeRecoveryTask = nil
-            realtimeRecoveryAttempt = 0
+            realtimeRecoveryID = nil
+            // A momentary success must not reset a flapping connection to 8s.
+            lastRealtimeRecoverySuccess = ContinuousClock().now
             recoveryReconciled = true
             replayPresence(rooms: snapshot.rooms)
             emit(.reconciliation(reconciliation))
             emitConnectionState()
             recoveryLogger.notice(
-                "completed generation=\(generation, privacy: .public) rooms=\(rooms.count, privacy: .public)"
+                "completed generation=\(generation, privacy: .public) rooms=\(rooms.count, privacy: .public) preservedConnection=\(preservedConnection, privacy: .public)"
             )
         } catch {
-            guard generation == realtimeGeneration else { return }
+            guard realtimeRecoveryID == recoveryID else { return }
             rebuildingGeneration = nil
             realtimeRecoveryTask = nil
+            realtimeRecoveryID = nil
             recoveryReconciled = false
-            markAllRoomsUnsubscribed()
-            await removeAllChannels()
             emitConnectionState()
             recoveryLogger.error(
-                "failed generation=\(generation, privacy: .public) attempt=\(attempt, privacy: .public)"
+                "failed generation=\(generation, privacy: .public) attempt=\(attempt, privacy: .public) errorType=\(String(reflecting: type(of: error)), privacy: .public)"
             )
-            scheduleRealtimeRecovery(trigger: .retry, immediate: false)
+            if !Task.isCancelled { scheduleRealtimeRecovery(trigger: .retry, immediate: false) }
         }
     }
 
@@ -1368,8 +1560,10 @@ actor SideyBackend {
             return
         case .becameUnavailable:
             realtimeGeneration += 1
+            let generation = realtimeGeneration
             realtimeRecoveryTask?.cancel()
             realtimeRecoveryTask = nil
+            realtimeRecoveryID = nil
             realtimeRecoveryAttempt = 0
             rebuildingGeneration = nil
             recoveryReconciled = false
@@ -1378,9 +1572,13 @@ actor SideyBackend {
             markAllRoomsUnsubscribed()
             cancelTypingExpiryTasks()
             emitConnectionState()
+            realtime.disconnect(reason: "SIDEY network unavailable")
+            await acquireTopologyMutationForCleanup()
+            defer { releaseTopologyMutation() }
+            guard !isShuttingDown, realtimeGeneration == generation,
+                  networkAvailability.current == .unavailable else { return }
             await presencePublicationQueue.cancel()
-            await removeAllChannels()
-            client.realtimeV2.disconnect(reason: "SIDEY network unavailable")
+            await retireRealtime(reason: "SIDEY network unavailable")
             recoveryLogger.notice("network unavailable")
         case .becameAvailable:
             recoveryLogger.notice("network available")
@@ -1390,6 +1588,7 @@ actor SideyBackend {
 
     private func ensureCurrentRealtimeGeneration(_ generation: Int) throws {
         guard !isShuttingDown,
+              !Task.isCancelled,
               generation == realtimeGeneration,
               networkAvailability.current != .unavailable
         else { throw CancellationError() }
@@ -1418,7 +1617,9 @@ actor SideyBackend {
     }
 
     private func reconcileCurrentState(emitEvents: Bool) async throws -> BackendReconciliation {
+        let generation = realtimeGeneration
         var snapshot = try await loadSnapshot()
+        try ensureCurrentRealtimeGeneration(generation)
         let snapshotEpochs = Dictionary(uniqueKeysWithValues: snapshot.rooms.prefix(5).map {
             ($0.id, $0.realtimeEpoch)
         })
@@ -1426,11 +1627,15 @@ actor SideyBackend {
         if snapshotEpochs != channelEpochs {
             try await configureChannels(rooms: snapshot.rooms, activeRoomID: activeRoomID)
             snapshot = try await loadSnapshot()
+            try ensureCurrentRealtimeGeneration(generation)
         }
         guard connectionTracker.isConnected else {
             throw SideyBackendError.realtimeUnavailable
         }
         let reconciliation = try await makeReconciliation(snapshot: snapshot)
+        try ensureCurrentRealtimeGeneration(generation)
+        try Task.checkCancellation()
+        guard hasHealthyRealtimeTopology() else { throw SideyBackendError.realtimeUnavailable }
         // Replay a complete membership baseline, including offline members,
         // after a receiver was replaced or a dropped event forced reconciliation.
         replayPresence(rooms: snapshot.rooms)
@@ -1462,7 +1667,7 @@ actor SideyBackend {
     private func currentConnectionStatus() -> BackendConnectionStatus {
         let pathAvailable = networkAvailability.current != .unavailable
         let socketAvailable = connectionTracker.desiredRoomIDs.isEmpty
-            || client.realtimeV2.status == .connected
+            || realtime.status == .connected
         return RealtimeConnectionStatusPolicy.resolve(
             pathAvailable: pathAvailable,
             socketAvailable: socketAvailable,
@@ -1486,7 +1691,7 @@ actor SideyBackend {
 
     private func livePresenceRoomIDs() -> Set<UUID> {
         guard networkAvailability.current != .unavailable,
-              client.realtimeV2.status == .connected else { return [] }
+              realtime.status == .connected else { return [] }
         return Set(channels.compactMap { roomID, roomChannels in
             guard isCurrentChannel(roomID: roomID, generation: roomChannels.generation),
                   roomChannels.ephemeral.status == .subscribed else { return nil }
@@ -1584,10 +1789,15 @@ actor SideyBackend {
     }
 
     private func emitStructuralSnapshot() async {
+        do { try await acquireTopologyMutation() } catch { return }
+        defer { releaseTopologyMutation() }
         structuralSnapshotTask = nil
         guard !isShuttingDown, networkAvailability.current != .unavailable else { return }
         do {
+            let generation = realtimeGeneration
             let snapshot = try await loadSnapshot()
+            try ensureCurrentRealtimeGeneration(generation)
+            try Task.checkCancellation()
             let snapshotTopology = RealtimeTopology(rooms: snapshot.rooms)
             let channelTopology = RealtimeTopology(channelEpochs: Dictionary(
                 uniqueKeysWithValues: channels.map { ($0.key, $0.value.epoch) }
@@ -1602,6 +1812,8 @@ actor SideyBackend {
                 )
                 _ = try await reconcileCurrentState(emitEvents: true)
             }
+        } catch is CancellationError {
+            return
         } catch {
             recoveryLogger.error(
                 "Room state resynchronization failed: \(String(reflecting: error), privacy: .private)"
