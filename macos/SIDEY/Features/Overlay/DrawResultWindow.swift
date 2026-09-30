@@ -3,6 +3,11 @@ import Observation
 import SpriteKit
 import SwiftUI
 
+private enum DrawGamePlaybackTiming {
+    static let framesPerSecond = 60
+    static let frameInterval: Duration = .seconds(1.0 / Double(framesPerSecond))
+}
+
 private final class DrawResultPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -138,7 +143,7 @@ final class DrawResultWindowController {
                     playbackTask = nil
                     return
                 }
-                do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
+                do { try await Task.sleep(for: DrawGamePlaybackTiming.frameInterval) } catch { return }
             }
         }
     }
@@ -189,14 +194,13 @@ private struct DrawGameControlsView: View {
                       systemImage: playback.phase == .complete ? "arrow.clockwise" : "play.fill")
             }
             .disabled(playback.phase == .playing)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             Button(action: onClose) {
                 Label(L10n.text("draw.close_result"), systemImage: "xmark")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
         }
         .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 15))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(event.kind.title)
@@ -215,6 +219,7 @@ private struct DrawGameStageView: NSViewRepresentable {
     func makeNSView(context: Context) -> SKView {
         let view = SKView(frame: .zero)
         PixelWorldRendererPolicy.apply(to: view)
+        view.preferredFramesPerSecond = DrawGamePlaybackTiming.framesPerSecond
         view.presentScene(makeScene(size: view.bounds.size))
         return view
     }

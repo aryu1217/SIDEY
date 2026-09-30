@@ -256,11 +256,11 @@ struct HistoryMessageCard: View {
             deliveryStatus
         }
         .foregroundStyle(Color(nsColor: bubbleTheme.textColor))
-        .padding(.top, bubbleTheme.decorationAssetName == nil ? 10 : 18)
+        .padding(.top, 10)
         .padding(.bottom, 10)
         .padding(.horizontal, 12)
         .padding(participant.isCurrentUser ? .trailing : .leading, 8)
-        .frame(minWidth: bubbleTheme.decorationAssetName == nil ? 0 : 56,
+        .frame(minWidth: bubbleTheme.decorationAssetName == nil ? 0 : 40,
                minHeight: 40, alignment: .leading)
         .background {
             HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
@@ -276,9 +276,9 @@ struct HistoryMessageCard: View {
                 Image(nsImage: image)
                     .interpolation(.none)
                     .resizable()
-                    .frame(width: 32, height: 32)
+                    .frame(width: 16, height: 16)
                     .padding(.horizontal, 8)
-                    .offset(y: -16)
+                    .offset(y: -8)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
