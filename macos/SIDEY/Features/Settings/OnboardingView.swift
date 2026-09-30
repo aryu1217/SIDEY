@@ -92,9 +92,6 @@ struct OnboardingView: View {
                     if limited != value { model.nickname = limited }
                 }
             HStack {
-                Text("profile.duplicates_allowed")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 Spacer()
                 Button("common.next") {
                     PendingTextInputCommitter.commitThen(actions.onSaveProfile)

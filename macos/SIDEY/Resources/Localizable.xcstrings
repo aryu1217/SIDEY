@@ -6428,35 +6428,6 @@
         }
       }
     },
-    "history.close.accessibility": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Close recent messages"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近のメッセージを閉じる"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최근 메시지 닫기"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關閉最近訊息"
-          }
-        }
-      }
-    },
     "history.empty.description": {
       "extractionState": "manual",
       "localizations": {
