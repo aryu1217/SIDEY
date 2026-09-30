@@ -88,9 +88,8 @@ try {
     }
 
     $expectedNames = @($manifest.files | ForEach-Object { [string]$_.name })
-    $PSNativeCommandUseErrorActionPreference = $false
-    gh release view $tag --repo $PublicRepository *> $null
-    $releaseExists = $LASTEXITCODE -eq 0
+    $releaseExists = (Invoke-SideyWindowsProcess -FilePath 'gh' -ArgumentList @(
+        'release', 'view', $tag, '--repo', $PublicRepository)) -eq 0
     if ($releaseExists) {
         throw "Public release tag already exists: $tag"
     }
@@ -98,8 +97,8 @@ try {
     if ($LASTEXITCODE -ne 0 -or $publicTargetCommit -notmatch '^[0-9a-f]{40}$') {
         throw "Unable to resolve the public repository main commit: $PublicRepository"
     }
-    gh api "repos/$PublicRepository/git/ref/tags/$tag" *> $null
-    if ($LASTEXITCODE -eq 0) {
+    if ((Invoke-SideyWindowsProcess -FilePath 'gh' -ArgumentList @(
+            'api', "repos/$PublicRepository/git/ref/tags/$tag")) -eq 0) {
         throw "Public release tag already exists: $tag"
     }
     $candidateFiles = @($expectedNames | ForEach-Object { Join-Path $candidatePath $_ })
