@@ -1168,9 +1168,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Cerrar mensajes recientes"
-        },
         "empty": {
           "description": "Los mensajes recientes de este grupo aparecerán aquí.",
           "title": "Aún no hay mensajes"

@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "關閉最近訊息"
-        },
         "empty": {
           "description": "這個群組的最近訊息會顯示在這裡。",
           "title": "尚無訊息"

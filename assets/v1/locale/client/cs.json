@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Zavřít nedávné zprávy"
-        },
         "empty": {
           "description": "Tady se zobrazí nedávné zprávy z této skupiny.",
           "title": "Zatím žádné zprávy"

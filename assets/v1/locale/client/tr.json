@@ -437,9 +437,6 @@
             }
         },
         "history": {
-            "close": {
-                "accessibility": "Son mesajları kapat"
-            },
             "empty": {
                 "description": "Bu gruptaki son mesajlar burada görünür.",
                 "title": "Henüz mesaj yok"

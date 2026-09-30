@@ -490,9 +490,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Fechar mensagens recentes"
-        },
         "empty": {
           "description": "As mensagens recentes deste grupo serão apresentadas aqui.",
           "title": "Ainda não há mensagens"

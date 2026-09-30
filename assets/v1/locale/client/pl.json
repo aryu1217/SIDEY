@@ -1168,9 +1168,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Zamknij ostatnie wiadomości"
-        },
         "empty": {
           "description": "Tutaj pojawią się ostatnie wiadomości z tej grupy.",
           "title": "Brak wiadomości"

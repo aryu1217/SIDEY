@@ -437,9 +437,6 @@
             }
         },
         "history": {
-            "close": {
-                "accessibility": "Închideți mesajele recente"
-            },
             "empty": {
                 "description": "Mesajele recente din acest grup vor apărea aici.",
                 "title": "Nu există încă mesaje"

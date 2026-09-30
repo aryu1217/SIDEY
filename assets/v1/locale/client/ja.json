@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "最近のメッセージを閉じる"
-        },
         "empty": {
           "description": "このグループの最近のメッセージがここに表示されます。",
           "title": "まだメッセージはありません"
