@@ -182,8 +182,15 @@ jobs:
               $presentIncrementalNames.Count -ne $incrementalNames.Count) {
             throw "Windows incremental release requires all three assets: $tag"
           }
+          $arm64Names = @('Setup.exe', 'Update.exe', 'Update.json', 'Payload.bin' | ForEach-Object {
+            "SIDEY-Windows-arm64-v${releaseVersion}-$_"
+          })
+          $presentArm64Names = @($arm64Names | Where-Object { $assetNames -ccontains $_ })
+          if ($presentArm64Names.Count -ne 0 -and $presentArm64Names.Count -ne 4) {
+            throw "ARM64 release requires its separate installer and complete update trio: $tag"
+          }
           $expectedAssetNames = @($installerName) + $complianceAssetNames +
-            $presentIncrementalNames
+            $presentIncrementalNames + $presentArm64Names
           $unexpectedAssetNames = @($assetNames | Where-Object {
             $expectedAssetNames -cnotcontains $_
           })
@@ -244,6 +251,18 @@ jobs:
             $metadataArguments += @(
               '--windows-legacy-installer',
               "./build/windows-pages-legacy/$legacyInstallerName"
+            )
+          }
+          if ($presentArm64Names.Count -ne 0) {
+            foreach ($arm64Name in $arm64Names) {
+              gh release download $tag --pattern $arm64Name `
+                --dir ./build/windows-pages-release --clobber
+            }
+            $metadataArguments += @(
+              '--windows-arm64-installer',
+              "./build/windows-pages-release/SIDEY-Windows-arm64-v${releaseVersion}-Setup.exe",
+              '--windows-arm64-incremental-manifest',
+              "./build/windows-pages-release/SIDEY-Windows-arm64-v${releaseVersion}-Update.json"
             )
           }
           python3 @metadataArguments

@@ -26,9 +26,13 @@ const appStoreURL = appStoreURLForLocale(locale);
     </article>
     <article class="download-card">
       <span class="platform-label"><img class="platform-logo platform-logo-windows" src={`${import.meta.env.BASE_URL}assets/platforms/windows-dark.svg`} alt="" width="16" height="16">Windows</span><h3>SIDEY v<span data-release-version="windows">{releases.windows.version}</span></h3>
-      <div class="download-actions"><DownloadButton label={copy.windowsButton} platform="windows" id="windows-download-action" href={releases.windows.url} describedBy="windows-card-status" legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}windows/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
+      <div class="download-actions"><DownloadButton label={`${copy.windowsButton} (x64)`} platform="windows" id="windows-download-action" href={releases.windows.url} describedBy="windows-card-status" legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}windows/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
       <p class="system-note" id="windows-card-status">{copy.windowsSystem}</p>
       <Checksum id="windows-download-sha256" value={releases.windows.sha256} copyLabel={copy.hashCopy} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} releasePlatform="windows" />
+      <div data-windows-arm64-download hidden>
+        <div class="download-actions"><DownloadButton label={`${copy.windowsButton} (ARM64)`} platform="windows" id="windows-arm64-download-action" href="#download" legalNotice locale={locale} /></div>
+        <Checksum id="windows-arm64-download-sha256" value="" copyLabel={copy.hashCopy} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} />
+      </div>
     </article>
   </div>
 </section>

@@ -19,6 +19,35 @@ from prepare_release_metadata import (
 
 
 class PrepareReleaseMetadataTests(unittest.TestCase):
+    def test_publishes_arm64_feed_separately_from_x64(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-ARM64-Pages-") as temporary:
+            root = Path(temporary)
+            site = self.write_landing_site(root)
+            version = "2.2640.8"
+            manifest = root / "windows.json"
+            manifest.write_text(json.dumps({
+                "schema": 1, "platform": "windows", "channel": "production",
+                "version": version, "windowsBuild": 8, "updateVersion": version,
+                "releaseVersion": version, "msixVersion": f"{version}.0",
+            }), encoding="utf-8")
+            x64 = root / f"SIDEY-Windows-x64-v{version}-Setup.exe"
+            arm64 = root / f"SIDEY-Windows-arm64-v{version}-Setup.exe"
+            x64.write_bytes(b"x64 installer")
+            arm64.write_bytes(b"arm64 installer")
+            output = root / "published"
+            prepare(site, output, manifest, x64, windows_arm64_installer=arm64)
+            html = (output / "en/index.html").read_text(encoding="utf-8")
+            self.assertIn(f'data-windows-arm64-url="https://github.com/sidey-app/SIDEY/releases/download/windows-v{version}/{arm64.name}"', html)
+            self.assertIn(hashlib.sha256(arm64.read_bytes()).hexdigest(), html)
+            self.assertNotIn('data-windows-arm64-download hidden', html)
+            for architecture, installer in (("x64", x64), ("arm64", arm64)):
+                filename = "windows-latest.json" if architecture == "x64" else "windows-arm64-latest.json"
+                feed = json.loads((output / filename).read_text(encoding="utf-8"))
+                self.assertTrue(feed["installer_url"].endswith(installer.name))
+                self.assertEqual(feed["sha256"], hashlib.sha256(installer.read_bytes()).hexdigest())
+            with self.assertRaisesRegex(ValueError, "ARM64 installer filename"):
+                prepare(site, root / "invalid", manifest, x64, windows_arm64_installer=x64)
+
     @staticmethod
     def write_landing_site(directory: Path) -> Path:
         site = directory / "website"
@@ -27,10 +56,15 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(
                 f'<a id="primary-download-action" href="{app_store_url}" '
-                f'data-macos-url="{app_store_url}" data-windows-url="https://old.invalid/">'
+                f'data-macos-url="{app_store_url}" data-windows-url="https://old.invalid/" data-windows-arm64-url="">'
                 'Download</a>'
                 f'<a id="macos-download-action" href="{app_store_url}">Mac</a>'
                 '<a id="windows-download-action" href="https://old.invalid/">Windows</a>'
+                '<a id="hero-windows-x64-download-action" href="https://old.invalid/">x64</a>'
+                '<a id="hero-windows-arm64-download-action" href="#download" data-windows-arm64-download hidden>ARM64</a>'
+                '<div data-windows-arm64-download hidden>'
+                '<a id="windows-arm64-download-action" href="#download">ARM64</a>'
+                '<code id="windows-arm64-download-sha256"></code></div>'
                 '<code id="windows-download-sha256" data-release-platform="windows">'
                 + "0" * 64 + '</code>'
                 '<h3>SIDEY v<span data-release-version="windows">0.0.0</span></h3>',

@@ -28,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--windows-release-installer", type=Path, required=True)
     parser.add_argument("--windows-legacy-installer", type=Path)
     parser.add_argument("--windows-incremental-manifest", type=Path)
+    parser.add_argument("--windows-arm64-installer", type=Path)
+    parser.add_argument("--windows-arm64-incremental-manifest", type=Path)
     parser.add_argument(
         "--public-repository",
         default=DEFAULT_PUBLIC_REPOSITORY,
@@ -105,9 +107,9 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def read_incremental_manifest(path: Path, version: str) -> dict[str, object]:
+def read_incremental_manifest(path: Path, version: str, architecture: str = "x64") -> dict[str, object]:
     """Validate the complete optional release trio before publishing its trust root."""
-    prefix = f"SIDEY-Windows-x64-v{version}"
+    prefix = f"SIDEY-Windows-{architecture}-v{version}"
     if path.name != f"{prefix}-Update.json":
         raise ValueError("Incremental manifest filename does not match the release")
     if path.stat().st_size > 4 * 1024 * 1024:
@@ -233,6 +235,24 @@ def replace_displayed_version(html: str, platform: str, version: str) -> str:
     return updated
 
 
+def apply_arm64_downloads(html: str, url: str, digest: str) -> str:
+    """Expose a separate ARM64 download only after verifying its release asset."""
+    if "data-windows-arm64-url" not in html:
+        return html
+    html = replace_anchor_attribute(html, "primary-download-action", "data-windows-arm64-url", url)
+    for element_id in ("hero-windows-arm64-download-action", "windows-arm64-download-action"):
+        html = replace_anchor_attribute(html, element_id, "href", url)
+    pattern = re.compile(r'(<code(?=[^>]*\bid="windows-arm64-download-sha256")[^>]*>)[^<]*(</code>)')
+    html, count = pattern.subn(rf"\g<1>{digest}\g<2>", html)
+    if count != 1:
+        raise ValueError("Expected one ARM64 installer checksum")
+    marker = re.compile(r'<[a-z][a-z0-9]*(?=[\s>])(?=[^>]*\bdata-windows-arm64-download(?:[\s=>]))[^>]*>')
+    html, count = marker.subn(lambda match: re.sub(r'\s+hidden(?:="(?:hidden)?")?(?=[\s>])', "", match[0]), html)
+    if count != 2:
+        raise ValueError("Expected ARM64 hero and card download markers")
+    return html
+
+
 def prepare(
     website_dir: Path,
     output_dir: Path,
@@ -241,6 +261,8 @@ def prepare(
     public_repository: str = DEFAULT_PUBLIC_REPOSITORY,
     windows_legacy_installer: Path | None = None,
     windows_incremental_manifest: Path | None = None,
+    windows_arm64_installer: Path | None = None,
+    windows_arm64_incremental_manifest: Path | None = None,
 ) -> tuple[str, str]:
     website_dir = website_dir.resolve(strict=True)
     windows_release_manifest = windows_release_manifest.resolve(strict=True)
@@ -252,6 +274,29 @@ def prepare(
     product_version = str(windows_manifest["version"])
     update_version = str(windows_manifest["updateVersion"])
     release_version = str(windows_manifest["releaseVersion"])
+    arm64_feed = None
+    if windows_arm64_incremental_manifest is not None and windows_arm64_installer is None:
+        raise ValueError("ARM64 incremental metadata requires its ARM64 installer")
+    if windows_arm64_installer is not None:
+        if "windowsBuild" not in windows_manifest:
+            raise ValueError("ARM64 publication requires HeadVer release metadata")
+        windows_arm64_installer = windows_arm64_installer.resolve(strict=True)
+        arm64_name = f"SIDEY-Windows-arm64-v{release_version}-Setup.exe"
+        if windows_arm64_installer.name != arm64_name:
+            raise ValueError("ARM64 installer filename does not match the release")
+        arm64_feed = {
+            "channel": "production", "version": release_version,
+            "tag": f"windows-v{release_version}",
+            "installer_url": f"https://github.com/{public_repository}/releases/download/windows-v{release_version}/{arm64_name}",
+            "sha256": sha256(windows_arm64_installer),
+        }
+        if windows_arm64_incremental_manifest is not None:
+            windows_arm64_incremental_manifest = windows_arm64_incremental_manifest.resolve(strict=True)
+            read_incremental_manifest(windows_arm64_incremental_manifest, release_version, "arm64")
+            arm64_feed["incremental"] = {
+                "manifest_url": f"https://github.com/{public_repository}/releases/download/windows-v{release_version}/{windows_arm64_incremental_manifest.name}",
+                "sha256": sha256(windows_arm64_incremental_manifest),
+            }
     if windows_incremental_manifest is not None:
         windows_incremental_manifest = windows_incremental_manifest.resolve(strict=True)
         read_incremental_manifest(windows_incremental_manifest, release_version)
@@ -319,6 +364,10 @@ def prepare(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(manifest_text, encoding="utf-8", newline="\n")
 
+    if arm64_feed is not None:
+        (output_dir / "windows-arm64-latest.json").write_text(
+            json.dumps(arm64_feed, indent=2) + "\n", encoding="utf-8", newline="\n")
+
     landing_locales = dict(APP_STORE_URLS)
     for path in output_dir.glob("*/index.html"):
         html = path.read_text(encoding="utf-8")
@@ -337,6 +386,10 @@ def prepare(
         html = replace_anchor_attribute(
             html, "windows-download-action", "href", update_url
         )
+        if 'id="hero-windows-x64-download-action"' in html:
+            html = replace_anchor_attribute(html, "hero-windows-x64-download-action", "href", update_url)
+        if arm64_feed is not None:
+            html = apply_arm64_downloads(html, arm64_feed["installer_url"], arm64_feed["sha256"])
         require_anchor(
             html,
             "primary-download-action",
@@ -362,6 +415,8 @@ def main() -> int:
         args.public_repository,
         args.windows_legacy_installer,
         args.windows_incremental_manifest,
+        args.windows_arm64_installer,
+        args.windows_arm64_incremental_manifest,
     )
     print("ReleaseMetadataPrepared=true")
     print(f"WindowsVersion={windows_version}")

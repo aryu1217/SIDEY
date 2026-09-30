@@ -12,9 +12,10 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "publication"))
 from validate_public_tree import validate_repository, validate_tree
+from prepare_release_metadata import apply_arm64_downloads
 
 REQUIRED_FEEDS = ("windows-latest.json", "windows/update.json")
-OPTIONAL_FEEDS = ("windows/update-legacy.json",)
+OPTIONAL_FEEDS = ("windows/update-legacy.json", "windows-arm64-latest.json")
 HASH = re.compile(r"[0-9a-f]{64}")
 VERSION = re.compile(r"\d+\.\d+\.\d+")
 
@@ -64,13 +65,13 @@ def release_assets(value: object) -> dict[str, dict[str, str]]:
 
 def verify_download(
     version: object, tag: object, url: object, digest: object,
-    releases: dict[str, dict[str, str]], repository: str,
+    releases: dict[str, dict[str, str]], repository: str, architecture: str = "x64",
 ) -> None:
     version_parts(version)
     expected_tag = f"windows-v{version}"
     expected_url = (
         f"https://github.com/{repository}/releases/download/{expected_tag}/"
-        f"SIDEY-Windows-x64-v{version}-Setup.exe"
+        f"SIDEY-Windows-{architecture}-v{version}-Setup.exe"
     )
     if tag != expected_tag or url != expected_url:
         raise ValueError("Windows feed download URL or tag does not match its version")
@@ -81,12 +82,12 @@ def verify_download(
 
 
 def verify_feed(
-    feed: object, releases: dict[str, dict[str, str]], repository: str,
+    feed: object, releases: dict[str, dict[str, str]], repository: str, architecture: str = "x64",
 ) -> tuple[str, str, str]:
     if not isinstance(feed, dict) or feed.get("channel") != "production":
         raise ValueError("Windows feed must describe the production channel")
     verify_download(feed.get("version"), feed.get("tag"), feed.get("installer_url"),
-                    feed.get("sha256"), releases, repository)
+                    feed.get("sha256"), releases, repository, architecture)
     extended = {"product_version", "update_version", "update_tag",
                 "update_installer_url", "update_sha256"}
     present = extended.intersection(feed)
@@ -99,7 +100,7 @@ def verify_feed(
             raise ValueError("Windows update version cannot be older than the bridge version")
         verify_download(feed["update_version"], feed["update_tag"],
                         feed["update_installer_url"], feed["update_sha256"], releases,
-                        repository)
+                        repository, architecture)
         current = (feed["update_version"], feed["update_installer_url"], feed["update_sha256"])
     else:
         current = (feed["version"], feed["installer_url"], feed["sha256"])
@@ -110,7 +111,7 @@ def verify_feed(
         version = current[0]
         tag = f"windows-v{version}"
         url = (f"https://github.com/{repository}/releases/download/{tag}/"
-               f"SIDEY-Windows-x64-v{version}-Update.json")
+               f"SIDEY-Windows-{architecture}-v{version}-Update.json")
         digest = incremental.get("sha256")
         if (incremental.get("manifest_url") != url or not isinstance(digest, str)
                 or HASH.fullmatch(digest) is None
@@ -145,6 +146,7 @@ def prepare(
     verify_download(expected[0], f"windows-v{expected[0]}", expected[1], expected[2],
                     releases, repository)
     feeds: dict[str, bytes] = {}
+    arm64_download = None
     required_data: list[object] = []
     for relative in (*REQUIRED_FEEDS, *OPTIONAL_FEEDS):
         source = published_pages_dir / relative
@@ -154,7 +156,12 @@ def prepare(
             raise ValueError(f"Published Windows feed is missing or unsafe: {relative}")
         content = source.read_bytes()
         feed = json.loads(content)
-        current = verify_feed(feed, releases, repository)
+        architecture = "arm64" if relative == "windows-arm64-latest.json" else "x64"
+        current = verify_feed(feed, releases, repository, architecture)
+        if architecture == "arm64":
+            if current[0] != expected[0]:
+                raise ValueError("Published ARM64 feed differs from the displayed Windows version")
+            arm64_download = current
         if relative in REQUIRED_FEEDS:
             if current != expected:
                 raise ValueError("Published Windows feed differs from the shipped website snapshot")
@@ -177,6 +184,12 @@ def prepare(
             raise ValueError("Website update feed destination must not be a symlink")
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
+    if arm64_download is not None:
+        for path in output_root.glob("*/index.html"):
+            html = path.read_text(encoding="utf-8")
+            updated = apply_arm64_downloads(html, arm64_download[1], arm64_download[2])
+            if updated != html:
+                path.write_text(updated, encoding="utf-8", newline="\n")
     files = validate_tree(output_root, repository)
     return {"windowsVersion": expected[0], "windowsSHA256": expected[2],
             "preservedFeeds": list(feeds), "publicFileCount": len(files)}

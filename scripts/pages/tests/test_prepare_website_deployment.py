@@ -53,6 +53,51 @@ class PrepareWebsiteDeploymentTests(unittest.TestCase):
     def run_prepare(self) -> dict[str, object]:
         return prepare(self.site, self.output, self.pages, self.snapshot, self.release_file)
 
+    def test_preserves_separate_arm64_feed_with_matching_release_digest(self) -> None:
+        from test_prepare_release_metadata import PrepareReleaseMetadataTests
+        self.site = PrepareReleaseMetadataTests.write_landing_site(self.root)
+        for relative in ("index.html", ".nojekyll"):
+            (self.site / relative).write_text("", encoding="utf-8")
+        url = self.url.replace("-x64-", "-arm64-")
+        feed = {"channel": "production", "version": "2.1.0", "tag": "windows-v2.1.0",
+                "installer_url": url, "sha256": self.digest}
+        self.release["assets"].append({"name": url.rsplit("/", 1)[1],
+                                       "browser_download_url": url, "digest": f"sha256:{self.digest}"})
+        self.write_json(self.release_file, self.release)
+        self.write_json(self.pages / "windows-arm64-latest.json", feed)
+        summary = self.run_prepare()
+        self.assertIn("windows-arm64-latest.json", summary["preservedFeeds"])
+        self.assertEqual((self.pages / "windows-arm64-latest.json").read_bytes(),
+                         (self.output / "windows-arm64-latest.json").read_bytes())
+        html = (self.output / "en/index.html").read_text(encoding="utf-8")
+        self.assertIn(f'data-windows-arm64-url="{url}"', html)
+        self.assertIn(self.digest, html)
+        self.assertNotIn('data-windows-arm64-download hidden', html)
+
+    def test_arm64_feed_cannot_point_to_x64_installer(self) -> None:
+        self.write_json(self.pages / "windows-arm64-latest.json", self.feed)
+        with self.assertRaisesRegex(ValueError, "download URL"):
+            self.run_prepare()
+
+    def test_arm64_download_version_must_match_displayed_windows_version(self) -> None:
+        for version in ("2.0.0", "2.2.0"):
+            with self.subTest(arm64_version=version):
+                url = self.url.replace("-x64-", "-arm64-").replace("2.1.0", version)
+                feed = {"channel": "production", "version": version,
+                        "tag": f"windows-v{version}", "installer_url": url,
+                        "sha256": self.digest}
+                arm64_release = {"tag_name": f"windows-v{version}", "draft": False,
+                                 "prerelease": False, "assets": [{
+                                     "name": url.rsplit("/", 1)[1],
+                                     "browser_download_url": url,
+                                     "digest": f"sha256:{self.digest}"}]}
+                # Each installer is a valid published asset; the displayed version is the mismatch.
+                self.write_json(self.release_file, [self.release, arm64_release])
+                self.write_json(self.pages / "windows-arm64-latest.json", feed)
+                with self.assertRaisesRegex(ValueError, "ARM64 feed differs from the displayed Windows version"):
+                    self.run_prepare()
+                self.assertFalse(self.output.exists())
+
     def test_preserves_feed_bytes_and_optional_legacy_without_native_target(self) -> None:
         # Different whitespace is valid; each published file remains byte-for-byte intact.
         (self.pages / "windows/update.json").write_bytes(json.dumps(self.feed).encode() + b"\r\n")

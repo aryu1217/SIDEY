@@ -708,6 +708,90 @@ test("browser regions update App Store links and the platform-selector macOS tar
   }
 });
 
+test("all download pages identify separate Windows installers without advertising an unpublished ARM64 download", () => {
+  for (const locale of locales) {
+    const html = read(`${routeFor(locale)}/index.html`);
+    assert.match(html, /data-windows-label="[^"]+ \(x64\)"/);
+    assert.match(html, /data-windows-arm64-label="[^"]+ \(ARM64\)"/);
+    assert.match(html, /data-windows-arm64-url=""/);
+    assert.match(html, /id="hero-windows-x64-download-action"[^>]+data-windows-architecture="x64"/);
+    assert.match(html, /id="hero-windows-arm64-download-action"[^>]+href="#download"[^>]+data-windows-arm64-download[^>]+hidden/);
+    assert.match(html, /<div data-windows-arm64-download hidden>/);
+    assert.match(html, /id="windows-arm64-download-sha256"/);
+  }
+});
+
+test("Windows download selection requires OS architecture hints and preserves explicit selection", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const source = readFileSync(new URL("../public/assets/script.js", import.meta.url), "utf8");
+  const cases = [
+    { name: "x64", hints: { architecture: "x86", bitness: "64" }, expected: "x64" },
+    { name: "ARM64", hints: { architecture: "arm", bitness: "64" }, expected: "arm64" },
+    { name: "32-bit browser on 64-bit OS", hints: { architecture: "x86", bitness: "64", wow64: true }, expected: "x64" },
+    { name: "32-bit Windows", hints: { architecture: "x86", bitness: "32" } },
+    { name: "empty hints", hints: { architecture: "", bitness: "" } },
+    { name: "unexpected hints", hints: { architecture: "riscv", bitness: "64" } },
+    { name: "rejected hints", reject: true },
+    { name: "no client hints, spoofed x64 UA" },
+    { name: "no published ARM64", hints: { architecture: "arm", bitness: "64" }, armUnavailable: true },
+    { name: "explicit choice beats pending hints", hints: { architecture: "arm", bitness: "64" }, manual: true, expected: "x64" },
+    { name: "macOS", platform: "MacIntel", expected: "macos" },
+    { name: "iPhone", platform: "iPhone" },
+    { name: "Linux", platform: "Linux" },
+  ];
+  for (const scenario of cases) {
+    const element = (dataset = {}) => ({
+      dataset, hidden: false, href: "https://apps.apple.com/us/app/sidey/id6808528060?mt=12", textContent: "", listeners: {}, attributes: {},
+      classList: { toggle() {} },
+      addEventListener(type, callback) { this.listeners[type] = callback; },
+      setAttribute(name, value) { this.attributes[name] = value; },
+      getAttribute(name) { return this.attributes[name]; },
+      getBoundingClientRect() { return {}; }, focus() {},
+    });
+    const primary = element({ macosUrl: "https://apps.apple.com/us/app/sidey/id6808528060?mt=12", windowsUrl: "https://example.com/x64.exe", windowsArm64Url: scenario.armUnavailable ? "" : "https://example.com/arm64.exe", macosLabel: "App Store", windowsLabel: "Windows (x64)", windowsArm64Label: "Windows (ARM64)", chooseLabel: "Choose platform" });
+    const toggle = element();
+    const menu = element();
+    menu.hidden = true;
+    const x64Link = element({ windowsArchitecture: "x64" });
+    menu.querySelectorAll = () => [x64Link];
+    const label = element();
+    const logo = element({ windowsLogo: "windows.svg", macosLogo: "macos.svg" });
+    const nodes = { "[data-auto-download]": primary, "[data-download-toggle]": toggle, "[data-download-menu]": menu, "[data-download-label]": label, "[data-download-logo]": logo };
+    const selector = element();
+    selector.querySelector = query => nodes[query];
+    selector.contains = () => true;
+    const navigator = { languages: ["en-US"], platform: scenario.platform ?? "Win32", userAgent: "Windows NT 10.0; Win64; x64" };
+    let resolveHints;
+    if (scenario.hints || scenario.reject) navigator.userAgentData = {
+      platform: "Windows",
+      getHighEntropyValues(keys) {
+        assert.deepEqual(Array.from(keys), ["architecture", "bitness"]);
+        return scenario.reject ? Promise.reject(new Error("denied")) : new Promise(resolve => { resolveHints = resolve; });
+      },
+    };
+    runInNewContext(source, {
+      URL, navigator,
+      document: { querySelectorAll: query => query === "[data-download-selector]" ? [selector] : [], addEventListener() {} },
+      window: { location: { href: "https://sidey-app.github.io/SIDEY/en/" }, matchMedia: () => ({ matches: true }), clearTimeout() {}, setTimeout() {}, requestAnimationFrame: callback => callback() },
+    });
+    await Promise.resolve();
+    if (scenario.manual) x64Link.listeners.click();
+    resolveHints?.(scenario.hints);
+    // Flush promises created within the VM and their rejection handler.
+    await new Promise(resolve => setImmediate(resolve));
+    const expectedURL = scenario.expected === "x64" ? primary.dataset.windowsUrl : scenario.expected === "arm64" ? primary.dataset.windowsArm64Url : scenario.expected === "macos" ? primary.dataset.macosUrl : "#download";
+    assert.equal(primary.href, expectedURL, scenario.name);
+    assert.equal(label.textContent, scenario.expected === "x64" ? "Windows (x64)" : scenario.expected === "arm64" ? "Windows (ARM64)" : scenario.expected === "macos" ? "App Store" : "Choose platform", scenario.name);
+    if (!scenario.expected) {
+      let prevented = false;
+      primary.listeners.click({ preventDefault() { prevented = true; } });
+      assert.equal(prevented, true, scenario.name);
+      assert.equal(menu.hidden, false, scenario.name);
+      assert.equal(toggle.getAttribute("aria-expanded"), "true", scenario.name);
+    }
+  }
+});
+
 test("localized refund policies cover every paid customization category", () => {
   const expectations = {
     ko: ["유료 꾸미기 상품", "기본 햄스터", "기본 말풍선", "기본 던지기 장난감"],

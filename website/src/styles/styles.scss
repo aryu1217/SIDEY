@@ -197,6 +197,7 @@ main { overflow: hidden; }
 .download-license-wrap:hover .download-license-tooltip, .download-license-wrap:focus-within .download-license-tooltip, .download-selector:hover .download-license-tooltip, .download-selector:focus-within .download-license-tooltip { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .download-selector { position: relative; display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) 2.625rem; }
 .download-selector .primary-download-action { border-radius: 0; border-start-start-radius: 62.4375rem; border-end-start-radius: 62.4375rem; border-inline-end: 0; }
+.download-selector .download-button-label, #windows-arm64-download-action .download-button-label { min-width: 0; white-space: normal; }
 .download-selector-toggle {
   display: grid; min-width: 2.625rem; padding: 0; place-items: center; border: .0625rem solid rgba(118, 82, 156, .28); border-inline-start-color: rgba(118, 82, 156, .16); border-radius: 0; border-start-end-radius: 62.4375rem; border-end-end-radius: 62.4375rem; color: var(--ink); background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); cursor: pointer;
   @include glass(.5rem, 125%);
