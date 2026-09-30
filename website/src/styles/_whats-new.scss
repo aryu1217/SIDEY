@@ -11,6 +11,7 @@
 .section.update-list { display: grid; gap: 1rem; padding-top: 0; }
 .update-card {
   display: block;
+  scroll-margin-top: 6.5rem;
   padding: clamp(1.75rem, 5vw, 3.375rem);
   border: .0625rem solid rgba(255, 255, 255, .78);
   border-radius: var(--card-radius);
@@ -77,19 +78,6 @@
   margin-top: 1.5rem;
 
   h3 { margin: 0 0 .5rem; font-size: 1.02rem; letter-spacing: -.02em; }
-}
-
-.release-link {
-  display: inline-flex;
-  align-items: center;
-  gap: .3125rem;
-  margin-top: 1.625rem;
-  color: var(--brand-dark);
-  font-size: .8rem;
-  font-weight: 760;
-  text-underline-offset: .1875rem;
-
-  .material-symbols-rounded { position: relative; top: .125rem; font-size: .92rem; }
 }
 
 .update-toggle-label {

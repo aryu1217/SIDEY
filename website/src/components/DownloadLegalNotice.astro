@@ -1,5 +1,5 @@
 ---
-import { localePathSegment, type Locale } from "../i18n/landing";
+import { getWebsiteCopy, localePathSegment, type Locale } from "../i18n/landing";
 
 interface Props {
   id: string;
@@ -11,11 +11,10 @@ const base = import.meta.env.BASE_URL;
 const localePath = localePathSegment(locale);
 const termsHref = `${base}${localePath}/terms/`;
 const privacyHref = `${base}${localePath}/privacy/`;
+const copy = getWebsiteCopy(locale);
+const parts = copy.legalNotice.split(/(\{terms\}|\{privacy\})/);
 ---
 
 <span class="download-license-tooltip" id={id} role="note">
-  {locale === "ko" && <>SIDEY 공식 서비스를 이용하면 <a href={termsHref}>이용약관</a> 및 <a href={privacyHref}>개인정보 처리방침</a>에 동의하게 됩니다.</>}
-  {locale === "en" && <>By using the official SIDEY service, you agree to the <a href={termsHref}>Terms of Use</a> and <a href={privacyHref}>Privacy Policy</a>.</>}
-  {locale === "ja" && <>SIDEYの公式サービスを利用すると、<a href={termsHref}>利用規約</a>および<a href={privacyHref}>プライバシーポリシー</a>に同意したものとみなされます。</>}
-  {locale === "zh-Hant" && <>使用 SIDEY 官方服務即表示你同意<a href={termsHref}>使用條款</a>及<a href={privacyHref}>隱私權政策</a>。</>}
+  {parts.map(part => part === "{terms}" ? <a href={termsHref}>{copy.footer.terms}</a> : part === "{privacy}" ? <a href={privacyHref}>{copy.footer.privacy}</a> : part)}
 </span>

@@ -159,6 +159,43 @@ def windows_release_tag(version: str) -> str:
     return tag
 
 
+def validate_published_windows_release() -> dict[str, object]:
+    path = "website/src/data/release-notes/recent.json"
+    entries = json.loads(read(path))
+    require(isinstance(entries, list) and bool(entries),
+            f"{path} must contain published Windows releases")
+    retained: list[dict[str, object]] = []
+    versions: set[str] = set()
+    for entry in entries:
+        require(isinstance(entry, dict), f"{path} contains an invalid release")
+        version = entry.get("version")
+        require(isinstance(version, str) and SEMVER.fullmatch(version) is not None,
+                f"{path} releases must contain a stable semantic version")
+        require(version not in versions, f"{path} contains duplicate release {version}")
+        versions.add(version)
+        tag = windows_release_tag(version)
+        require(entry.get("url") == f"https://github.com/sidey-app/SIDEY/releases/tag/{tag}",
+                f"published Windows release {version} has the wrong tag URL")
+        asset = entry.get("asset")
+        if "asset" in entry:
+            require(isinstance(asset, dict),
+                    f"published Windows release {version} has invalid installer metadata")
+            installer_name = f"SIDEY-Windows-x64-v{version}-Setup.exe"
+            require(asset.get("url") == (
+                f"https://github.com/sidey-app/SIDEY/releases/download/{tag}/{installer_name}"
+            ), f"published Windows release {version} has the wrong installer URL")
+            digest = asset.get("sha256")
+            require(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest) is not None,
+                    f"published Windows release {version} must contain a SHA-256 digest")
+        if int(version.split(".")[0]) >= 2:
+            retained.append(entry)
+    require(bool(retained), f"{path} must contain a published Windows release from version 2")
+    latest = max(retained, key=lambda entry: tuple(map(int, str(entry["version"]).split("."))))
+    require(isinstance(latest.get("asset"), dict),
+            "latest published Windows release must contain installer metadata")
+    return latest
+
+
 def validate_windows(allow_unreleased_source: bool = False) -> dict[str, str]:
     manifest = load_manifest("windows")
     version = str(manifest["version"])
@@ -238,12 +275,15 @@ def validate_windows(allow_unreleased_source: bool = False) -> dict[str, str]:
         require((ROOT / notes).is_file(), f"Windows release notes are missing: {notes}")
 
     release_data = read("website/src/data/releases.ts")
+    validate_published_windows_release()
+    require('getWebsiteReleases("windows")[0]' in release_data,
+            "website release data must select the latest published Windows release")
     require("version: windowsRelease.version" in release_data,
-            "website release data must derive the Windows version from release/windows.json")
-    require("SIDEY-Windows-x64-v${windowsReleaseVersion}-Setup.exe" in release_data,
-            "website release data has the wrong Windows installer URL template")
-    require("releases/tag/windows-v${windowsReleaseVersion}" in release_data,
-            "website release data has the wrong Windows release URL template")
+            "website release data must derive the Windows version from the published release")
+    require("url: windowsRelease.asset.url" in release_data,
+            "website release data must use the published Windows installer URL")
+    require("sha256: windowsRelease.asset.sha256" in release_data,
+            "website release data must use the published Windows installer digest")
 
     return {
         "version": version,

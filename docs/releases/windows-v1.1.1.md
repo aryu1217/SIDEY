@@ -1,22 +1,12 @@
-# SIDEY Windows v1.1.1
+메시지를 보낸 뒤 앱이 종료되던 문제를 고쳤어요.
 
-2026년 9월 7일
+## 버그 수정
 
-메시지 전송 후 앱이 종료되는 문제를 수정했습니다.
+- 메시지 전송 후 입력창이 자동으로 닫힐 때 앱이 종료되던 문제를 고쳤어요.
 
-## 설치
+## 다른 언어로 보기
 
-Windows 11 25H2 이상 x64 PC에서 `SIDEY-Windows-x64-v1.1.1-Setup.exe`를 받아 실행하세요.
-
-기존 사용자는 앱의 업데이트 확인 기능을 이용할 수 있습니다. v1.0.3·v1.0.4는 최신 설치 파일을 직접 받아 설치해야 합니다. 기존 정식 MSI에서 업데이트할 때 설정과 로그인 정보는 유지됩니다.
-
-## 변경 사항
-
-- 메시지 전송 후 입력창이 자동으로 닫힐 때 앱이 종료되는 문제를 수정했습니다.
-
-## 알아두세요
-
-- Windows 버전은 공인 코드 서명 전 정식판으로, SmartScreen 경고가 표시되거나 일부 보안 설정에서 실행이 차단될 수 있습니다.
-- Windows 상점은 미리보기만 제공하며 구매 기능은 사용할 수 없습니다.
-
-[전체 변경 내역](https://github.com/sidey-app/SIDEY/compare/windows-v1.1.0...windows-v1.1.1)
+- [한국어](https://sidey-app.github.io/SIDEY/ko/whats-new/windows/)
+- [English](https://sidey-app.github.io/SIDEY/en/whats-new/windows/)
+- [日本語](https://sidey-app.github.io/SIDEY/ja/whats-new/windows/)
+- [繁體中文](https://sidey-app.github.io/SIDEY/zh-hant/whats-new/windows/)

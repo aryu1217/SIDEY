@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Je vrienden aan de rand van je scherm",
+      "description": "SIDEY is een desktop-messenger die de aanwezigheid en korte berichten van je beste vrienden laat zien als kleine pixeldieren aan de rand van je scherm.",
+      "ogTitle": "SIDEY — Kleine vrienden aan de rand van je scherm.",
+      "ogDescription": "Zie de aanwezigheid en korte berichten van je beste vrienden als kleine pixeldieren.",
+      "ogAlt": "SIDEY sociale kaart met vijf pixeldieren opgesteld langs de rand van een scherm"
+    },
+    "skip": "Ga naar de inhoud",
+    "navigation": {
+      "navigation": "Hoofdnavigatie",
+      "home": "SIDEY-startpagina",
+      "openMenu": "Menu openen",
+      "closeMenu": "Menu sluiten",
+      "features": "Functies",
+      "download": "Downloaden",
+      "faq": "Veelgestelde vragen",
+      "whatsNew": "Nieuw in SIDEY",
+      "store": "Winkel",
+      "support": "Ondersteuning",
+      "characters": "Personages",
+      "throwables": "Gooibaar speelgoed",
+      "bubbles": "Tekstballonnen",
+      "useLightTheme": "Naar licht thema schakelen",
+      "useDarkTheme": "Naar donker thema schakelen"
+    },
+    "hero": {
+      "title": "Vrienden aan de rand van je scherm.",
+      "description": "Je vrienden worden kleine pixelpersonages die langs de rand van je scherm wandelen. Kijk even op tijdens je werk en stuur een berichtje wanneer je aan ze denkt.",
+      "downloadsLabel": "Downloadopties",
+      "appStoreDownload": "Downloaden in de App Store",
+      "macDownload": "Downloaden voor macOS",
+      "windowsDownload": "Downloaden voor Windows",
+      "choosePlatform": "Kies je platform",
+      "platformMenu": "Kies handmatig een platform",
+      "menuToggle": "Kies een ander platform",
+      "windowsStatus": "Windows 10 1809 (build 17763) of hoger · x64",
+      "browserTitle": "Taken van vandaag | Notities",
+      "browserNote": "De lijst van vandaag",
+      "message": "Afspreken om zeven uur?",
+      "typingLabel": "Rosie is aan het typen",
+      "names": {
+        "kong": "Mochi · IK",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rosie"
+      },
+      "caption": "Een SIDEY-scène met pixeldierenvrienden die langs de onderkant van een browser in een monitor lopen, dommelen en slapen"
+    },
+    "motion": {
+      "title": "Stilstaan zou saai zijn.",
+      "description": "Vrienden lopen rond als ze online zijn, dommelen als ze afwezig zijn en slapen als ze offline zijn. Je kunt elkaar ook een beetje plagen.",
+      "label": "Toestanden en acties van SIDEY-personages",
+      "presence": {
+        "eyebrow": "Dagelijkse aanwezigheid",
+        "title": "Lopen, dommelen, slapen.",
+        "description": "Online, afwezig of offline: het personage verandert met de aanwezigheid.",
+        "online": "Online",
+        "away": "Afwezig",
+        "offline": "Offline"
+      },
+      "throw": {
+        "eyebrow": "Speel met een vriend",
+        "title": "Soms zegt een zachte bal meer dan woorden.",
+        "description": "Coco gooit een zachte bal en deze landt met een kleine bonk op Rosie.",
+        "source": "Coco",
+        "target": "Rosie"
+      },
+      "pulse": {
+        "eyebrow": "Een grote groet",
+        "title": "Soms mag een groet wat groter.",
+        "description": "Dubbelklik op Charlie en het personage wordt ineens groter aan de rand van je scherm.",
+        "name": "Charlie"
+      },
+      "names": {
+        "kong": "Mochi",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Erbij terwijl je werkt.",
+      "introduction": "SIDEY blijft aan de rand van je scherm terwijl je werkt. Kijk even of je vrienden er zijn en zeg iets wanneer je aan ze denkt.",
+      "label": "Zo past SIDEY op je scherm",
+      "caption": "SIDEY naast een macOS-werkruimte",
+      "alt": "Een macOS-desktop met een Notes-venster en SIDEY-pixelvrienden langs de onderkant van het scherm",
+      "steps": [
+        [
+          "01",
+          "Blijf doen wat je doet",
+          "Je kunt blijven klikken en de app achter SIDEY gebruiken zoals je normaal zou doen."
+        ],
+        [
+          "02",
+          "Kijk eens waar ze mee bezig zijn",
+          "Wandelen, dommelen en slapen laten zien of je vrienden in de buurt zijn."
+        ],
+        [
+          "03",
+          "Zeg iets wanneer je wilt",
+          "Open SIDEY om een kort berichtje te sturen of elkaar een beetje te plagen."
+        ]
+      ]
+    },
+    "download": {
+      "title": "Zet SIDEY op je bureaublad.",
+      "description": "SIDEY is beschikbaar voor macOS en Windows. Kies de versie voor jouw computer en installeer die.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Downloaden voor Windows",
+      "releaseNotes": "Versie-informatie",
+      "macSystem": "macOS 26 of hoger · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (build 17763) of hoger · x64",
+      "copyFailure": "Kan niet kopiëren. Selecteer de hash handmatig.",
+      "hashCopy": "Kopieer SHA-256-hash",
+      "hashCopied": "SHA-256-hash gekopieerd."
+    },
+    "faq": {
+      "title": "Veelgestelde vragen.",
+      "intro": "Handig om te weten voordat je begint.",
+      "items": [
+        [
+          "Wat is SIDEY?",
+          "SIDEY is een desktop-messenger die alleen op uitnodiging toegankelijk is, waarbij je beste vrienden als kleine pixelpersonages langs de rand van je scherm hangen. Elke privégroep kan maximaal 12 personen bevatten."
+        ],
+        [
+          "Welke computers worden ondersteund?",
+          "SIDEY draait op Apple Silicon Macs met macOS 26 of hoger, en x64-pc's met Windows 10 1809 (build 17763) of hoger. Intel Macs worden momenteel niet ondersteund."
+        ],
+        [
+          "Hoe nodig ik vrienden uit?",
+          "Creëer een privégroep en stuur de uitnodigingscode rechtstreeks naar je vrienden. Een groep kan maximaal twaalf leden hebben en elke persoon kan lid worden van maximaal vijf groepen."
+        ],
+        [
+          "Kijkt SIDEY mee wat ik op mijn computer doe?",
+          "Nee. SIDEY verzamelt niet je scherm, geopende apps, toetsaanslagen van andere apps, locatie van de aanwijzer, bestanden, microfoon of camera. De typstatus wordt alleen verzonden terwijl je in SIDEY's eigen berichtenvenster typt."
+        ],
+        [
+          "Hoe lang worden berichten bewaard?",
+          "Recente berichten worden drie dagen bewaard en daarna definitief verwijderd."
+        ],
+        [
+          "Wordt SIDEY weergegeven bij elke game en app op volledig scherm?",
+          "Niet altijd. SIDEY blijft zichtbaar tijdens normaal gebruik van je bureaublad, maar verschijnt mogelijk niet boven beveiligde schermen, apps met DRM-beveiliging, apps met verhoogde rechten of bepaalde games in exclusief volledig scherm."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Nieuw in SIDEY",
+      "intro": "Bekijk de nieuwste wijzigingen in SIDEY, gegroepeerd op macOS en Windows.",
+      "tabs": {
+        "label": "Wat is er nieuw per besturingssysteem",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "Nieuw",
+        "changed": "Verbeterd",
+        "fixed": "Opgelost"
+      },
+      "versionNotes": "Versie-informatie",
+      "empty": "Er is nog geen versie-informatie.",
+      "viewRelease": "Bekijk GitHub-release",
+      "openDetails": "Wijzigingen weergeven",
+      "closeDetails": "Wijzigingen verbergen",
+      "loadedMore": "Meer eerdere updates geladen."
+    }
+  },
+  "storeChrome": {
+    "store": "SIDEY-winkel",
+    "keepsake": "Aandenken",
+    "separate": "Wordt apart verkocht",
+    "treeHint": "Klik in de macOS-app met de rechtermuisknop op de boom om deze te stoppen. Klik nogmaals met de rechtermuisknop om hem te laten lopen.",
+    "sound": "Geluid",
+    "categories": "Winkelcategorieën",
+    "characters": "Personages",
+    "throwables": "Gooibaar speelgoed",
+    "bubbles": "Tekstballonnen",
+    "preview": "Voorbeeld openen",
+    "previewAction": "Voorbeeld",
+    "closePreview": "Voorbeeld sluiten",
+    "bubbleMessage": "Zullen we vandaag iets doen?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Personages",
+      "title": "Nieuwe vrienden voor je scherm.",
+      "description": "Open een voorbeeld om te zien hoe elk personage beweegt in SIDEY.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Babyhamster",
+          "description": "SIDEY's originele metgezel, met kleine oren en roze wangen.",
+          "price": "Inbegrepen",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Babykat",
+          "description": "Een zacht, grijs gestreept katje met perfect puntige oren.",
+          "price": "Inbegrepen",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Babypuppy",
+          "description": "Een pup met karameloren en een heerlijk donzig gezicht.",
+          "price": "Inbegrepen",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Babykonijn",
+          "description": "Lange oren en een paarse sjaal zorgen ervoor dat deze kleine vriend gemakkelijk te herkennen is.",
+          "price": "Inbegrepen",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Babypinguïn",
+          "description": "Een marineblauwe pinguïn die waggelt in een muntkleurige sjaal.",
+          "price": "Inbegrepen",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Gooibaar speelgoed",
+      "title": "Van zachte ballen tot minikanonnen.",
+      "description": "Bekijk voorbeelden van speelgoed dat je naar je vrienden kunt gooien, van zachte ballen en harten tot minikanonnen.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Zachte lapjesbal",
+          "description": "Het zachte balletje dat elk SIDEY-personage naar een vriend kan gooien.",
+          "price": "Inbegrepen",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Tekstballonnen",
+      "title": "Maak je tekstballonnen persoonlijk.",
+      "description": "Verander de kleuren en kleine versieringen op berichten en typindicatoren.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Klassieke tekstballon",
+          "description": "SIDEY's heldere, gemakkelijk leesbare bubbel voor elk bureaublad.",
+          "price": "Inbegrepen",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Ondersteuning · SIDEY",
+    "description": "Rapporteer een SIDEY-probleem op GitHub of neem privé contact met ons op via e-mail.",
+    "heading": "SIDEY-ondersteuning",
+    "introduction": "Rapporteer reproduceerbare bugs op GitHub. Voor aankopen, accounts of zaken die privé moeten blijven, kunt je per e-mail contact met ons opnemen.",
+    "githubTitle": "Rapporteer een bug op GitHub",
+    "githubBody": "Zoek eerst naar bestaande problemen. Als hetzelfde probleem al is gemeld, voeg dan een duim omhoog toe aan dat probleem in plaats van een duplicaat te maken. Om een ​​issue in te dienen is een GitHub-account nodig.",
+    "searchIssues": "Zoek naar bestaande problemen",
+    "reportIssue": "Open het bugrapportformulier",
+    "emailTitle": "Neem contact met ons op via e-mail",
+    "emailBody": "Voor aankoop- of accountvragen en rapporten met privé-informatie kunt je ons een e-mail sturen. Vermeld SIDEY en je besturingssysteem in het onderwerp.",
+    "emailAction": "Stuur een e-mail",
+    "include": "Informatie gevraagd in het bugrapportformulier",
+    "details": [
+      "Besturingssysteem en architectuur (vereist): plak de uitvoer van de onderstaande opdracht.",
+      "SIDEY-versie (vereist): vind deze met behulp van de onderstaande instructies.",
+      "Wat er is gebeurd (vereist): beschrijf het probleem duidelijk; opgeschoonde logs, screenshots of een video kunnen helpen.",
+      "Stappen om te reproduceren (vereist): leg de acties uit die tot het probleem leiden, in volgorde.",
+      "Verwacht gedrag (optioneel): leg uit wat er had moeten gebeuren.",
+      "Aanvullende informatie (optioneel): voeg eventuele andere relevante context toe."
+    ],
+    "diagnostics": "Je versie en diagnostische logboeken vinden",
+    "operatingSystem": "Informatie over het besturingssysteem",
+    "macosLabel": "macOS (terminal)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: Klik in Finder met de rechtermuisknop op SIDEY.app en kies Info ophalen (⌘I).",
+    "windowsVersion": "Windows: Open Instellingen → Info → Updates.",
+    "macDiagnostics": "macOS: Met de onderstaande opdracht worden de laatste 30 minuten aan SIDEY-logboeken opgeslagen in een bestand op je bureaublad.",
+    "windowsDiagnostics": "Windows: Open Instellingen → Info → Diagnostische gegevens exporteren. De logbestanden worden op je bureaublad opgeslagen. Bij een installatieprobleem dient je de door de installateur getoonde diagnostische gegevens bij te voegen.",
+    "protect": "Houd gevoelige informatie privé",
+    "protectBody": "GitHub-problemen zijn openbaar. Verwijder uitnodigingscodes, berichtinhoud, inlog- of authenticatietokens, wachtwoorden, volledige betaalkaartnummers en persoonsgegevens uit tekst, logs, schermafbeeldingen en video's. Stuur deze geheimen ook niet per e-mail; indien nodig zullen wij om specifieke, niet-gevoelige gegevens vragen.",
+    "response": "Antwoordtijden kunnen per taal verschillen; er wordt geen taalspecifieke responstijd gegarandeerd."
+  },
+  "footer": {
+    "terms": "Gebruiksvoorwaarden",
+    "privacy": "Privacybeleid",
+    "refund": "Terugbetalingsbeleid",
+    "language": "Kies taal"
+  },
+  "legalNotice": "Door gebruik te maken van de officiële SIDEY-service gaat u akkoord met de {terms} en {privacy}.",
+  "policies": {
+    "terms": {
+      "title": "Gebruiksvoorwaarden · SIDEY",
+      "description": "Voorwaarden voor de SIDEY-desktopservice en digitale aanpassingsitems.",
+      "heading": "SIDEY-gebruiksvoorwaarden",
+      "introduction": "In deze Voorwaarden worden de rechten en verantwoordelijkheden uiteengezet die van toepassing zijn wanneer u de SIDEY-desktopservice en digitale aanpassingsitems gebruikt.",
+      "translationNotice": "Deze pagina is een vertaling van het originele Koreaanse document.",
+      "originalLabel": "Bekijk het originele document",
+      "body": "## 1. Doel en reikwijdte\n\nDeze Voorwaarden zijn van toepassing op de SIDEY-app, website en gerelateerde diensten (gezamenlijk de “Service”) die worden geleverd door de exploitant van SIDEY (de “Exploitant”). Door de officiële Service te gebruiken, gaat u akkoord met deze Voorwaarden en elk afzonderlijk bekendgemaakt bedrijfsbeleid. Als de toepasselijke wetgeving u meer bescherming biedt dan deze Voorwaarden, is die wet van toepassing.\n\n## 2. Kernbegrippen\n\nEen “Account” is de identificatiecode die wordt gebruikt om een ​​gebruiker te onderscheiden en groepen, berichten en digitale rechten met elkaar te verbinden. Een “Groep” is een privéruimte die alleen beschikbaar is voor vrienden die een uitnodigingscode ontvangen. Een “Digitaal recht” is het recht om een ​​personage of een ander aanpassingsitem te gebruiken via het aankoopaccount; er wordt geen eigendom of auteursrecht op het item zelf overgedragen.\n\n## 3. Publicatie en wijzigingen\n\nDe Exploitant stelt deze Voorwaarden beschikbaar op de website. Als een wijziging vereist is vanwege de wet of de Dienst, zal de Exploitant de ingangsdatum ervan en de reden voor de wijziging bekendmaken. Wezenlijke wijzigingen die gebruikers benadelen, zullen vooraf worden aangekondigd voor de periode en volgens de methode die vereist is door de toepasselijke wetgeving. Tenzij vereist door de wet of overeengekomen door de partijen, blijft een koopovereenkomst die vóór een wijziging is gesloten, onderworpen aan de voorwaarden die van kracht waren op het moment dat deze werd gesloten.\n\n## 4. De dienst\n\nSIDEY is een desktop-overlay-messenger die echte vrienden vertegenwoordigt als pixelpersonages. De specifieke functies, ondersteunde omgevingen, gebruiksmogelijkheden en beperkingen worden beschreven in de app of op de website en kunnen variëren per releasekanaal of versie.\n\n## 5. Accounts en groepen\n\nBeschikbare aanmeldingsmethoden kunnen per releasekanaal verschillen. Accounts, groepen en aankoopgegevens van verschillende kanalen mogen niet automatisch worden samengevoegd of overgedragen; Waar nodig zal aanvullende begeleiding worden geboden. U bent verantwoordelijk voor het veilig houden van uw apparaat en inlogmethode. Plaats geen uitnodigingscodes openbaar en gebruik het account van iemand anders niet zonder toestemming.\n\n## 6. Berichten en acceptabel gebruik\n\nU mag geen onwettig materiaal verzenden; inbreuk maken op de reputatie, privacy of auteursrechten van iemand anders; anderen lastigvallen; abnormaal toegang krijgen tot de Dienst of de servers ervan; aankoopverificatie omzeilen; kwaadaardige code verspreiden; of het normale gebruik van de Dienst door een andere gebruiker verstoren.\n\n## 7. Wijzigingen, opschorting en stopzetting\n\nDe Exploitant kan een deel van de Dienst wijzigen of tijdelijk opschorten vanwege beveiligingsupdates, wijzigingen in het besturingssysteem, onderhoud, communicatiestoringen of serviceverbeteringen. Materiële wijzigingen waarop kan worden geanticipeerd, worden vooraf via de website of app aangekondigd. Dringende veiligheids- of incidentreacties kunnen achteraf worden aangekondigd. Als de Service wordt stopgezet, zal er een redelijke kennisgeving worden gegeven en zullen ongebruikte betaalde rechten worden behandeld onder de toepasselijke wetgeving en het Terugbetalingsbeleid.\n\n## 8. Aankopen en betaling\n\nEr komt een koopovereenkomst tot stand wanneer u de productnaam, prijs en leveringsvoorwaarden bekijkt en de betaling voltooit. De betaling kan worden verwerkt via een app-marktplaats of een door de Exploitant geïdentificeerde betalingsdienst. De Exploitant verleent het Digitaal Recht na bevestiging van de betaling. Bestellingen die valse informatie bevatten, dubbele aanvragen of artikelen die technisch gezien niet kunnen worden geleverd, kunnen worden afgewezen of geannuleerd.\n\n## 9. Digitale levering en annulering\n\nDe timing van de digitale levering en de voorwaarden voor annulering of terugbetaling worden beheerst door de toepasselijke wetgeving en het [Terugbetalingsbeleid](https://sidey-app.github.io/SIDEY/nl/refund/). De Exploitant zal vóór de aankoop de belangrijke leveringsvoorwaarden en eventuele annuleringslimieten beschikbaar stellen. Niets in deze Voorwaarden beperkt de rechten die worden gegarandeerd door de toepasselijke wetgeving.\n\n## 10. Minderjarigen\n\nEen minderjarige die toestemming nodig heeft van een wettelijke vertegenwoordiger, moet die toestemming verkrijgen voordat hij een aankoop doet. Een minderjarige of wettelijke vertegenwoordiger kan om annulering verzoeken indien de toepasselijke wetgeving dit toestaat, inclusief bepaalde aankopen die zijn gedaan zonder de vereiste toestemming.\n\n## 11. Softwarelicentie en intellectueel eigendom\n\nDe huidige SIDEY-broncode is privé gehouden, propriëtaire software. Alleen het recht om de officiële app te installeren en te gebruiken wordt verleend onder het distributiekanaal en deze Voorwaarden. Elke herziening die vóór de licentieovergang onder AGPL-3.0-only is gepubliceerd, blijft onderworpen aan de licentie die in die herziening wordt vermeld. Noch deze Voorwaarden, noch het privé maken van de bronrepository trekt reeds verleende rechten om die revisies uit te voeren, te kopiëren, te wijzigen of te verspreiden in, of voegt beperkingen aan die rechten toe. De openbare `sidey-app/SIDEY`-repository distribueert de website, het beleid, releases en installatieprogramma's; het is niet de huidige productbronrepository. Zie de [licentiegids](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md) voor de gedetailleerde grens. Componenten van derden blijven onderworpen aan hun respectievelijke licenties en mededelingen.\n\nBetaalde aanpassingsitems verlenen alleen het recht om ze te gebruiken via het aankoopaccount en dragen geen eigendom of auteursrecht over op de bestanden, personages of ontwerpen ervan. Een softwarelicentie verleent geen handelsmerkrechten op de naam of het logo van SIDEY, of rechten op personage- en personalisatie-inhoud die onder afzonderlijke voorwaarden worden geleverd. Zonder toestemming van de rechthebbende mag u die inhoud niet kopiëren, verkopen, verhuren, opnieuw verspreiden of in sublicentie geven, en mag u de bijbehorende rechtenvermeldingen niet verwijderen. U mag de aankoop-, gebruiks- of beveiligingscontroles van de officiële Service niet omzeilen. Deze beperkingen mogen niet worden geïnterpreteerd als een beperking van de rechten die worden verleend door een open-sourcelicentie die van toepassing is op een historische openbare revisie of door een licentie van derden.\n\n## 12. Toegangsbeperkingen en accountverwijdering\n\nAls een ernstige overtreding van de wet of deze Voorwaarden, of gedrag dat de veiligheid van de Dienst in gevaar brengt, wordt bevestigd, kan de Exploitant de toegang tot de officiële Dienst beperken of beëindigen na kennisgeving en een redelijke kans op herstel. Een urgent veiligheidsrisico of risico op schade voor anderen kan eerst worden beperkt en daarna worden toegelicht. Het beperken van de toegang tot de service of het verwijderen van een account verandert niets aan de beëindigingsvoorwaarden van een licentie die afzonderlijk van toepassing is op een historische openbare revisie of software van derden.\n\nEen account kan worden verwijderd via het proces dat in de app wordt aangeboden. Het verwijderen van een account staat los van een terugbetalingsverzoek, en of een aankoop kan worden hersteld, hangt af van het toepasselijke distributiekanaal en de betalingsprovider. Bepalingen die naar hun aard ook na beëindiging van de overeenkomst zouden moeten overleven (waaronder bepalingen inzake intellectueel eigendom, aansprakelijkheid en geschillen) blijven van kracht.\n\n## 13. Kennisgevingen en diensten van derden\n\nDe Exploitant kan servicemeldingen sturen via de app, website of contactgegevens die u verstrekt. Gekoppelde of geïntegreerde diensten vallen onder de eigen voorwaarden en het beleid van de betreffende aanbieder. De Exploitant garandeert niet de onafhankelijke werking van een dienst die hij niet rechtstreeks levert.\n\n## 14. Servicebeperkingen en aansprakelijkheid\n\nSommige functies zijn mogelijk beperkt of gedragen zich anders, afhankelijk van het apparaat, het besturingssysteem, de beveiligingsinstellingen, andere software of de netwerkomgeving. Specifieke technische beperkingen worden beschreven in de app of op de website. SIDEY is niet ontworpen voor veiligheidskritische, medische, noodgevallen of andere toepassingen die onmiddellijke en ononderbroken aflevering vereisen. Niets in deze Voorwaarden sluit aansprakelijkheid uit die niet kan worden uitgesloten op grond van de wetgeving inzake productaansprakelijkheid of consumentenbescherming, of aansprakelijkheid veroorzaakt door opzettelijk wangedrag of grove nalatigheid van de Exploitant.\n\n## 15. Toepasselijk recht en geschillen\n\nOp deze Voorwaarden is de wetgeving van de Republiek Korea van toepassing. Partijen zullen eerst proberen een geschil te goeder trouw op te lossen. Als de kwestie onopgelost blijft, wordt de zaak behandeld door een rechtbank die bevoegd is op grond van de Koreaanse wet op de burgerlijke rechtsvordering en ander toepasselijk recht. Gebruikers kunnen ook gebruik maken van de wettelijk beschikbare procedures voor het oplossen van consumentengeschillen, waaronder de procedures die worden aangeboden door de Korea Consumer Agency.\n\n## 16. Ingangsdatum en voorgestelde herziening\n\nDe oorspronkelijke Voorwaarden zijn op 4 september 2026 van kracht geworden. Deze voorgestelde herziening is op 20 september 2026 opgesteld om onderscheid te maken tussen de huidige private, propriëtaire broncode, AGPLv3-rechten in historische openbare herzieningen en de voorwaarden die van toepassing zijn op de officiële Dienst en betaalde inhoud. De ingangsdatum ervan zal afzonderlijk worden aangekondigd met de wijzigingskennisgeving onder Sectie 3. Het opstellen van dit voorstel wijzigt op zichzelf niet de bestaande Voorwaarden en past geen wijzigingen met terugwerkende kracht toe op eerdere aankopen of de licenties van historische openbare herzieningen."
+    },
+    "privacy": {
+      "title": "Privacybeleid · SIDEY",
+      "description": "Hoe SIDEY omgaat met persoonsgegevens, retentie, externe verwerking en gebruikersrechten.",
+      "heading": "SIDEY-privacybeleid",
+      "introduction": "SIDEY volgt de toepasselijke privacywetgeving en verwerkt alleen de informatie die nodig is om vriendengroepen en berichten te verstrekken. In dit Beleid wordt uitgelegd wat er wordt afgehandeld, waarom het nodig is, wanneer het wordt verwijderd en hoe u uw rechten kunt uitoefenen.",
+      "translationNotice": "Deze pagina is een vertaling van het originele Koreaanse document.",
+      "originalLabel": "Bekijk het originele document",
+      "body": "## 1. Waarom persoonsgegevens wordt verwerkt\n\nDe Exploitant verwerkt persoonsgegevens alleen als dat nodig is voor de onderstaande doeleinden. Als een doel verandert, zal de Exploitant afzonderlijke toestemming verkrijgen of een andere stap ondernemen die vereist is op grond van artikel 18 van de Koreaanse Wet Bescherming Persoonsgegevens en ander toepasselijk recht.\n\n### Het verlenen van de Dienst en het uitvoeren van contracten\n\nInformatie wordt gebruikt om accounts te authenticeren en sessies te herstellen; Creëer en sluit je aan bij groepen die alleen op uitnodiging toegankelijk zijn; toon de aanwezigheid van een vriend; berichten verzenden; personages en aanpassingsitems leveren; en aankopen verifiëren, herstellen of terugbetalen.\n\n### Gebruikers en de Dienst beheren\n\nInformatie wordt gebruikt om gebruikers te identificeren, capaciteits- en gebruikslimieten van de Groep af te dwingen, misbruik te voorkomen, de beveiliging te handhaven, te reageren op fouten, vragen en geschillen en servicemeldingen te bezorgen.\n\nSIDEY verwerkt geen persoonsgegevens voor op interesses gebaseerde advertenties, gepersonaliseerde aanbevelingen of promotionele berichten.\n\n## 2. Informatie verwerkt\n\n- **Profiel:** bijnaam en geselecteerd karakter\n- **Google-accountverbinding:** Google-account-ID en e-mailadres\n- **Log in met Apple:** Apple-account-ID en, wanneer Apple deze verstrekt, een e-mailadres\n- **Account en sessie:** anonieme gebruikers-UUID, aanmeldingsprovider en sessie-ID's\n- **Groepen:** Groepsnaam, groeps- en lidmaatschaps-ID's, eigenaarstatus en deelnametijd\n- **Berichten en realtime status:** berichttekst, aanmaaktijd, afzender- en groepsidentificaties, aanwezigheid en typesignalen die alleen in het SIDEY-berichtveld worden gegenereerd\n- **Aankopen:** bestel- en transactie-ID's, product, bedrag, betalings-, annulerings- en terugbetalingsstatus, en het tijdstip en de inhoud van de beleidstoestemming\n- **Ondersteuning:** antwoord-e-mailadres, vraag en informatie die vrijwillig door de gebruiker is toegevoegd\n- **Verbindingsinformatie:** IP-adres, toegangstijd en verzoekinformatie die serviceproviders kunnen aanmaken voor beveiliging en respons op incidenten\n\nDe verstreken tijd sinds de laatste systeeminvoer en de schermvergrendelingsstatus worden lokaal gecontroleerd om de afwezigheidsstatus weer te geven. SIDEY verzamelt op basis van deze signalen niet de inhoud van de invoer of een geschiedenis van app-gebruik.\n\n## 3. Hoe informatie wordt verzameld\n\nEr worden gegevens verzameld wanneer u een profiel of groep aanmaakt, een bericht verzendt, een Google-account koppelt, 'Log in met Apple' gebruikt, een betaling, herstel of terugbetaling aanvraagt, of contact opneemt met de ondersteuning. Aanwezigheids- en typesignalen worden tijdens de verbinding met de Dienst realtime verwerkt.\n\nSIDEY verzamelt geen scherminhoud, lijsten met actieve apps, ingedrukte toetsen in andere apps, globale aanwijzercoördinaten, bestandsinhoud, microfoonaudio of cameravideo. Er wordt niet gecontroleerd wat u typt buiten het SIDEY-berichtveld.\n\n## 4. Bewaring\n\n- **Berichten:** drie dagen na creatie\n- **Aanwezigheids- en typesignalen:** worden alleen verwerkt zolang de real-time weergave actief is en worden niet permanent vastgehouden\n- **Account, profiel, groep en lidmaatschap:** tot accountverwijdering of beëindiging van de service; een lidmaatschapslink wordt verwijderd wanneer u een groep verlaat\n- **Onvolledig anoniem account zonder profiel of groep:** kan na zeven dagen worden verwijderd\n- **Inlogsessie opgeslagen op een apparaat:** tot uitloggen, accountverwijdering of verwijdering van app-gegevens\n\nDocumenten die wettelijk moeten worden bewaard, worden alleen voor dat doel gebruikt. Weergave- en advertentiegegevens mogen zes maanden worden bewaard; contract- of annuleringsgegevens en betalings- of digitale leveringsgegevens gedurende vijf jaar; en klachten- of geschillenregistratie van consumenten gedurende drie jaar.\n\n## 5. Delen en openbaarmaking aan derden\n\nDe Exploitant maakt geen persoonsgegevens bekend aan derden, tenzij u daarmee instemt of de toepasselijke wetgeving een specifieke basis biedt.\n\n### Leden van dezelfde groep\n\nOm groepen die alleen op uitnodiging toegankelijk zijn, aan te bieden, worden uw bijnaam, karakter, aanwezigheids- en typestatus en berichten getoond aan leden van dezelfde groep waarvan u lid bent geworden. Berichten worden drie dagen bewaard; real-time statussignalen worden alleen verwerkt als de weergave ervan actief is.\n\n### Autoriteiten die krachtens de wet handelen\n\nInformatie kan openbaar worden gemaakt binnen de reikwijdte en periode die door de wet is toegestaan wanneer een onderzoeks- of andere bevoegde autoriteit een verzoek indient via een wettig proces, zoals een bevelschrift.\n\n## 6. Dienstverleners en overzeese afhandeling\n\nDe Exploitant maakt alleen gebruik van de volgende providers als dat nodig is om de Dienst te verlenen. Wijzigingen in de aanbieder of het doel zullen via dit Beleid openbaar worden gemaakt.\n\n- **Supabase Inc.:** verwerkt account-UUID's, profielen, groepen, berichten, aankoopstatus en verbindingsinformatie voor authenticatie, database en realtime communicatie. Gegevens worden bewaard tot het account wordt verwijderd, de Dienst wordt beëindigd of het servicecontract eindigt; berichten worden na drie dagen verwijderd.\n- **Google LLC:** verwerkt de account-ID, het e-mailadres en het authenticatieresultaat voor de verbinding met een Google-account totdat de verbinding wordt verbroken, het account wordt verwijderd of het doel is bereikt.\n- **Apple Inc.:** verwerkt account- en transactie-ID's en authenticatie- en betalingsstatus voor Inloggen met Apple, App Store-betalingen en aankoopherstel tot accountverwijdering of gedurende de periode vereist door de wet en het beleid van Apple.\n- **Korea PortOne Co., Ltd. en aangesloten betalingsdienstaanbieders:** verwerken bestel- en betalingsidentificaties, bedrag en betalingsresultaat voor betaling, annulering en terugbetaling in een directe distributie-build, en bewaren deze gedurende de periode vereist door de e-commercewetgeving.\n- **GitHub, Inc.:** kan IP-adressen en verbindingsinformatie genereren tijdens het hosten van de openbare website en kan deze bewaren onder de privacypraktijken van GitHub en de toepasselijke wetgeving.\n\nSupabase, Google, Apple en GitHub zijn gevestigd in de Verenigde Staten en er kan informatie worden verzonden via communicatienetwerken wanneer hun diensten worden gebruikt. Wanneer de wet een afzonderlijke kennisgeving of toestemming vereist voor afhandeling in het buitenland, worden de ontvanger, het land, de items, het doel, de methode en de bewaartermijn bekendgemaakt voordat de relevante functie wordt gebruikt. U kunt ervoor kiezen om geen verbinding met Google te maken, maar als u buitenlandse handelingen weigert die essentieel zijn voor authenticatie of gegevensopslag, kan dit het gebruik van een deel of het geheel van SIDEY beperken of voorkomen.\n\n## 7. Betalingsinformatie en externe diensten\n\nApple verwerkt betalingen uit de Mac App Store. Voor een betaling die wordt aangeboden in een directe distributieversie, verwerkt een via PortOne geopende betalingsdienstaanbieder het volledige kaartnummer, het betalingswachtwoord en de authenticatie-informatie van de bankrekening. SIDEY ontvangt of behoudt geen volledige betalingsgegevens; het verwerkt alleen de identificatiegegevens en resultaten die nodig zijn om een ​​bestelling te verifiëren, annuleren of terugbetalen.\n\nWanneer u een externe inlogpagina, een betalingsvenster of een gekoppelde website gebruikt, zijn de eigen voorwaarden en het privacybeleid van de aanbieder van toepassing op de informatie die deze onafhankelijk verzamelt.\n\n## 8. Uw rechten en hoe u deze kunt uitoefenen\n\nU kunt verzoeken om toegang tot, correctie of verwijdering van, opschorting van de verwerking van of intrekking van uw toestemming voor uw persoonlijke gegevens. Een gebruiker van Inloggen met Apple kan na herauthenticatie een Account verwijderen in de instellingen van de app. Andere account- of gegevensverzoeken kunnen per e-mail worden verzonden naar de onderstaande Privacyfunctionaris.\n\nU kunt uw rechten uitoefenen via een wettelijke vertegenwoordiger of een andere bevoegde persoon. De Exploitant kan het autorisatieformulier en de minimale informatie opvragen die nodig is om de identiteit van de gebruiker en vertegenwoordiger te bevestigen, zoals toegestaan ​​door de wet. Binnen 10 dagen na ontvangst van een toegangsverzoek zal de Exploitant uitleggen hoe toegang zal worden verleend of, waar de wet beperking, vertraging of weigering toestaat, de reden uitleggen en hoe u bezwaar kunt maken.\n\nDe verwijdering kan beperkt zijn, terwijl een andere wet vereist dat een document wordt bewaard. SIDEY neemt geen geautomatiseerde besluiten die juridische of soortgelijke significante gevolgen voor gebruikers hebben.\n\n## 9. Verwijdering\n\nPersoonsgegevens wordt zonder onnodige vertraging verwijderd wanneer de bewaartermijn afloopt of het doel ervan wordt bereikt. Elektronische gegevens worden verwijderd met behulp van methoden die bedoeld zijn om herstel te voorkomen. Transactiegegevens waarvoor afzonderlijke bewaarplichten gelden, worden gescheiden van algemene servicegegevens, worden alleen voor het vereiste doel gebruikt en worden verwijderd wanneer die periode afloopt.\n\nAls u een account verwijdert, worden het profiel, de groepsverbindingen en actieve SIDEY-rechtenlinks verwijderd. Minimale transactiegegevens kunnen afzonderlijk worden bewaard voor juridische en afwikkelingsdoeleinden, waarbij de gebruikerskoppeling tot een minimum wordt beperkt. Het verwijderen van een account verwijdert niet automatisch transactiegegevens die in het bezit zijn van Apple of een betalingsdienstaanbieder en vormt geen terugbetalingsverzoek.\n\n## 10. Beveiligingsmaatregelen\n\nDe Exploitant beperkt de toegang tot persoonsgegevens tot wat nodig is voor het werk en scheidt operationele privileges en geheimen. SIDEY maakt gebruik van toegangscontroles op rijniveau in de database, groepscapaciteit en lidmaatschapscontroles op de server, gecodeerd transport en veilige opslag op het besturingssysteem. Uitnodigingscodes worden niet in leesbare tekst op de server opgeslagen en geheime betalingssleutels en beheerdersrechten zijn niet opgenomen in de app of openbare website.\n\nSIDEY wordt niet voorgesteld als een dienst met geïmplementeerde en geverifieerde end-to-end-encryptie.\n\n## 11. Cookies en soortgelijke technologieën\n\nDe openbare website van SIDEY installeert geen cookies voor gepersonaliseerde advertenties, analyses van bezoekersgedrag of individuele aanbevelingen. Een browser of hostingprovider kan verbindingsinformatie verwerken of technische opslag gebruiken om statische bestanden aan te bieden en de service te beschermen.\n\nEen externe provider kan cookies gebruiken voor functionaliteit en veiligheid wanneer u een inlogpagina of een betalingspagina van Google of Apple bezoekt. Zie de privacy-instellingen van die provider voor beschikbare opties.\n\n## 12. Privacyfunctionaris\n\n- **Privacyfunctionaris:** Taehyun Ryu\n- **E-mail:** <ryu200112@gmail.com>\n\nVragen, klachten, oplossingen en verzoeken om privacyrechten uit te oefenen kunnen naar het bovenstaande e-mailadres worden gestuurd. De Exploitant zal deze zonder onnodige vertraging beoordelen en reageren.\n\n## 13. Remedies bij inbreuk op de privacy\n\nAls u advies nodig heeft of een privacyschending in Korea wilt melden, kunt u contact opnemen met:\n\n- [Persoonsgegevens Geschillencommissie](https://www.kopico.go.kr/) · 1833-6972\n- [KISA-rapportagecentrum voor inbreuken op de privacy](https://privacy.kisa.or.kr/) · 118\n- [Bureau van de Hoge Aanklagers](https://www.spo.go.kr/) · 1301\n- [rapportsysteem voor cybercriminaliteit van de Koreaanse nationale politie](https://ecrm.police.go.kr/) · 182\n\n## 14. Externe diensten buiten dit beleid\n\nDe website en app van SIDEY kunnen links bevatten naar diensten die door andere aanbieders worden beheerd. Dit Beleid is niet van toepassing op informatie die wordt verwerkt door een externe dienst waar de Exploitant geen controle over heeft. Bekijk het privacybeleid van de dienst die u bezoekt.\n\n## 15. Wijzigingen in dit beleid\n\nAls dit Beleid verandert vanwege de wet, de Dienst of externe verwerkingsrelaties, worden de ingangsdatum en wezenlijke wijzigingen aangekondigd via de website of app. Een wijziging met aanzienlijke gevolgen voor de gebruiksrechten wordt vooraf aangekondigd gedurende de wettelijk verplichte periode.\n\n## 16. Ingangsdatum\n\nDit privacybeleid treedt in werking op 4 september 2026."
+    },
+    "refund": {
+      "title": "Terugbetalingsbeleid · SIDEY",
+      "description": "Annulerings- en terugbetalingsvoorwaarden voor digitale aanpassingsrechten van SIDEY.",
+      "heading": "Annulerings- en restitutiebeleid",
+      "introduction": "Betaalde SIDEY-aanpassingsartikelen zijn digitale rechten die op uw account worden afgeleverd nadat de betaling is bevestigd.",
+      "translationNotice": "Deze pagina is een vertaling van het originele Koreaanse document.",
+      "originalLabel": "Bekijk het originele document",
+      "body": "## Terugbetalingen bij verandering van gedachten nadat de levering is begonnen\n\nDe levering van een recht op digitale personalisatie begint zodra de betaling is bevestigd. Zodra de levering is begonnen, is annulering of terugbetaling vanwege een eenvoudige verandering van gedachten niet mogelijk.\n\n## Wanneer een volledige terugbetaling beschikbaar is\n\nEen volledige terugbetaling zal plaatsvinden wanneer een wettelijk erkende reden wordt bevestigd, waaronder:\n\n- de betaling is goedgekeurd, maar het Digitale Recht is niet geleverd;\n- het geleverde artikel komt niet overeen met de beschrijving of het koopcontract;\n- dezelfde bestelling of hetzelfde artikel meerdere keren in rekening is gebracht;\n- de betaling is niet geautoriseerd door de Accounthouder;\n- een minderjarige heeft een aankoop gedaan zonder de vereiste toestemming van een wettelijke vertegenwoordiger; of\n- toepasselijk recht vereist anders een volledige terugbetaling.\n\n## Hoe verzoeken worden afgehandeld\n\n1. Voor een aankoop in de Mac App Store vraagt u een terugbetaling aan via het 'Meld een probleem'-proces van Apple. Als betaling wordt aangeboden via PortOne in een directe distributieversie, stuur dan alleen het aankoopaccount, de betalingstijd en de informatie die nodig is om de bestelling te lokaliseren naar ondersteuning. Stuur geen volledig betaalkaartnummer of wachtwoord.\n2. Nadat Apple of de betalingsdienstaanbieder de terugbetaling heeft bevestigd, wordt het door die betalingsbron verleende recht ingetrokken.\n3. Als er geen ander geldig gebruiksrecht voor het ingetrokken item geldt en het momenteel is uitgerust, keert die categorie terug naar het standaarditem: de standaardhamster, de standaard tekstballon of het standaard werpspeeltje.\n\n## Accountverwijdering en terugbetalingen\n\nHet verwijderen van een SIDEY-account is geen verzoek tot terugbetaling van een aankoop. Een geldige in-app-aankoop van Apple kan nog steeds worden hersteld naar een nieuw SIDEY-account met hetzelfde Apple-aankoopaccount.\n\n## Bewaring van gegevens en wettelijke rechten\n\nTerugbetalingsverzoeken en resultaten worden veilig bewaard gedurende de periode die nodig is om geschillen op te lossen en aan wettelijke verplichtingen te voldoen. Dit Beleid beperkt de annulerings-, beëindigings- of verhaalsrechten die worden gegarandeerd door de toepasselijke wetgeving niet.\n\n## Ondersteuning\n\n- **Verkoper:** 싸이디(SIDEY)\n- **E-mail:** <ryu200112@gmail.com>\n- **Bedrijfsregistratienummer:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Nieuwe personages en werpbare items, met verbeteringen aan recente berichten, instellingen en verbindingen tussen vrienden."
+        ],
+        "new": [
+          "Vijf personages – Shiba Inu, eend, poep, tteokbokki en quokka – en vier werpbare items: een tennisbal, een tissuebal, een viskoekspies en een blad toegevoegd aan de Windows Store en overlay.",
+          "Je kunt het venster met recente berichten boven andere vensters vastzetten."
+        ],
+        "changed": [
+          "Uitgebreide app-taalondersteuning naar 23 talen.",
+          "Recente berichten behouden nu je leespositie wanneer je door oudere berichten bladert.",
+          "Snelkoppelingsinstellingen geven nauwkeuriger weer welke toetscombinaties momenteel worden gebruikt.",
+          "Bij het updaten vanaf een oudere versie wordt de installatie veilig verplaatst terwijl je instellingen behouden blijven."
+        ],
+        "fixed": [
+          "Probleem opgelost dat de berichtinvoer kortstondig verscheen wanneer je dubbelklikt op een teken.",
+          "Probleem opgelost waarbij de bijnamen van personages onder een hoek nabij de schermrand verschijnen.",
+          "Verbeterde bezorging van berichten en toss-reacties tussen gebruikers op verschillende versies.",
+          "Vaste time-outs wanneer verbindingen met meerdere kamers herstellen na een verbroken verbinding."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Verbeterde aanmelding bij Google-accounts en accountbeheer, samen met chat, snelkoppelingen en de overlay."
+        ],
+        "new": [
+          "Je kunt zich afmelden of je account verwijderen via de instellingen.",
+          "Stuur berichten rechtstreeks vanuit recente berichten en behoud de versleepte positie van het invoervenster tussen lanceringen.",
+          "Neem je eigen sneltoetsen op voor de overlay, stille modus, berichtinvoer en recente berichten, en wissel dubbele toetscombinaties uit.",
+          "Controleer de productprijzen en artikelen in eigendom in de app en open vervolgens de webkassa."
+        ],
+        "changed": [
+          "Inloggen bij Google is nu onderdeel van de vereiste installatie; de inlogknop blijft uitgeschakeld terwijl de opgeslagen inlogstatus wordt gecontroleerd om dubbele authenticatie te voorkomen.",
+          "Als je de verbinding met je account verbreekt, worden de liveverbindingen en de lokale status gewist voordat je weer kunt inloggen.",
+          "De stille modus verbergt type-indicatoren en de sluitingsanimatie van de overlay wordt soepel afgespeeld.",
+          "Verbeterde terugkeer naar de app na authenticatie en realtime typreacties.",
+          "Het installatieprogramma bevat de vereiste Windows App SDK en .NET-runtimes, met beter herstel en begeleiding als een update, reparatie of verwijdering mislukt.",
+          "Verbindingsfouten verklaren de oorzaak ervan, terwijl onnodige fouten die tijdens het opnieuw verbinden worden gegenereerd, verborgen blijven.",
+          "De loopstatus van je stamboom wordt gedeeld met anderen in dezelfde groep.",
+          "In-app-statusmeldingen zijn gemakkelijker te lezen in zowel lichte als donkere thema's."
+        ],
+        "fixed": [
+          "Tekenklikken gecorrigeerd, zodat de berichtinvoer slechts met één klik wordt geopend.",
+          "Als je een reeds actieve app veilig opent, keert je veilig terug naar het bestaande venster."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Nieuwe items en sneltoetsen, met berichten rechtstreeks vanuit recente berichten."
+        ],
+        "new": [
+          "Negen producten toegevoegd: vijf personages en vier werpbare items.",
+          "Algemene snelkoppelingen toegevoegd om de overlay weer te geven of te verbergen, de stille modus in of uit te schakelen, berichtinvoer te openen en recente berichten te openen.",
+          "Pas de toetsencombinatie van elke globale snelkoppeling aan in de instellingen.",
+          "Schrijf en verzend berichten rechtstreeks vanuit het venster met recente berichten.",
+          "Ondersteuning toegevoegd voor Koreaans, Engels, Japans en Traditioneel Chinees."
+        ],
+        "changed": [
+          "Tekstballonnen behouden hun gebruikelijke oriëntatie, zelfs wanneer personages aan de linker- of rechterrand van het scherm worden geplaatst."
+        ],
+        "fixed": [
+          "Probleem opgelost dat personages niet verdoofd raakten nadat ze herhaaldelijk werden geraakt door weggooibare items."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

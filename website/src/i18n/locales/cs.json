@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Vaši přátelé na okraji vaší obrazovky",
+      "description": "SIDEY je desktopový messenger, který zobrazuje přítomnost vašich nejbližších přátel a krátké zprávy jako malá zvířátka v pixelech na okraji vaší obrazovky.",
+      "ogTitle": "SIDEY — Malí přátelé na okraji vaší obrazovky.",
+      "ogDescription": "Sledujte přítomnost a krátké zprávy svých nejbližších přátel jako malá zvířátka v pixelech.",
+      "ogAlt": "Sociální karta SIDEY s pěti pixelovými zvířaty seřazenými podél okraje obrazovky"
+    },
+    "skip": "Přejít na obsah",
+    "navigation": {
+      "navigation": "Hlavní navigace",
+      "home": "Úvodní stránka SIDEY",
+      "openMenu": "Otevřít nabídku",
+      "closeMenu": "Zavřít nabídku",
+      "features": "Funkce",
+      "download": "Stáhnout",
+      "faq": "Časté dotazy",
+      "whatsNew": "Co je nového",
+      "store": "Obchod",
+      "support": "Podpora",
+      "characters": "Postavy",
+      "throwables": "Hračky na házení",
+      "bubbles": "Bubliny",
+      "useLightTheme": "Přepnout na světlý režim",
+      "useDarkTheme": "Přepnout na tmavý režim"
+    },
+    "hero": {
+      "title": "Přátelé na okraji vaší obrazovky.",
+      "description": "Vaši přátelé se promění v malé pixelové postavičky, které se procházejí podél okraje obrazovky. Během práce na ně mrkněte, a když si na ně vzpomenete, pošlete jim krátkou zprávu.",
+      "downloadsLabel": "Možnosti stahování",
+      "appStoreDownload": "Stáhnout z App Storu",
+      "macDownload": "Stáhnout pro macOS",
+      "windowsDownload": "Stáhnout pro Windows",
+      "choosePlatform": "Vyberte si platformu",
+      "platformMenu": "Vyberte platformu ručně",
+      "menuToggle": "Vyberte jinou platformu",
+      "windowsStatus": "Windows 10 1809 (sestavení 17763) nebo novější · x64",
+      "browserTitle": "Dnešní úkoly | Poznámky",
+      "browserNote": "Dnešní seznam",
+      "message": "Sejít se v sedm?",
+      "typingLabel": "Rosie píše",
+      "names": {
+        "kong": "Mochi · JÁ",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rosie"
+      },
+      "caption": "Scéna SIDEY s pixelovými zvířecími přáteli, kteří chodí, dřímají a spí podél spodní části prohlížeče uvnitř monitoru"
+    },
+    "motion": {
+      "title": "Stát na místě by byla nuda.",
+      "description": "Přátelé chodí, když jsou online, podřimují, když jsou pryč, a spí, když jsou offline. Můžete se také trochu pošťuchovat.",
+      "label": "Stavy a akce postaviček SIDEY",
+      "presence": {
+        "eyebrow": "Každodenní přítomnost",
+        "title": "Chůze, podřimování, spánek.",
+        "description": "Online, pryč nebo offline — chování postavičky se mění podle stavu vašeho přítele.",
+        "online": "Online",
+        "away": "Pryč",
+        "offline": "Offline"
+      },
+      "throw": {
+        "eyebrow": "Hrajte s kamarádem",
+        "title": "Někdy to nejlépe řekne měkký míček.",
+        "description": "Coco hodí měkký míček, který lehce ťukne do Rosie.",
+        "source": "Coco",
+        "target": "Rosie"
+      },
+      "pulse": {
+        "eyebrow": "Pořádný pozdrav",
+        "title": "Někdy si pozdrav zaslouží větší rozměr.",
+        "description": "Poklepejte na Charlieho a najednou se objeví větší na okraji obrazovky.",
+        "name": "Charlie"
+      },
+      "names": {
+        "kong": "Mochi",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Nablízku, zatímco pracujete.",
+      "introduction": "SIDEY zůstává při práci na okraji obrazovky. Podívejte se, co dělají přátelé, a napište jim, když si na ně vzpomenete.",
+      "label": "Jak SIDEY zapadá do vaší obrazovky",
+      "caption": "SIDEY vedle pracovního prostoru macOS",
+      "alt": "Plocha macOS s oknem Poznámky a přáteli v pixelech SIDEY podél spodního okraje obrazovky",
+      "steps": [
+        [
+          "01",
+          "Pokračujte v tom, co děláte",
+          "Můžete klikat a používat aplikaci za SIDEY jako normálně."
+        ],
+        [
+          "02",
+          "Podívejte se, co dělají",
+          "Chůze, podřimování a spánek ukazují, zda jsou vaši přátelé poblíž."
+        ],
+        [
+          "03",
+          "Řekněte něco, když chcete",
+          "Otevřete SIDEY a pošlete krátkou zprávu nebo se navzájem trochu poškádlete."
+        ]
+      ]
+    },
+    "download": {
+      "title": "Přeneste si SIDEY na plochu.",
+      "description": "SIDEY je k dispozici pro macOS a Windows. Vyberte verzi, která odpovídá vašemu počítači, a nainstalujte ji.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Stáhnout pro Windows",
+      "releaseNotes": "Poznámky k vydání",
+      "macSystem": "macOS 26 nebo novější · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (sestavení 17763) nebo novější · x64",
+      "copyFailure": "Nelze kopírovat. Vyberte hash ručně.",
+      "hashCopy": "Zkopírujte hash SHA-256",
+      "hashCopied": "Hash SHA-256 zkopírován."
+    },
+    "faq": {
+      "title": "Odpovědi na vaše otázky.",
+      "intro": "Několik věcí, které stojí za to vědět, než začnete.",
+      "items": [
+        [
+          "Co je SIDEY?",
+          "SIDEY je desktopový messenger, do kterého se dostanete na pozvání. Vaši nejbližší přátelé se v něm objevují na okraji obrazovky jako malé pixelové postavičky. Každá soukromá skupina může mít až 12 lidí."
+        ],
+        [
+          "Které počítače jsou podporovány?",
+          "SIDEY běží na Apple silicon Mac s macOS 26 nebo novějším a x64 PC s Windows 10 1809 (sestavení 17763) nebo novějším. Počítače Intel Mac nejsou aktuálně podporovány."
+        ],
+        [
+          "Jak mohu pozvat přátele?",
+          "Vytvořte soukromou skupinu a pošlete zvací kód přímo svým přátelům. Skupina může mít až 12 členů a každá osoba se může připojit až k pěti skupinám."
+        ],
+        [
+          "Sleduje SIDEY, co dělám na svém počítači?",
+          "Ne. SIDEY neshromažďuje vaši obrazovku, otevřené aplikace, stisknuté klávesy z jiných aplikací, umístění ukazatele, soubory, mikrofon ani fotoaparát. Stav psaní se odesílá pouze během psaní do vlastního pole zprávy SIDEY."
+        ],
+        [
+          "Jak dlouho jsou zprávy uchovávány?",
+          "Nedávné zprávy jsou uchovávány po dobu tří dnů a poté trvale smazány."
+        ],
+        [
+          "Zobrazí se SIDEY v každé hře a aplikaci na celou obrazovku?",
+          "Ne vždy. SIDEY zůstává viditelný při běžném používání plochy, ale nemusí se zobrazovat na zabezpečených obrazovkách, aplikacích chráněných DRM, aplikacích se zvýšeným oprávněním nebo některých exkluzivních hrách na celou obrazovku."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Co je nového",
+      "intro": "Podívejte se na nejnovější změny SIDEY, seskupené podle macOS a Windows.",
+      "tabs": {
+        "label": "Co je nového podle operačního systému",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "Co je nového",
+        "changed": "Co se změnilo",
+        "fixed": "Co je opraveno"
+      },
+      "versionNotes": "Poznámky k této verzi",
+      "empty": "Zatím žádné poznámky k vydání.",
+      "viewRelease": "Zobrazit vydání GitHubu",
+      "openDetails": "Zobrazit změny",
+      "closeDetails": "Skrýt změny",
+      "loadedMore": "Načteny další předchozí aktualizace."
+    }
+  },
+  "storeChrome": {
+    "store": "Obchod SIDEY",
+    "keepsake": "Na památku",
+    "separate": "Prodává se samostatně",
+    "treeHint": "V aplikaci pro macOS klikněte pravým tlačítkem na strom a zastavte jej. Opětovným kliknutím pravým tlačítkem jej necháte chodit.",
+    "sound": "Zvuk",
+    "categories": "Kategorie obchodu",
+    "characters": "Postavy",
+    "throwables": "Hračky na házení",
+    "bubbles": "Bubliny",
+    "preview": "Otevřít náhled",
+    "previewAction": "Náhled",
+    "closePreview": "Zavřít náhled",
+    "bubbleMessage": "Chceš si dneska popovídat?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Postavy",
+      "title": "Noví přátelé pro vaši obrazovku.",
+      "description": "Otevřete náhled a uvidíte, jak se každá postava pohybuje v SIDEY.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Malý křeček",
+          "description": "Originální společník SIDEY s malýma ušima a růžovými tvářemi.",
+          "price": "Součást aplikace",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Kotě",
+          "description": "Měkký šedý mourek s párem dokonale špičatých uší.",
+          "price": "Součást aplikace",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Huňaté štěně",
+          "description": "Štěně s karamelově zbarvenými ušima a krásně huňatým čumáčkem.",
+          "price": "Součást aplikace",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Králíček",
+          "description": "Díky dlouhým uším a fialovému šátku je tento malý kamarád snadno rozpoznatelný.",
+          "price": "Součást aplikace",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Malý tučňák",
+          "description": "Tmavě modrý tučňák se kolébá v šálce mátové barvy.",
+          "price": "Součást aplikace",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Hračky na házení",
+      "title": "Od měkkých míčků po mini děla.",
+      "description": "Prohlédněte si hračky, které můžete házet svým přátelům, od měkkých míčků a srdcí až po mini děla.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Měkký látkový míček",
+          "description": "Měkký malý míček, který může každá postava SIDEY hodit na přítele.",
+          "price": "Součást aplikace",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Bubliny",
+      "title": "Udělejte si bublinky podle sebe.",
+      "description": "Změňte barvy a malé ozdoby na zprávách a indikátorech psaní.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Klasická bublina",
+          "description": "Přehledná a snadno čitelná bublina SIDEY na každou plochu.",
+          "price": "Součást aplikace",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Podpora · SIDEY",
+    "description": "Nahlaste problém SIDEY na GitHubu nebo nás kontaktujte soukromě e-mailem.",
+    "heading": "Podpora SIDEY",
+    "introduction": "Nahlaste reprodukovatelné chyby na GitHubu. V případě nákupů, účtů nebo záležitostí, které by měly zůstat soukromé, nás kontaktujte e-mailem.",
+    "githubTitle": "Nahlásit chybu na GitHubu",
+    "githubBody": "Nejprve vyhledejte existující problémy. Pokud je již stejný problém nahlášen, místo vytvoření duplikátu přidejte k tomuto problému palec nahoru. K odeslání problému je potřeba účet GitHub.",
+    "searchIssues": "Hledejte existující problémy",
+    "reportIssue": "Otevřete formulář hlášení chyby",
+    "emailTitle": "Kontaktujte nás emailem",
+    "emailBody": "V případě otázek týkajících se nákupu nebo účtu a zpráv obsahujících soukromé informace nám zašlete e-mail. Do předmětu uveďte SIDEY a váš operační systém.",
+    "emailAction": "Pošlete e-mail",
+    "include": "Informace požadované ve formuláři hlášení chyby",
+    "details": [
+      "Operační systém a architektura (povinné): vložte výstup příkazu níže.",
+      "Verze SIDEY (povinná): vyhledejte ji podle pokynů níže.",
+      "Co se stalo (vyžadováno): jasně popište problém; mohou pomoci vyčištěné protokoly, snímky obrazovky nebo video.",
+      "Kroky k reprodukci (vyžadováno): vysvětlete akce, které vedou k problému, v pořadí.",
+      "Očekávané chování (volitelné): vysvětlete, co se mělo stát.",
+      "Další informace (nepovinné): uveďte jakýkoli jiný relevantní kontext."
+    ],
+    "diagnostics": "Vyhledání vaší verze a diagnostických protokolů",
+    "operatingSystem": "Informace o operačním systému",
+    "macosLabel": "macOS (terminál)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: Ve Finderu klikněte pravým tlačítkem na SIDEY.app a vyberte Získat informace (⌘I).",
+    "windowsVersion": "Windows: Otevřete Nastavení → O aplikaci → Aktualizace.",
+    "macDiagnostics": "macOS: Příkaz níže uloží posledních 30 minut protokolů SIDEY do souboru na ploše.",
+    "windowsDiagnostics": "Windows: Otevřete Nastavení → O aplikaci → Exportovat diagnostiku. Soubory protokolu se uloží na vaši plochu. V případě problému s instalací zahrňte diagnostická data zobrazená instalačním programem.",
+    "protect": "Uchovávejte citlivé informace v soukromí",
+    "protectBody": "Problémy GitHubu jsou veřejné. Odstraňte z textu, protokolů, snímků obrazovky a videí zvací kódy, obsah zpráv, přihlašovací nebo ověřovací tokeny, hesla, úplná čísla platebních karet a osobní údaje. Neposílejte tato tajemství ani e-mailem; v případě potřeby se zeptáme na konkrétní necitlivé podrobnosti.",
+    "response": "Doba odpovědi se může lišit podle jazyka; není zaručena doba odezvy specifická pro daný jazyk."
+  },
+  "footer": {
+    "terms": "Podmínky použití",
+    "privacy": "Zásady ochrany osobních údajů",
+    "refund": "Zásady vrácení peněz",
+    "language": "Vyberte jazyk"
+  },
+  "legalNotice": "Používáním oficiální služby SIDEY souhlasíte se {terms} a {privacy}.",
+  "policies": {
+    "terms": {
+      "title": "Podmínky použití · SIDEY",
+      "description": "Podmínky, kterými se řídí desktopová služba SIDEY a položky digitálního přizpůsobení.",
+      "heading": "Podmínky použití SIDEY",
+      "introduction": "Tyto podmínky stanovují práva a povinnosti, které platí, když používáte službu SIDEY pro stolní počítače a položky digitálního přizpůsobení.",
+      "translationNotice": "Tato stránka je překladem původního korejského dokumentu.",
+      "originalLabel": "Zobrazit původní dokument",
+      "body": "## 1. Účel a rozsah\n\nTyto podmínky upravují aplikaci, webové stránky a související služby SIDEY (souhrnně „Služba“) poskytované provozovatelem SIDEY (dále jen „Provozovatel“). Používáním oficiální služby souhlasíte s těmito podmínkami a se všemi samostatně zveřejněnými provozními zásadami. Pokud vám příslušný zákon poskytuje větší ochranu než tyto Podmínky, bude platit tento zákon.\n\n## 2. Klíčové pojmy\n\n„Účet“ je identifikátor používaný k rozlišení uživatele a připojení skupin, zpráv a digitálních oprávnění. „Skupina“ je soukromý prostor dostupný pouze přátelům, kteří obdrží kód pozvánky. „Digitální oprávnění“ je právo používat postavu nebo jinou položku přizpůsobení prostřednictvím nákupního účtu; nepřevádí vlastnictví ani autorská práva k samotné položce.\n\n## 3. Publikace a změny\n\nProvozovatel zpřístupňuje tyto Podmínky na webových stránkách. Je-li ze zákona nebo Služby nutná změna, Provozovatel sdělí datum účinnosti a důvod změny. Podstatné změny, které znevýhodňují uživatele, budou oznámeny předem na dobu a způsobem požadovaným platnými právními předpisy. Není-li vyžadováno zákonem nebo dohodnuto stranami, kupní smlouva uzavřená před změnou se řídí podmínkami platnými v době jejího vzniku.\n\n## 4. Služba\n\nSIDEY je desktop overlay messenger, který představuje skutečné přátele jako pixelové postavy. Jeho specifické funkce, podporovaná prostředí, rozsah použití a omezení jsou popsány v aplikaci nebo na webu a mohou se lišit podle kanálu vydání nebo verze.\n\n## 5. Účty a skupiny\n\nDostupné způsoby přihlášení se mohou lišit podle kanálu vydání. Účty, skupiny a záznamy o nákupech z různých kanálů nelze slučovat nebo převádět automaticky; v případě potřeby budou poskytnuty další pokyny. Jste zodpovědní za zabezpečení svého zařízení a způsobu přihlašování. Nezveřejňujte zvací kódy ani nepoužívejte účet jiné osoby bez povolení.\n\n## 6. Zprávy a přijatelné použití\n\nNesmíte přenášet nezákonný materiál; porušovat pověst, soukromí nebo autorská práva jiné osoby; obtěžovat ostatní; abnormálně přistupovat ke Službě nebo jejím serverům; obejít ověření nákupu; distribuovat škodlivý kód; nebo zasahovat do běžného používání Služby jiným uživatelem.\n\n## 7. Změny, pozastavení a ukončení\n\nProvozovatel může změnit nebo dočasně pozastavit část Služby z důvodu bezpečnostních aktualizací, změn operačního systému, údržby, výpadků komunikace nebo vylepšení služeb. Materiální změny, které lze očekávat, budou předem oznámeny prostřednictvím webu nebo aplikace. Naléhavé bezpečnostní nebo incidentní reakce mohou být oznámeny později. Pokud bude služba ukončena, bude podáno přiměřené upozornění a nevyužitá placená práva budou řešena podle platných zákonů a zásad pro vrácení peněz.\n\n## 8. Nákupy a platby\n\nKupní smlouva vzniká, když si prostudujete název produktu, cenu a dodací podmínky a dokončíte platbu. Platba může být zpracována prostřednictvím tržiště aplikací nebo platební služby určené Provozovatelem. Provozovatel uděluje Digitální oprávnění po potvrzení platby. Objednávky obsahující nepravdivé informace, duplicitní požadavky nebo položky, které technicky nelze dodat, mohou být odmítnuty nebo zrušeny.\n\n## 9. Digitální doručení a zrušení\n\nNačasování digitálního doručení a podmínky pro zrušení nebo vrácení peněz se řídí příslušnými zákony a [Zásadami vrácení peněz](https://sidey-app.github.io/SIDEY/cs/refund/). Provozovatel před nákupem zpřístupní podmínky dodání materiálu a případné limity zrušení. Nic v těchto podmínkách neomezuje práva zaručená platnými zákony.\n\n## 10. Nezletilí\n\nNezletilý, který potřebuje souhlas zákonného zástupce, musí tento souhlas před nákupem získat. Nezletilý nebo zákonný zástupce může požádat o zrušení, pokud to příslušné zákony umožňují, včetně některých nákupů uskutečněných bez požadovaného souhlasu.\n\n## 11. Softwarová licence a duševní vlastnictví\n\nAktuální zdrojový kód SIDEY je soukromý proprietární software. V rámci jejího distribučního kanálu a těchto podmínek je poskytováno pouze právo nainstalovat a používat oficiální aplikaci. Každá revize publikovaná pod AGPL-3.0-only před přechodem licence se nadále řídí licencí uvedenou v této revizi. Tyto podmínky ani nastavení zdrojového úložiště jako soukromého neruší ani nepřidávají omezení k právům již uděleným ke spouštění, kopírování, úpravám nebo distribuci těchto revizí. Veřejné úložiště `sidey-app/SIDEY` distribuuje web, zásady, verze a instalační programy; není to aktuální úložiště zdrojového kódu produktu. Podrobné hranice naleznete v [licenční příručce](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md). Komponenty třetích stran zůstávají předmětem příslušných licencí a upozornění.\n\nPlacené položky přizpůsobení udělují pouze právo je používat prostřednictvím nákupního účtu a nepřevádějí vlastnictví nebo autorská práva k jejich souborům, postavám nebo návrhům. Softwarová licence neuděluje práva na ochrannou známku v názvu nebo logu SIDEY ani práva k postavám a prostředkům přizpůsobení dodávaná za samostatných podmínek. Bez svolení držitele práv nesmíte kopírovat, prodávat, pronajímat, redistribuovat, poskytovat sublicence nebo odstraňovat oznámení o právech z těchto aktiv. Nesmíte obejít nákup, oprávnění nebo bezpečnostní kontroly oficiální služby. Tato omezení nesmí být vykládána tak, že omezují práva udělená licencí s otevřeným zdrojovým kódem použitelnou na historickou veřejnou revizi nebo licencí třetí strany.\n\n## 12. Omezení přístupu a smazání účtu\n\nPokud se potvrdí závažné porušení zákona nebo těchto Podmínek nebo jednání ohrožující bezpečnost Služby, může Provozovatel po upozornění a přiměřené příležitosti k nápravě omezit nebo ukončit přístup k oficiální Službě. Naléhavé bezpečnostní riziko nebo riziko poškození ostatních může být nejprve omezeno a následně vysvětleno. Omezení přístupu ke službě nebo smazání účtu nemění podmínky ukončení licence samostatně použitelné pro historickou veřejnou revizi nebo software třetích stran.\n\nÚčet lze smazat prostřednictvím procesu uvedeného v aplikaci. Smazání účtu je oddělené od žádosti o vrácení peněz a to, zda lze nákup obnovit, závisí na příslušném kanálu vydání a poskytovateli plateb. Ustanovení, která by svou povahou měla přežít ukončení – včetně ustanovení o duševním vlastnictví, odpovědnosti a sporech – zůstávají v platnosti.\n\n## 13. Oznámení a služby třetích stran\n\nProvozovatel může zasílat upozornění na služby prostřednictvím aplikace, webových stránek nebo kontaktních údajů, které poskytnete. Propojené nebo integrované služby se řídí vlastními podmínkami a zásadami příslušného poskytovatele. Provozovatel nezaručuje nezávislý provoz služby, kterou přímo neposkytuje.\n\n## 14. Omezení služeb a odpovědnost\n\nNěkteré funkce mohou být omezené nebo se mohou chovat odlišně v závislosti na zařízení, operačním systému, nastavení zabezpečení, jiném softwaru nebo síťovém prostředí. Konkrétní technická omezení jsou popsána v aplikaci nebo na webu. SIDEY není určen pro kritická bezpečnostní, lékařská, pohotovostní nebo jiná použití vyžadující okamžitou a nepřerušovanou dodávku. Nic v těchto Podmínkách nevylučuje odpovědnost, kterou nelze vyloučit podle zákona o odpovědnosti za výrobek nebo ochranu spotřebitele, ani odpovědnost způsobenou úmyslným pochybením nebo hrubou nedbalostí Provozovatele.\n\n## 15. Rozhodné právo a spory\n\nTyto podmínky se řídí zákony Korejské republiky. Strany se nejprve pokusí vyřešit spor v dobré víře. Pokud zůstane nevyřešen, bude projednán soudem s jurisdikcí podle korejského zákona o občanském soudním řízení a dalších platných zákonů. Uživatelé mohou také využít legálně dostupné postupy řešení spotřebitelských sporů, včetně těch, které nabízí Korea Consumer Agency.\n\n## 16. Datum účinnosti a navrhovaná revize\n\nPůvodní podmínky vstoupily v platnost 4. září 2026. Tato navrhovaná revize byla připravena 20. září 2026, aby odlišila aktuální soukromý proprietární zdroj, práva AGPLv3 v historických veřejných revizích a podmínky, jimiž se řídí oficiální služba a placená aktiva. Datum jeho účinnosti bude oznámeno samostatně s oznámením o změně v části 3. Příprava tohoto návrhu sama o sobě nemění stávající podmínky ani neaplikuje změny zpětně na minulé nákupy nebo licence historických veřejných revizí."
+    },
+    "privacy": {
+      "title": "Zásady ochrany osobních údajů · SIDEY",
+      "description": "Jak SIDEY zpracovává osobní údaje, uchovávání, externí zpracování a uživatelská práva.",
+      "heading": "Zásady ochrany osobních údajů SIDEY",
+      "introduction": "SIDEY se řídí platnými zákony na ochranu soukromí a zpracovává pouze informace potřebné k poskytování skupin přátel a zasílání zpráv. Tyto zásady vysvětlují, s čím se nakládá, proč je to potřeba, kdy je smazáno a jak můžete uplatnit svá práva.",
+      "translationNotice": "Tato stránka je překladem původního korejského dokumentu.",
+      "originalLabel": "Zobrazit původní dokument",
+      "body": "## 1. Proč se zachází s osobními údaji\n\nProvozovatel nakládá s osobními údaji pouze v případě potřeby pro níže uvedené účely. Pokud se účel změní, získá Provozovatel samostatný souhlas nebo podnikne jiný krok požadovaný podle článku 18 korejského zákona o ochraně osobních údajů a dalších platných zákonů.\n\n### Poskytování služby a plnění smluv\n\nInformace se používají k ověření účtů a obnovení relací; vytvářet skupiny pouze pro pozvánky a připojovat se k nim; ukázat přítomnost přítele; posílat zprávy; poskytnout postavy a položky přizpůsobení; a ověřit, obnovit nebo vrátit nákupy.\n\n### Správa uživatelů a služby\n\nInformace se používají k identifikaci uživatelů, prosazování limitů kapacity a využití skupiny, zabránění zneužití, udržování bezpečnosti, reakce na chyby, otázky a spory a doručování servisních oznámení.\n\nSIDEY nezpracovává osobní údaje pro zájmově orientovanou reklamu, personalizovaná doporučení nebo propagační zprávy.\n\n## 2. Zpracovávané informace\n\n- **Profil:** přezdívka a vybraná postava\n- **Připojení účtu Google:** Identifikátor účtu Google a e-mailová adresa\n- **Přihlaste se pomocí Apple:** Identifikátor účtu Apple, a pokud jej společnost Apple poskytne, také e-mailovou adresu\n- **Účet a relace:** UUID anonymního uživatele, poskytovatel přihlášení a identifikátory relace\n- **Skupiny:** Název skupiny, identifikátory skupiny a členství, stav vlastníka a čas připojení\n- **Zprávy a stav v reálném čase:** text zprávy, čas vytvoření, identifikátory odesílatele a skupiny, přítomnost a signály pro psaní generované pouze v poli zprávy SIDEY\n- **Nákupy:** identifikátory objednávek a transakcí, produkt, částka, stav platby, zrušení a vrácení peněz a čas a obsah souhlasu se zásadami\n- **Podpora:** e-mailová adresa pro odpověď, dotaz a informace dobrovolně připojené uživatelem\n- **Informace o připojení:** IP adresa, doba přístupu a informace o požadavcích, které mohou poskytovatelé služeb vytvořit pro zabezpečení a reakci na incidenty\n\nUplynulý čas od posledního vstupu systému a stav uzamčení obrazovky jsou kontrolovány lokálně, aby se zobrazil stav pryč. SIDEY neshromažďuje obsah vstupu ani historii používání aplikací z těchto signálů.\n\n## 3. Jak se shromažďují informace\n\nInformace se shromažďují, když si vytvoříte profil nebo skupinu, odešlete zprávu, připojíte účet Google, použijete Přihlášení přes Apple, požádáte o platbu, obnovení nebo vrácení peněz nebo kontaktujete podporu. Signály přítomnosti a psaní jsou zpracovávány v reálném čase během připojení ke Službě.\n\nSIDEY neshromažďuje obsah obrazovky, seznamy aktivních aplikací, klávesy stisknuté v jiných aplikacích, globální souřadnice ukazatele, obsah souborů, zvuk mikrofonu ani video z kamery. Nekontroluje, co píšete mimo pole zprávy SIDEY.\n\n## 4. Uchování\n\n- **Zprávy:** tři dny po vytvoření\n- **Signály přítomnosti a psaní:** zpracovávány pouze při aktivním zobrazení v reálném čase a nejsou trvale uchovávány\n- **Účet, profil, skupina a členství:** do smazání účtu nebo ukončení služby; odkaz na členství se smaže, když opustíte skupinu\n- **Neúplný anonymní účet bez profilu nebo skupiny:** může být po sedmi dnech odstraněn\n- **Relace přihlášení uložená v zařízení:** do odhlášení, smazání účtu nebo smazání dat aplikace\n\nZáznamy, které musí být ze zákona uchovávány, slouží pouze k tomuto účelu. Záznamy o zobrazování a reklamě mohou být uchovávány po dobu šesti měsíců; záznamy o smlouvě nebo zrušení a záznamy o platbách nebo digitálních dodávkách po dobu pěti let; a záznamy o stížnostech nebo sporech spotřebitelů po dobu tří let.\n\n## 5. Sdílení a zpřístupnění třetím stranám\n\nProvozovatel nesděluje osobní údaje třetí straně, pokud k tomu nedáte souhlas nebo k tomu příslušné právní předpisy nestanoví konkrétní základ.\n\n### Členové stejné skupiny\n\nChcete-li poskytovat skupiny pouze pro pozvání, vaše přezdívka, postava, stav přítomnosti a psaní a zprávy se zobrazují členům stejné skupiny, ke které jste se připojili. Zprávy jsou uchovávány po dobu tří dnů; Stavové signály v reálném čase jsou zpracovávány pouze tehdy, když je jejich zobrazení aktivní.\n\n### Orgány jednající podle zákona\n\nInformace mohou být zveřejněny v rozsahu a lhůtě povolené zákonem, pokud o to vyšetřovací nebo jiný oprávněný orgán požádá prostřednictvím zákonného procesu, jako je například příkaz.\n\n## 6. Poskytovatelé služeb a zámořská manipulace\n\nProvozovatel využívá níže uvedené poskytovatele pouze v případě potřeby k poskytování Služby. Změny poskytovatele nebo účelu budou zveřejněny prostřednictvím těchto Zásad.\n\n- **Supabase Inc.:** zpracovává UUID účtů, profily, skupiny, zprávy, stav nákupu a informace o připojení pro ověřování, databázi a komunikaci v reálném čase. Údaje jsou uchovávány do smazání účtu, ukončení služby nebo ukončení servisní smlouvy; zprávy jsou smazány po třech dnech.\n- **Google LLC:** zpracovává identifikátor účtu, e-mailovou adresu a výsledek ověření pro připojení účtu Google až do odpojení, smazání účtu nebo dokončení účelu.\n- **Apple Inc.:** zpracovává identifikátory účtů a transakcí a autentizaci a stav plateb pro přihlášení k Apple, platby App Store a obnovení nákupů až do smazání účtu nebo po dobu vyžadovanou zákonem a zásadami společnosti Apple.\n- **Korea PortOne Co., Ltd. a připojení poskytovatelé platebních služeb:** zpracovávají identifikátory objednávek a plateb, částku a výsledek platby pro platbu, zrušení a refundaci v sestavení přímé distribuce a uchovávají je po dobu vyžadovanou zákonem o elektronickém obchodu.\n- **GitHub, Inc.:** může generovat IP adresy a informace o připojení při hostování veřejných webových stránek a může je uchovávat v souladu se zásadami ochrany osobních údajů GitHubu a platnými zákony.\n\nSpolečnosti Supabase, Google, Apple a GitHub sídlí ve Spojených státech amerických a při používání jejich služeb mohou být přenášeny informace prostřednictvím komunikačních sítí. Pokud zákon vyžaduje samostatné oznámení nebo souhlas se zámořskou manipulací, příjemce, země, položky, účel, metoda a doba uchování budou zveřejněny před použitím příslušné funkce. Můžete se rozhodnout nepřipojit Google, ale odmítnutí zahraniční manipulace nezbytné pro ověření nebo ukládání dat může omezit nebo zabránit použití části nebo celého SIDEY.\n\n## 7. Platební informace a externí služby\n\nApple zpracovává platby Mac App Store. U platby nabízené v sestavení přímé distribuce zpracovává poskytovatel platebních služeb otevřený prostřednictvím PortOne celé číslo karty, platební heslo a informace o ověření bankovního účtu. SIDEY nepřijímá ani neuchovává úplné platební údaje; zpracovává pouze identifikátory a výsledky potřebné k ověření, zrušení nebo vrácení peněz za objednávku.\n\nKdyž používáte vnější přihlašovací stránku, platební okno nebo propojenou webovou stránku, vztahují se na informace, které shromažďuje nezávisle, vlastní podmínky a zásady ochrany soukromí poskytovatele.\n\n## 8. Vaše práva a jak je uplatňovat\n\nMůžete požádat o přístup k vašim osobním údajům, jejich opravu nebo vymazání, pozastavení zpracování nebo odvolání souhlasu. Uživatel přihlášení pomocí Apple může po opětovném ověření smazat účet v nastavení aplikace. Další žádosti o účet nebo údaje lze zaslat e-mailem níže uvedenému pověřenci pro ochranu osobních údajů.\n\nPráva můžete uplatnit prostřednictvím zákonného zástupce nebo jiné oprávněné osoby. Provozovatel si může vyžádat autorizační formulář a minimální údaje potřebné k potvrzení totožnosti uživatele a zástupce, jak to umožňuje zákon. Provozovatel do 10 dnů od obdržení žádosti o přístup vysvětlí, jakým způsobem bude přístup poskytnut, nebo tam, kde zákon umožňuje omezení, odložení nebo odmítnutí, vysvětlí důvod a jak vznést námitku.\n\nVýmaz může být omezen, zatímco jiný zákon vyžaduje uchování záznamu. SIDEY neprovádí automatizovaná rozhodnutí, která mají právní nebo podobně významné účinky na uživatele.\n\n## 9. Vymazání\n\nOsobní údaje jsou vymazány bez zbytečného odkladu, jakmile skončí doba jejich uchovávání nebo bude splněn účel. Elektronické záznamy jsou mazány metodami, které mají zabránit obnovení. Transakční záznamy podléhající samostatným povinnostem uchovávání jsou odděleny od obecných servisních údajů, používány pouze pro požadovaný účel a po skončení tohoto období jsou vymazány.\n\nSmazáním účtu se odstraní profil, skupinová připojení a aktivní odkazy oprávnění SIDEY. Minimální záznamy o transakcích mohou být uchovávány odděleně pro právní účely a účely vypořádání s minimalizací propojení s uživateli. Smazáním účtu se automaticky nevymažou záznamy o transakcích držené společností Apple nebo poskytovatelem platebních služeb a nejedná se o žádost o vrácení peněz.\n\n## 10. Bezpečnostní opatření\n\nProvozovatel omezuje přístup k osobním údajům na to, co je potřeba pro práci, a odděluje provozní oprávnění a tajemství. SIDEY využívá řízení přístupu na úrovni řádků databáze, kontrolu kapacity skupiny a členství na straně serveru, šifrovaný přenos a zabezpečené úložiště operačního systému. Kódy pozvánky nejsou na serveru uloženy v prostém textu a v aplikaci ani na veřejném webu nejsou zahrnuty tajné platební klíče a administrátorská oprávnění.\n\nSIDEY není prezentována jako služba s implementovaným a ověřeným end-to-end šifrováním.\n\n## 11. Soubory cookie a podobné technologie\n\nVeřejné webové stránky SIDEY neinstalují soubory cookie pro personalizovanou reklamu, analýzu chování návštěvníků nebo individuální doporučení. Prohlížeč nebo poskytovatel hostingu může zpracovávat informace o připojení nebo používat technické úložiště k poskytování statických souborů a ochraně služby.\n\nExterní poskytovatel může používat soubory cookie pro funkčnost a zabezpečení, když navštívíte přihlašovací stránku Google nebo Apple nebo platební stránku. Dostupné ovládací prvky naleznete v nastavení soukromí daného poskytovatele.\n\n## 12. Pověřenec pro ochranu osobních údajů\n\n- **Pověřenec pro ochranu osobních údajů:** Taehyun Ryu\n- **E-mail:** <ryu200112@gmail.com>\n\nDotazy, stížnosti, opravné prostředky a žádosti o uplatnění práv na ochranu soukromí můžete zasílat na výše uvedený e-mail. Provozovatel bez zbytečného odkladu zkontroluje a odpoví.\n\n## 13. Opravné prostředky pro porušení soukromí\n\nPokud potřebujete poradit nebo chcete nahlásit porušení ochrany osobních údajů v Koreji, můžete se obrátit na:\n\n- [Výbor pro zprostředkování osobních informací](https://www.kopico.go.kr/) · 1833-6972\n- [Centrum hlášení porušení ochrany osobních údajů KISA](https://privacy.kisa.or.kr/) · 118\n- [Úřad nejvyššího státního zástupce](https://www.spo.go.kr/) · 1301\n- [Systém hlášení o počítačové kriminalitě korejské národní policejní agentury](https://ecrm.police.go.kr/) · 182\n\n## 14. Externí služby mimo tyto zásady\n\nWeb a aplikace SIDEY mohou odkazovat na služby provozované jinými poskytovateli. Tyto Zásady neupravují informace zpracovávané externí službou, kterou Provozovatel nekontroluje. Přečtěte si zásady ochrany osobních údajů služby, kterou navštěvujete.\n\n## 15. Změny těchto zásad\n\nPokud se tyto Zásady změní v důsledku zákona, Služby nebo vnějších vztahů se zpracováním, datum účinnosti a podstatné změny budou oznámeny prostřednictvím webu nebo aplikace. Změna s významným dopadem na uživatelská práva bude předem oznámena na zákonem stanovenou dobu.\n\n## 16. Datum účinnosti\n\nTyto zásady ochrany osobních údajů nabývají účinnosti dnem 4. září 2026."
+    },
+    "refund": {
+      "title": "Zásady vrácení peněz · SIDEY",
+      "description": "Podmínky zrušení a vrácení peněz pro nároky na digitální přizpůsobení SIDEY.",
+      "heading": "Zásady zrušení a vrácení peněz",
+      "introduction": "Placené položky přizpůsobení SIDEY jsou digitální nároky doručené na váš účet po potvrzení platby.",
+      "translationNotice": "Tato stránka je překladem původního korejského dokumentu.",
+      "originalLabel": "Zobrazit původní dokument",
+      "body": "## Vrácení peněz po změně rozhodnutí po zahájení dodávky\n\nDoručování nároku na digitální přizpůsobení začíná, jakmile je potvrzena platba. Jakmile je dodávka zahájena, zrušení nebo vrácení peněz pro jednoduchou změnu názoru není možné.\n\n## Když je k dispozici plná náhrada\n\nVrácení peněz v plné výši bude vydáno, když bude potvrzen právně uznaný důvod, včetně:\n\n- platba byla schválena, ale digitální oprávnění nebylo doručeno;\n- dodané zboží neodpovídá svému popisu nebo kupní smlouvě;\n- stejná objednávka nebo položka byla účtována více než jednou;\n- platba nebyla autorizována majitelem účtu;\n- nezletilá osoba nakoupila bez souhlasu zákonného zástupce; nebo\n- platné zákony jinak vyžadují plnou náhradu.\n\n## Jak se vyřizují požadavky\n\n1. V případě nákupu Mac App Store požádejte o vrácení peněz prostřednictvím procesu nahlášení problému společnosti Apple. Pokud je platba nabízena prostřednictvím PortOne v sestavení přímé distribuce, zašlete podpoře pouze nákupní účet, dobu platby a informace potřebné k nalezení objednávky. Neposílejte celé číslo platební karty ani heslo.\n2. Poté, co společnost Apple nebo poskytovatel platebních služeb potvrdí vrácení peněz, bude nárok udělený tímto zdrojem plateb zrušen.\n3. Pokud se odvolaný předmět nevztahuje na žádný jiný platný grant a je aktuálně vybaven, tato kategorie se vrátí ke své výchozí položce: výchozí křeček, výchozí bublina nebo výchozí přehazovatelná hračka.\n\n## Smazání účtu a vrácení peněz\n\nSmazání účtu SIDEY není žádostí o vrácení peněz za nákup. Platný nákup v aplikaci Apple lze stále obnovit na nový účet SIDEY pomocí stejného nákupního účtu Apple.\n\n## Záznamy a zákonná práva\n\nŽádosti o vrácení peněz a výsledky jsou bezpečně uchovávány po dobu potřebnou k vyřešení sporů a splnění zákonných povinností. Tato politika neomezuje práva na zrušení, ukončení nebo nápravu zaručená platnými zákony.\n\n## Podpora\n\n- **Prodejce:** 싸이디(SIDEY)\n- **E-mail:** <ryu200112@gmail.com>\n- **Registrační číslo firmy:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Nové postavy a přehazovatelné předměty s vylepšeními posledních zpráv, nastavení a spojení mezi přáteli."
+        ],
+        "new": [
+          "Do obchodu Windows a překryvné vrstvy bylo přidáno pět postav – Shiba Inu, kachna, hovínko, tteokbokki a quokka – a čtyři přehazovatelné předměty: tenisový míček, tkáňový míček, špíz na rybí dort a list.",
+          "Okno posledních zpráv můžete připnout nad ostatní okna."
+        ],
+        "changed": [
+          "Rozšířená podpora jazyků aplikace na 23 jazyků.",
+          "Nedávné zprávy si nyní při procházení starších zpráv uchovávají vaši pozici při čtení.",
+          "Nastavení zkratek zobrazuje aktuálně používané kombinace kláves přesněji.",
+          "Aktualizace ze starší verze bezpečně přesune instalaci a zachová vaše nastavení."
+        ],
+        "fixed": [
+          "Opraveno krátké zobrazení zprávy při poklepání na znak.",
+          "Opravené přezdívky postav objevující se pod úhlem poblíž okraje obrazovky.",
+          "Vylepšené doručování zpráv a přehazování reakcí mezi uživateli v různých verzích.",
+          "Opravené časové limity při obnovení připojení k více místnostem po odpojení."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Vylepšené přihlašování a správa účtu Google spolu s chatem, zkratkami a překryvnou vrstvou."
+        ],
+        "new": [
+          "Svůj účet se můžete odhlásit nebo smazat v nastavení.",
+          "Odesílejte zprávy přímo z nedávných zpráv a mezi spuštěními udržujte přetaženou pozici vstupního okna.",
+          "Zaznamenejte si vlastní zkratky pro překrytí, tichý režim, zadávání zpráv a poslední zprávy a vyměňte duplicitní kombinace kláves.",
+          "Zkontrolujte ceny produktů a vlastněné položky v aplikaci a poté otevřete webovou pokladnu."
+        ],
+        "changed": [
+          "Přihlášení přes Google je nyní součástí požadovaného nastavení; tlačítko přihlášení zůstane deaktivováno, dokud se kontroluje uložený stav přihlášení, aby se zabránilo duplicitnímu ověření.",
+          "Odpojením účtu se před návratem k přihlášení vymažou aktivní připojení a místní stav.",
+          "Tichý režim skrývá indikátory psaní a animace zavírání překryvu se přehrává plynule.",
+          "Vylepšený návrat do aplikace po ověření a odpovědích na psaní v reálném čase.",
+          "Instalační program obsahuje požadované běhové prostředí Windows App SDK a .NET s lepší obnovou a vedením, pokud se aktualizace, oprava nebo odinstalace nezdaří.",
+          "Chyby připojení vysvětlují jejich příčinu, zatímco zbytečné chyby generované při opětovném připojení jsou skryté.",
+          "Stav chůze vašeho stromu je sdílen s ostatními ve stejné skupině.",
+          "Oznámení o stavu v aplikaci jsou snáze čitelná ve světlých i tmavých motivech."
+        ],
+        "fixed": [
+          "Opravená kliknutí na znaky, takže zadání zprávy se otevře pouze na jedno kliknutí.",
+          "Otevřením již spuštěné aplikace se bezpečně vrátíte do jejího stávajícího okna."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Nové položky a klávesové zkratky se zasíláním zpráv přímo z posledních zpráv."
+        ],
+        "new": [
+          "Přidáno devět produktů: pět postav a čtyři přehazovatelné položky.",
+          "Přidány globální zkratky pro zobrazení nebo skrytí překrytí, přepínání tichého režimu, otevírání zadávání zpráv a otevírání posledních zpráv.",
+          "Přizpůsobte si kombinaci kláves každé globální zkratky v nastavení.",
+          "Pište a posílejte zprávy přímo z okna posledních zpráv.",
+          "Přidána podpora pro korejštinu, angličtinu, japonštinu a tradiční čínštinu."
+        ],
+        "changed": [
+          "Bubliny si zachovávají svou obvyklou orientaci, i když jsou znaky umístěny na levém nebo pravém okraji obrazovky."
+        ],
+        "fixed": [
+          "Opraveno, že postavy nebyly omráčeny poté, co byly opakovaně zasaženy odhazovatelnými předměty."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

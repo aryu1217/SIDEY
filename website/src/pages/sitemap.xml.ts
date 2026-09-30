@@ -16,7 +16,7 @@ const routeGroups = [
   "support/",
 ] as const;
 
-const lastModified = "2026-09-21";
+const lastModified = "2026-09-30";
 
 export const GET: APIRoute = ({ site }) => {
   if (!site) throw new Error("Astro site URL is required to generate the sitemap");

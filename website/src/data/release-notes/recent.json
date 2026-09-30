@@ -1,0 +1,16 @@
+[
+  {
+    "version": "2.1.0",
+    "url": "https://github.com/sidey-app/SIDEY/releases/tag/windows-v2.1.0",
+    "publishedAt": "2026-09-28T07:21:23Z",
+    "asset": {
+      "url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.1.0/SIDEY-Windows-x64-v2.1.0-Setup.exe",
+      "sha256": "72d5b8b417bfadcabe1d83b41cdc09b75c1bfe97711d11a195abd821079dae40"
+    }
+  },
+  {
+    "version": "2.0.0",
+    "url": "https://github.com/sidey-app/SIDEY/releases/tag/windows-v2.0.0",
+    "publishedAt": "2026-09-20T14:16:14Z"
+  }
+]

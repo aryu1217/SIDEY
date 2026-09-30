@@ -219,6 +219,20 @@ def replace_checksum(html: str, platform: str, digest: str) -> str:
     return updated
 
 
+def replace_displayed_version(html: str, platform: str, version: str) -> str:
+    marker = f'data-release-version="{platform}"'
+    if marker not in html:
+        return html
+    pattern = re.compile(
+        rf'(<span(?=[^>]*\bdata-release-version="{re.escape(platform)}")[^>]*>)'
+        rf'[^<]*(</span>)'
+    )
+    updated, replacements = pattern.subn(rf"\g<1>{version}\g<2>", html)
+    if html.count(marker) != 1 or replacements != 1:
+        raise ValueError(f"Expected one displayed release version: {platform}")
+    return updated
+
+
 def prepare(
     website_dir: Path,
     output_dir: Path,
@@ -305,7 +319,13 @@ def prepare(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(manifest_text, encoding="utf-8", newline="\n")
 
-    for locale, app_store_url in APP_STORE_URLS.items():
+    landing_locales = dict(APP_STORE_URLS)
+    for path in output_dir.glob("*/index.html"):
+        html = path.read_text(encoding="utf-8")
+        if "primary-download-action" in html or "windows-download-action" in html:
+            landing_locales.setdefault(path.parent.name, APP_STORE_URLS["en"])
+
+    for locale, app_store_url in landing_locales.items():
         relative_path = Path(locale) / "index.html"
         path = output_dir / relative_path
         if not path.is_file():
@@ -326,6 +346,7 @@ def prepare(
         require_anchor(html, "macos-download-action", href=app_store_url)
         require_anchor(html, "windows-download-action", href=update_url)
         html = replace_checksum(html, "windows", update_hash)
+        html = replace_displayed_version(html, "windows", product_version)
         path.write_text(html, encoding="utf-8", newline="\n")
 
     return release_version, update_hash

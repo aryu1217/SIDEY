@@ -7,6 +7,20 @@
   const batchSize = 3;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // GitHub language links can target older cards outside the first batch.
+  function openLinkedRelease() {
+    let id;
+    try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+    items.slice(0, items.indexOf(target) + 1).forEach((item) => { item.hidden = false; });
+    target.open = true;
+    target.classList.add("is-expanded");
+    target.scrollIntoView({ block: "start" });
+  }
+  openLinkedRelease();
+  window.addEventListener("hashchange", openLinkedRelease);
+
   items.forEach((item) => {
     const summary = item.querySelector("summary");
     const answer = item.querySelector(".update-answer");

@@ -1,9 +1,8 @@
 ---
 import InfoLayout from "../layouts/InfoLayout.astro";
 import PageTabs from "./PageTabs.astro";
-import { appStoreURLForLocale } from "../data/releases";
 import { getTranslations, localePathSegment, type Locale } from "../i18n/landing";
-import { getGitHubReleases, type ReleasePlatform } from "../data/github-releases";
+import { getWebsiteReleases, releaseCategories, type ReleasePlatform } from "../data/release-notes";
 
 interface Props {
   locale: Locale;
@@ -21,15 +20,14 @@ const tabs = [
   { href: `${base}${localePrefix}whats-new/windows/`, label: copy.tabs.windows, active: platform === "windows" },
 ];
 const resolvedCanonicalPath = canonicalPath ?? `${localePrefix}whats-new/${platform}/`;
-const platformReleases = platform === "windows" ? await getGitHubReleases(platform) : [];
-const dateLocales: Record<Locale, string> = { ko: "ko-KR", en: "en-US", ja: "ja-JP", "zh-Hant": "zh-TW" };
-const dateFormatter = new Intl.DateTimeFormat(dateLocales[locale], {
+const platformReleases = getWebsiteReleases(platform);
+const dateLocales: Partial<Record<Locale, string>> = { ko: "ko-KR", en: "en-US", ja: "ja-JP", "zh-Hant": "zh-TW" };
+const dateFormatter = new Intl.DateTimeFormat(dateLocales[locale] ?? locale, {
   year: "numeric",
   month: "long",
   day: "numeric",
 });
 const initialReleaseCount = 3;
-const appStoreURL = appStoreURLForLocale(locale);
 ---
 
 <InfoLayout locale={locale} title={`${platformLabel} ${copy.title} · SIDEY`} description={copy.intro} canonicalPath={resolvedCanonicalPath}>
@@ -39,9 +37,9 @@ const appStoreURL = appStoreURLForLocale(locale);
     <PageTabs label={copy.tabs.label} items={tabs} />
   </section>
   <section class="section update-list" aria-label={`${platformLabel} ${copy.title}`}>
-    {platform === "macos" && <p><a class="release-link" href={appStoreURL} data-app-store-link>{copy.appStoreHistory}<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a></p>}
+    {platformReleases.length === 0 && <p>{copy.empty}</p>}
     {platformReleases.map((release, index) => (
-      <details class:list={["update-card", { "is-expanded": index === 0 }]} open={index === 0} data-release-item hidden={index >= initialReleaseCount}>
+      <details id={`v${release.version}`} class:list={["update-card", { "is-expanded": index === 0 }]} open={index === 0} data-release-item hidden={index >= initialReleaseCount}>
         <summary>
           <div class="update-version">
             <span>{platformLabel}</span><h2>v{release.version}</h2>
@@ -49,20 +47,18 @@ const appStoreURL = appStoreURLForLocale(locale);
           </div>
           <span class="update-toggle-label"><span class="when-closed">{copy.openDetails}</span><span class="when-open">{copy.closeDetails}</span><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></span>
         </summary>
-        <div class="update-answer"><div class="update-copy" lang={locale === "ko" ? "ko" : undefined}>
-          {locale === "ko" ? (
-            <>
-              {release.introduction.map((paragraph) => <p>{paragraph}</p>)}
-              {release.sections.map((section) => (
-                <section class="release-section">
-                  {section.heading && <h3>{section.heading}</h3>}
-                  {section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
-                  {section.items.length > 0 && <ul>{section.items.map((point) => <li>{point}</li>)}</ul>}
-                </section>
-              ))}
-            </>
-          ) : <p>{copy.koreanOriginalNotice}</p>}
-          <a class="release-link" href={release.url}>{locale === "ko" ? copy.viewRelease : copy.viewKoreanOriginal}<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a>
+        <div class="update-answer"><div class="update-copy" lang={locale}>
+          {release.locales[locale].introduction.map((paragraph) => <p>{paragraph}</p>)}
+          {releaseCategories.map((category) => release.locales[locale][category].length > 0 && (
+            <section class="release-section" data-release-category={category}>
+              <h3>{copy.categories[category]}</h3>
+              <ul>{release.locales[locale][category].map((point) => <li>{point}</li>)}</ul>
+            </section>
+          ))}
+          {release.locales[locale].notes.length > 0 && <section class="release-section">
+            <h3>{copy.versionNotes}</h3>
+            <ul>{release.locales[locale].notes.map((point) => <li>{point}</li>)}</ul>
+          </section>}
         </div></div>
       </details>
     ))}

@@ -1,0 +1,35 @@
+---
+import PolicyLayout from "../../layouts/PolicyLayout.astro";
+import { createMarkdownProcessor } from "@astrojs/markdown-remark";
+import { getWebsiteCopy, supportedLocales, localePathSegment, type Locale } from "../../i18n/landing";
+
+type Policy = "terms" | "privacy" | "refund";
+
+export function getStaticPaths() {
+  const policies = ["terms", "privacy", "refund"] as const;
+  return supportedLocales.filter((locale) => !["ko", "en", "ja", "zh-Hant"].includes(locale))
+    .flatMap((locale) => policies.map((policy) => ({
+      params: { locale: localePathSegment(locale), policy }, props: { locale, policy },
+    })));
+}
+
+const { locale, policy } = Astro.props as { locale: Locale; policy: Policy };
+const copy = getWebsiteCopy(locale).policies[policy];
+
+const processor = await createMarkdownProcessor();
+const { code: body } = await processor.render(copy.body);
+---
+
+<PolicyLayout
+  title={copy.title}
+  description={copy.description}
+  canonicalPath={`${localePathSegment(locale)}/${policy}/`}
+  heading={copy.heading}
+  introduction={copy.introduction}
+  locale={locale}
+  originalPath={`ko/${policy}/`}
+  translationNotice={copy.translationNotice}
+  originalLabel={copy.originalLabel}
+>
+  <article class="policy-markdown" set:html={body} />
+</PolicyLayout>

@@ -3,7 +3,7 @@ import SiteHeader from "../components/SiteHeader.astro";
 import SiteFonts from "../components/SiteFonts.astro";
 import SiteTheme from "../components/SiteTheme.astro";
 import "../styles/styles.scss";
-import { localeRoot, type Locale } from "../i18n/landing";
+import { supportedLocales, localeRoot, type Locale } from "../i18n/landing";
 import { appStoreURLForLocale } from "../data/releases";
 
 interface Props {
@@ -18,11 +18,10 @@ interface Props {
 const { locale, title, description, ogTitle, ogDescription, ogAlt } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const canonicalPath = localeRoot(locale);
-const koreanHome = localeRoot("ko");
-const englishHome = localeRoot("en");
-const japaneseHome = localeRoot("ja");
-const traditionalChineseHome = localeRoot("zh-Hant");
-const ogLocales: Record<Locale, string> = { ko: "ko_KR", en: "en_US", ja: "ja_JP", "zh-Hant": "zh_TW" };
+const ogLocales = Object.fromEntries(supportedLocales.map(code => {
+  const language = new Intl.Locale(code).maximize();
+  return [code, `${language.language}_${language.region}`];
+}));
 const canonical = new URL(canonicalPath, Astro.site);
 const ogImage = new URL(`${base}assets/og.png`, Astro.site);
 const schema = {
@@ -39,7 +38,7 @@ const schema = {
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} dir={locale === "he" ? "rtl" : "ltr"}>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -48,10 +47,7 @@ const schema = {
     <SiteTheme />
     <SiteFonts />
     <link rel="canonical" href={canonical}>
-    <link rel="alternate" hreflang="ko" href={new URL(koreanHome, Astro.site)}>
-    <link rel="alternate" hreflang="en" href={new URL(englishHome, Astro.site)}>
-    <link rel="alternate" hreflang="ja" href={new URL(japaneseHome, Astro.site)}>
-    <link rel="alternate" hreflang="zh-Hant" href={new URL(traditionalChineseHome, Astro.site)}>
+    {supportedLocales.map(code => <link rel="alternate" hreflang={code} href={new URL(localeRoot(code), Astro.site)} />)}
     <link rel="alternate" hreflang="x-default" href={new URL(base, Astro.site)}>
     <link rel="icon" type="image/png" href={`${base}assets/app-icon.png`}>
     <meta property="og:type" content="website">

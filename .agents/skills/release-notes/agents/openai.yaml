@@ -1,7 +1,7 @@
 interface:
   display_name: "Release Notes"
-  short_description: "Draft attributed platform release notes"
-  default_prompt: "Use $release-notes to draft the canonical SIDEY release note from the exact shipped range with verified PR or commit attribution."
+  short_description: "Draft localized public platform release notes"
+  default_prompt: "Use $release-notes to draft categorized SIDEY release notes and website translations from verified shipped evidence, keeping PR numbers and author attribution in private evidence."
 
 policy:
   allow_implicit_invocation: true

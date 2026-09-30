@@ -3,7 +3,7 @@ import SiteFonts from "../components/SiteFonts.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import LandingFooter from "../components/LandingFooter.astro";
 import SiteTheme from "../components/SiteTheme.astro";
-import { localizeCanonicalPath, supportedLocales, type Locale } from "../i18n/landing";
+import { getTranslations, localizeCanonicalPath, supportedLocales, type Locale } from "../i18n/landing";
 import "../styles/styles.scss";
 
 interface Props {
@@ -26,12 +26,12 @@ const localePaths = supportedLocales.map((code) => ({
   code,
   path: localizeCanonicalPath(canonicalPath, code),
 }));
-const neutralPath = canonicalPath.replace(/^(ko|en|ja|zh-hant)\//, "");
-const skipLabels: Record<Locale, string> = { ko: "본문으로 건너뛰기", en: "Skip to content", ja: "本文へスキップ", "zh-Hant": "跳到主要內容" };
+const neutralPath = canonicalPath.replace(/^[^/]+\//, "");
+const skipLabel = getTranslations(locale).skip;
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} dir={locale === "he" ? "rtl" : "ltr"}>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -45,7 +45,7 @@ const skipLabels: Record<Locale, string> = { ko: "본문으로 건너뛰기", en
     <link rel="icon" type="image/png" href={`${base}assets/app-icon.png`}>
   </head>
   <body class="policy-page route-content-enter">
-    <a class="skip-link" href="#main">{skipLabels[locale]}</a>
+    <a class="skip-link" href="#main">{skipLabel}</a>
     <SiteHeader locale={locale} current={current} />
     <main id="main" class="policy-document">
       {translationNotice && originalPath && originalLabel && (

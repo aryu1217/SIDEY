@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Vaši prijatelji na ivici vašeg ekrana",
+      "description": "SIDEY je aplikacija za razmenu poruka na računaru koja prikazuje prisustvo najbližih prijatelja i njihove kratke poruke kao male pikselske životinje na ivici ekrana.",
+      "ogTitle": "SIDEY — Mali prijatelji na ivici vašeg ekrana.",
+      "ogDescription": "Pogledajte prisustvo i kratke poruke svojih najbližih prijatelja kao male životinje u pikselima.",
+      "ogAlt": "Slika za deljenje SIDEY sa pet pikselskih životinja poređanih duž ivice ekrana"
+    },
+    "skip": "Pređi na sadržaj",
+    "navigation": {
+      "navigation": "Glavna navigacija",
+      "home": "Početna stranica SIDEY",
+      "openMenu": "Otvorite meni",
+      "closeMenu": "Zatvori meni",
+      "features": "Mogućnosti",
+      "download": "Preuzmi",
+      "faq": "Česta pitanja",
+      "whatsNew": "Šta je novo",
+      "store": "Prodavnica",
+      "support": "Podrška",
+      "characters": "Likovi",
+      "throwables": "Igračke koje se mogu bacati",
+      "bubbles": "Oblačići",
+      "useLightTheme": "Pređi na svetlu temu",
+      "useDarkTheme": "Pređi na tamnu temu"
+    },
+    "hero": {
+      "title": "Prijatelji na ivici vašeg ekrana.",
+      "description": "Vaši prijatelji postaju male pikselske životinje koje šetaju duž ivice ekrana. Bacite pogled dok radite i pošaljite kratku poruku kad ih se setite.",
+      "downloadsLabel": "Opcije preuzimanja",
+      "appStoreDownload": "Preuzmite na App Store",
+      "macDownload": "Preuzmite za macOS",
+      "windowsDownload": "Preuzmite za Windows",
+      "choosePlatform": "Izaberite svoju platformu",
+      "platformMenu": "Izaberite platformu ručno",
+      "menuToggle": "Izaberite drugu platformu",
+      "windowsStatus": "Windows 10 1809 (izrada 17763) ili novija · x64",
+      "browserTitle": "Današnji zadaci | Napomene",
+      "browserNote": "Današnja lista",
+      "message": "Vidimo se u sedam?",
+      "typingLabel": "Rozi kuca",
+      "names": {
+        "kong": "Moči · JA",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rozi"
+      },
+      "caption": "Scena SIDEY sa prijateljima životinjama u pikselima koji šetaju, dremaju i spavaju na dnu pretraživača unutar monitora"
+    },
+    "motion": {
+      "title": "Stajanje na mestu bilo bi dosadno.",
+      "description": "Prijatelji šetaju kada su na mreži, dremaju kada su odsutni i spavaju kada su van mreže. Možete i malo da zadirkujete jedni druge.",
+      "label": "Stanja i radnje likova u SIDEY",
+      "presence": {
+        "eyebrow": "Svakodnevno prisustvo",
+        "title": "Šetnja, dremanje, spavanje.",
+        "description": "Na mreži, odsutni ili van mreže — lik se menja u skladu sa njihovim prisustvom.",
+        "online": "Na mreži",
+        "away": "Odsutni",
+        "offline": "Van mreže"
+      },
+      "throw": {
+        "eyebrow": "Igraj se sa prijateljem",
+        "title": "Ponekad meka lopta najbolje govori.",
+        "description": "Koko baca mekanu lopticu koja blago udara Rozi.",
+        "source": "Koko",
+        "target": "Rozi"
+      },
+      "pulse": {
+        "eyebrow": "Veliki pozdrav",
+        "title": "Ponekad pozdrav treba da bude veći.",
+        "description": "Dvaput kliknite na Čarlija i odjednom će se pojaviti veći na ivici vašeg ekrana.",
+        "name": "Čarli"
+      },
+      "names": {
+        "kong": "Moči",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Tu su dok radite.",
+      "introduction": "SIDEY ostaje na ivici vašeg ekrana dok radite. Bacite pogled da vidite šta vaši prijatelji smeraju i recite nešto kada vam padnu na pamet.",
+      "label": "Kako se SIDEY uklapa u vaš ekran",
+      "caption": "SIDEY pored macOS radnog prostora",
+      "alt": "Radna površina macOS sa prozorom za beleške i prijateljima piksela SIDEY duž donje ivice ekrana",
+      "steps": [
+        [
+          "01",
+          "Nastavite da radite ono što radite",
+          "Možete da nastavite da klikćete i koristite aplikaciju iza SIDEY kao i obično."
+        ],
+        [
+          "02",
+          "Vidite šta nameravaju",
+          "Šetnja, dremanje i spavanje pokazuju da li su vaši prijatelji u blizini."
+        ],
+        [
+          "03",
+          "Reci nešto kad hoćeš",
+          "Otvorite SIDEY da pošaljete kratku poruku ili razmenite malo nestašluka."
+        ]
+      ]
+    },
+    "download": {
+      "title": "Prenesite SIDEY na radnu površinu.",
+      "description": "SIDEY je dostupan za macOS i Windows. Izaberite verziju koja odgovara vašem računaru i instalirajte je.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Preuzmite za Windows",
+      "releaseNotes": "Napomene o izdanju",
+      "macSystem": "macOS 26 ili noviji · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (izrada 17763) ili novija · x64",
+      "copyFailure": "Nije moguće kopirati. Izaberite heš ručno.",
+      "hashCopy": "Kopiraj heš SHA-256",
+      "hashCopied": "SHA-256 heš kopiran."
+    },
+    "faq": {
+      "title": "Pitanja koja možda imate.",
+      "intro": "Nekoliko stvari koje vredi znati pre nego što počnete.",
+      "items": [
+        [
+          "Šta je SIDEY?",
+          "SIDEY je aplikacija za razmenu poruka na računaru, dostupna samo uz poziv, u kojoj se vaši najbliži prijatelji druže na ivici ekrana kao mali pikselski likovi. Svaka privatna grupa može da ima do 12 ljudi."
+        ],
+        [
+          "Koji računari su podržani?",
+          "SIDEY radi na Mac računarima sa Apple Silicon procesorom i macOS 26 ili novijim, kao i na x64 računarima sa Windows 10 1809 (verzija 17763) ili novijim. Mac računari sa Intel procesorom trenutno nisu podržani."
+        ],
+        [
+          "Kako da pozovem prijatelje?",
+          "Napravite privatnu grupu i pošaljite pozivni kod direktno svojim prijateljima. Grupa može imati do 12 članova, a svaka osoba može da se pridruži do pet grupa."
+        ],
+        [
+          "Da li SIDEY gleda šta radim na svom računaru?",
+          "Ne. SIDEY ne prikuplja sadržaj ekrana, spiskove otvorenih aplikacija, tastere pritisnute u drugim aplikacijama, položaj pokazivača, sadržaj datoteka, zvuk mikrofona ili video kamere. Status kucanja se šalje samo dok kucate u SIDEY polju za poruke."
+        ],
+        [
+          "Koliko dugo se poruke čuvaju?",
+          "Nedavne poruke se čuvaju tri dana, a zatim se trajno brišu."
+        ],
+        [
+          "Hoće li se SIDEY prikazivati preko svake igre i aplikacije preko celog ekrana?",
+          "Ne uvek. SIDEY je vidljiv pri uobičajenom radu na računaru, ali možda neće biti prikazan preko bezbednosnih ekrana, aplikacija zaštićenih DRM-om, aplikacija sa povišenim privilegijama ili nekih igara u isključivom režimu celog ekrana."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Šta je novo",
+      "intro": "Pogledajte najnovije promene SIDEY, grupisane po macOS i Windows.",
+      "tabs": {
+        "label": "Šta je novo u operativnom sistemu",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "Šta ima novo",
+        "changed": "Šta se promenilo",
+        "fixed": "Šta je popravljeno"
+      },
+      "versionNotes": "Napomene za ovu verziju",
+      "empty": "Još nema napomena o izdanju.",
+      "viewRelease": "Pogledajte izdanje GitHub",
+      "openDetails": "Prikaži promene",
+      "closeDetails": "Sakrij promene",
+      "loadedMore": "Učitano je još prethodnih ažuriranja."
+    }
+  },
+  "storeChrome": {
+    "store": "SIDEY Prodavnica",
+    "keepsake": "Uspomena",
+    "separate": "Prodaje se odvojeno",
+    "treeHint": "U aplikaciji macOS, kliknite desnim tasterom miša na stablo da biste ga zaustavili. Ponovo kliknite desnim tasterom miša da biste ga pustili.",
+    "sound": "Zvuk",
+    "categories": "Kategorije prodavnice",
+    "characters": "Likovi",
+    "throwables": "Igračke koje se mogu bacati",
+    "bubbles": "Oblačići",
+    "preview": "Otvorite pregled",
+    "previewAction": "Pregled",
+    "closePreview": "Zatvori pregled",
+    "bubbleMessage": "Hoćeš da se družimo danas?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Likovi",
+      "title": "Novi prijatelji za vaš ekran.",
+      "description": "Otvorite pregled da vidite kako se svaki lik kreće u SIDEY.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Mali hrčak",
+          "description": "SIDEY-ov originalni pratilac, sa sitnim ušima i rumenim obrazima.",
+          "price": "Uključeno",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Malo mače",
+          "description": "Mekano sivo prugasto mače sa savršeno šiljatim ušima.",
+          "price": "Uključeno",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Čupavo štene",
+          "description": "Štene sa ušima boje karamele i divno čupavim licem.",
+          "price": "Uključeno",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Mali zeka",
+          "description": "Duge uši i ljubičasti šal čine ovog malog prijatelja lako uočljivim.",
+          "price": "Uključeno",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Mali pingvin",
+          "description": "Tamnoplavi pingvin koji se gega sa šalom boje mente.",
+          "price": "Uključeno",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Igračke koje se mogu bacati",
+      "title": "Od mekih lopti do mini topova.",
+      "description": "Pregledajte igračke koje možete da bacite prijateljima, od mekih loptica i srca do mini topova.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Mekana loptica od zakrpa",
+          "description": "Mekana mala lopta koju svaki SIDEY lik može da baci prijatelju.",
+          "price": "Uključeno",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Oblačići",
+      "title": "Oblačići po vašem ukusu.",
+      "description": "Promenite boje i male ukrase na porukama i indikatorima kucanja.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Klasični oblačić",
+          "description": "Oštar oblačić SIDEY koji se lako čita za svaku radnu površinu.",
+          "price": "Uključeno",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Podrška · SIDEY",
+    "description": "Prijavite problem SIDEY na GitHub ili nas kontaktirajte privatno putem e-pošte.",
+    "heading": "SIDEY Podrška",
+    "introduction": "Prijavite greške koje se mogu reprodukovati na GitHub. Za kupovine, naloge ili stvari koje bi trebalo da ostanu privatne, kontaktirajte nas putem e-pošte.",
+    "githubTitle": "Prijavite grešku na GitHub",
+    "githubBody": "Prvo pretražite postojeće probleme. Ako je isti problem već prijavljen, dodajte reakciju palca gore na taj problem umesto da pravite duplikat. GitHub nalog je potreban da biste poslali problem.",
+    "searchIssues": "Pretražite postojeće probleme",
+    "reportIssue": "Otvorite obrazac za prijavu grešaka",
+    "emailTitle": "Kontaktirajte nas putem e-pošte",
+    "emailBody": "Za pitanja o kupovini ili nalogu i izveštaje koji sadrže privatne informacije, pošaljite nam e-poštu. Uključite SIDEY i svoj operativni sistem u temu.",
+    "emailAction": "Pošalji e-poštu",
+    "include": "Informacije tražene u obrascu za prijavu grešaka",
+    "details": [
+      "Operativni sistem i arhitektura (obavezno): nalepite izlaz komande ispod.",
+      "SIDEY verzija (obavezno): pronađite je koristeći uputstva u nastavku.",
+      "Šta se desilo (obavezno): jasno opišite problem; evidencije iz kojih su uklonjeni osetljivi podaci, snimci ekrana ili video mogu da pomognu.",
+      "Koraci za reprodukciju (obavezno): objasnite radnje koje dovode do problema, po redu.",
+      "Očekivano ponašanje (opciono): objasnite šta je trebalo da se desi.",
+      "Dodatne informacije (opciono): uključite bilo koji drugi relevantan kontekst."
+    ],
+    "diagnostics": "Pronalaženje vaše verzije i dijagnostičkih dnevnika",
+    "operatingSystem": "Informacije o operativnom sistemu",
+    "macosLabel": "macOS (Terminal)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: U Finder-u kliknite desnim tasterom miša na SIDEY.app i izaberite Informacije (⌘I).",
+    "windowsVersion": "Windows: Otvorite Podešavanja → O aplikaciji → Ažuriranja.",
+    "macDiagnostics": "macOS: Naredba u nastavku čuva poslednjih 30 minuta evidencije SIDEY u datoteku na vašoj radnoj površini.",
+    "windowsDiagnostics": "Windows: Otvorite Podešavanja → O aplikaciji → Izvezi dijagnostiku. Datoteke evidencije se čuvaju na radnoj površini. Kod problema sa instalacijom priložite dijagnostičke podatke koje prikazuje instalater.",
+    "protect": "Čuvajte osetljive informacije privatno",
+    "protectBody": "Prijave problema na GitHub-u su javne. Uklonite pozivne kodove, sadržaj poruka, tokene za prijavu ili autentifikaciju, lozinke, pune brojeve platnih kartica i lične podatke iz teksta, evidencija, snimaka ekrana i videa. Ne šaljite ove tajne ni e-poštom; po potrebi ćemo tražiti određene podatke koji nisu osetljivi.",
+    "response": "Vremena odgovora se mogu razlikovati u zavisnosti od jezika; nije zagarantovano vreme odgovora specifično za jezik."
+  },
+  "footer": {
+    "terms": "Uslovi korišćenja",
+    "privacy": "Politika privatnosti",
+    "refund": "Politika refundiranja",
+    "language": "Izaberite jezik"
+  },
+  "legalNotice": "Korišćenjem zvanične usluge SIDEY, prihvatate {terms} i {privacy}.",
+  "policies": {
+    "terms": {
+      "title": "Uslovi korišćenja · SIDEY",
+      "description": "Uslovi koji regulišu SIDEY desktop uslugu i stavke digitalnog prilagođavanja.",
+      "heading": "SIDEY Uslovi korišćenja",
+      "introduction": "Ovi Uslovi određuju prava i odgovornosti koje važe kada koristite SIDEY desktop uslugu i stavke digitalnog prilagođavanja.",
+      "translationNotice": "Ova stranica je prevod originalnog korejskog dokumenta.",
+      "originalLabel": "Pogledajte originalni dokument",
+      "body": "## 1. Svrha i obim\n\nOvi Uslovi regulišu aplikaciju SIDEY, veb lokaciju i srodne usluge (zajedno, „Usluga“) koje pruža operater SIDEY („Operator“). Korišćenjem zvanične usluge prihvatate ove Uslove i svaku posebno objavljenu operativnu politiku. Ako vam važeći zakon pruža veću zaštitu od ovih Uslova, taj zakon će se primenjivati.\n\n## 2. Ključni pojmovi\n\n„Nalog“ je identifikator koji se koristi za razlikovanje korisnika i povezivanje grupa, poruka i digitalnih prava. „Grupa“ je privatni prostor dostupan samo prijateljima koji dobiju pozivni kod. „Digitalno pravo“ je pravo na korišćenje likova ili druge stavke prilagođavanja preko naloga za kupovinu; ne prenosi vlasništvo ili autorska prava na samoj stvari.\n\n## 3. Publikacija i izmene\n\nOperater čini ove Uslove dostupnim na veb stranici. Ako je promena potrebna zbog zakona ili Usluge, Operater će otkriti njen datum stupanja na snagu i razlog za promenu. Materijalne promene koje ugrožavaju korisnike biće unapred najavljene za period i na način propisan važećim zakonom. Osim ako to nije propisano zakonom ili ako se strane dogovore, kupoprodajni ugovor sačinjen pre promene ostaje regulisan uslovima koji su bili na snazi kada je formiran.\n\n## 4. Služba\n\nSIDEY je desktop preklapajući glasnik koji predstavlja prave prijatelje kao piksel karaktere. Njegove specifične likovistike, podržana okruženja, obim korišćenja i ograničenja opisani su u aplikaciji ili na veb lokaciji i mogu se razlikovati u zavisnosti od kanala izdanja ili verzije.\n\n## 5. Nalozi i grupe\n\nDostupni načini prijavljivanja mogu da se razlikuju u zavisnosti od kanala izdanja. Nalozi, grupe i zapisi o kupovini sa različitih kanala ne mogu se automatski spajati ili prenositi; dodatne smernice će biti obezbeđene tamo gde je potrebno. Vi ste odgovorni za bezbednost svog uređaja i metoda prijavljivanja. Ne objavljujte šifre poziva javno i ne koristite nalog druge osobe bez dozvole.\n\n## 6. Poruke i prihvatljiva upotreba\n\nNe smete prenositi nezakonit materijal; povrediti reputaciju, privatnost ili autorska prava druge osobe; uznemiravati druge; nenormalno pristupa Usluzi ili njenim serverima; zaobići verifikaciju kupovine; distribuirati zlonamerni kod; ili ometati normalno korišćenje usluge drugog korisnika.\n\n## 7. Promene, suspenzija i ukidanje\n\nOperater može da promeni ili privremeno suspenduje deo Usluge radi bezbednosnih ažuriranja, promena operativnog sistema, održavanja, kvarova u komunikaciji ili poboljšanja usluge. Materijalne promene koje se mogu očekivati biće unapred objavljene putem veb stranice ili aplikacije. Hitni bezbednosni odgovori ili odgovori na incident mogu biti objavljeni naknadno. Ako se usluga prekine, biće dato razumno obaveštenje i neiskorišćena plaćena prava će se tretirati u skladu sa važećim zakonom i Politikom refundiranja.\n\n## 8. Kupovina i plaćanje\n\nKupoprodajni ugovor se formira kada pregledate naziv proizvoda, cenu i uslove isporuke i izvršite plaćanje. Plaćanje se može obraditi preko tržišta aplikacija ili usluge plaćanja koju identifikuje Operater. Operater daje Digitalno pravo nakon potvrde uplate. Porudžbine koje sadrže lažne informacije, duple zahteve ili artikle koji se tehnički ne mogu isporučiti mogu biti odbijeni ili otkazani.\n\n## 9. Digitalna dostava i otkazivanje\n\nVreme digitalne isporuke i uslovi za otkazivanje ili povraćaj sredstava regulisani su važećim zakonom i [Smernicama za refundiranje](https://sidey-app.github.io/SIDEY/sr-latn/refund/). Operater će učiniti uslove isporuke materijala i sva ograničenja za otkazivanje dostupnim pre kupovine. Ništa u ovim Uslovima ne ograničava prava zagarantovana važećim zakonom.\n\n## 10. Maloletnici\n\nMaloletno lice kome je potrebna saglasnost zakonskog zastupnika mora da dobije tu saglasnost pre kupovine. Maloletnik ili zakonski zastupnik može zahtevati otkazivanje tamo gde to dozvoljava važeći zakon, uključujući određene kupovine obavljene bez potrebne saglasnosti.\n\n## 11. Softverska licenca i intelektualna svojina\n\nTrenutni izvorni kod SIDEY je privatni vlasnički softver. Kanal distribucije i ovi Uslovi daju samo pravo na instaliranje i korišćenje zvanične aplikacije. Svaka revizija objavljena pod licencom AGPL-3.0-only pre promene licence ostaje pod licencom navedenom u toj reviziji. Ni ovi Uslovi ni prelazak izvornog repozitorijuma na privatni pristup ne ukidaju niti dodatno ograničavaju već dodeljena prava na pokretanje, kopiranje, menjanje ili distribuciju tih revizija. Javni repozitorijum `sidey-app/SIDEY` distribuira veb-sajt, politike, izdanja i instalatere; on nije repozitorijum trenutnog izvornog koda proizvoda. Detaljne granice su navedene u [vodiču za licenciranje](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md). Komponente trećih strana i dalje podležu svojim licencama i obaveštenjima.\n\nPlaćene stavke za prilagođavanje daju samo pravo na korišćenje preko Naloga koji ih je kupio, bez prenosa vlasništva ili autorskih prava nad datotekama, likovima ili dizajnom. Softverska licenca ne daje prava na žigove u imenu ili logotipu SIDEY, niti prava na likove i resurse za prilagođavanje koji se nude pod posebnim uslovima. Bez dozvole nosioca prava ne smete kopirati, prodavati, iznajmljivati, ponovo distribuirati, podlicencirati ili uklanjati obaveštenja o pravima sa tih resursa. Ne smete zaobilaziti kontrole kupovine, prava na korišćenje ili bezbednosti zvanične Usluge. Ova ograničenja ne ograničavaju prava koja daje licenca otvorenog koda za istorijsku javnu reviziju ili licenca treće strane.\n\n## 12. Ograničenja pristupa i brisanje naloga\n\nAko se potvrdi materijalno kršenje zakona ili ovih Uslova, ili ponašanje koje ugrožava bezbednost Usluge, Operater može da ograniči ili ukine pristup zvaničnoj Usluzi nakon obaveštenja i razumne prilike za izlečenje. Hitan bezbednosni rizik ili rizik od povrede drugih može se prvo ograničiti, a zatim objasniti. Ograničavanje pristupa uslugama ili brisanje naloga ne menja uslove raskida licence posebno primenljive na istorijsku javnu reviziju ili softver treće strane.\n\nNalog se može izbrisati kroz proces koji je naveden u aplikaciji. Brisanje naloga je odvojeno od zahteva za povraćaj sredstava, a da li kupovina može da se vrati zavisi od primenljivog kanala izdavanja i dobavljača plaćanja. Odredbe koje po svojoj prirodi treba da opstanu nakon raskida – uključujući odredbe o intelektualnoj svojini, odgovornosti i sporovima – ostaju na snazi.\n\n## 13. Obaveštenja i usluge trećih strana\n\nOperater može da šalje obaveštenja o usluzi putem aplikacije, veb stranice ili kontakt podataka koje navedete. Povezane ili integrisane usluge su regulisane sopstvenim uslovima i politikama primenljivog provajdera. Operater ne garantuje nezavisno funkcionisanje usluge koju ne pruža direktno.\n\n## 14. Ograničenja usluge i odgovornost\n\nNeke funkcije mogu biti ograničene ili se ponašati drugačije u zavisnosti od uređaja, operativnog sistema, bezbednosnih podešavanja, drugog softvera ili mrežnog okruženja. Specifična tehnička ograničenja su opisana u aplikaciji ili na veb lokaciji. SIDEY nije dizajniran za kritičnu bezbednost, medicinsku, hitnu ili drugu upotrebu koja zahteva trenutnu i neprekidnu isporuku. Ništa u ovim Uslovima ne isključuje odgovornost koja se ne može isključiti prema zakonu o odgovornosti za proizvode ili o zaštiti potrošača, ili odgovornost uzrokovanu namernim nedoličnim ponašanjem Operatera ili grubim nemarom.\n\n## 15. Merodavno pravo i sporovi\n\nOvi Uslovi su regulisani zakonima Republike Koreje. Strane će prvo pokušati da reše spor u dobroj veri. Ako ostane nerešen, saslušaće ga sud koji je nadležan prema Zakonu o korejskom građanskom postupku i drugim važećim zakonima. Korisnici takođe mogu koristiti legalno dostupne procedure za rešavanje potrošačkih sporova, uključujući i one koje nudi Korejska agencija za zaštitu potrošača.\n\n## 16. Datum stupanja na snagu i predložena revizija\n\nOriginalni Uslovi stupili su na snagu 4. septembra 2026. Ova predložena revizija je pripremljena 20. septembra 2026. kako bi se razlikovali trenutni privatni vlasnički izvorni kod, AGPLv3 prava u istorijskim javnim revizijama i uslovi koji regulišu zvaničnu uslugu i plaćena sredstva. Datum stupanja na snagu biće objavljen odvojeno sa obaveštenjem o promeni u odeljku 3. Priprema ovog predloga sama po sebi ne menja postojeće Uslove niti primenjuje promene retroaktivno na prethodne kupovine ili licence istorijskih javnih revizija."
+    },
+    "privacy": {
+      "title": "Politika privatnosti · SIDEY",
+      "description": "Kako SIDEY rukuje ličnim podacima, zadržavanjem, spoljnom obradom i pravima korisnika.",
+      "heading": "SIDEY Politika privatnosti",
+      "introduction": "SIDEY prati važeći zakon o privatnosti i obrađuje samo informacije potrebne za pružanje Grupa prijatelja i razmenu poruka. Ova politika objašnjava čime se postupa, zašto je potrebna, kada se briše i kako možete ostvariti svoja prava.",
+      "translationNotice": "Ova stranica je prevod originalnog korejskog dokumenta.",
+      "originalLabel": "Pogledajte originalni dokument",
+      "body": "## 1. Zašto se rukuje ličnim podacima\n\nOperater obrađuje lične podatke samo prema potrebi za dole navedene svrhe. Ako se svrha promeni, Operater će dobiti zaseban pristanak ili će preduzeti drugi korak koji se zahteva u skladu sa članom 18. Zakona o zaštiti ličnih podataka Koreje i drugim važećim zakonima.\n\n### Pružanje usluge i izvršavanje ugovora\n\nPodaci se koriste za autentifikaciju Naloga i obnavljanje sesija; stvaranje i pridruživanje Grupama dostupnim uz poziv; prikazivanje prisustva prijatelja; slanje poruka; pružanje likova i stavki za prilagođavanje; i proveru, obnavljanje ili povraćaj novca za kupovine.\n\n### Upravljanje korisnicima i Uslugom\n\nPodaci se koriste za identifikaciju korisnika, sprovođenje ograničenja kapaciteta Grupa i upotrebe, sprečavanje zloupotrebe, održavanje bezbednosti, rešavanje grešaka, pitanja i sporova, i dostavljanje servisnih obaveštenja.\n\nSIDEY ne obrađuje lične podatke za oglašavanje zasnovano na interesovanjima, personalizovane preporuke ili promotivne poruke.\n\n## 2. Informacije obrađene\n\n- **Profil:** nadimak i izabrani karakter\n- **Google veza naloga:** Google identifikator naloga i adresa e-pošte\n- **Prijavite se pomoću Apple:** Apple identifikator naloga i, kada ga Apple pruži, imejl adresa\n- **Nalog i sesija:** anonimni korisnik UUID, dobavljač prijave i identifikatori sesije\n- **Grupe:** Naziv grupe, identifikatori grupe i članstva, status vlasnika i vreme pridruživanja\n- **Poruke i stanje u realnom vremenu:** tekst poruke, vreme kreiranja, identifikatori pošiljaoca i grupe, signali prisutnosti i kucanja generisani samo u polju poruke SIDEY\n- **Kupovine:** identifikatori porudžbine i transakcije, proizvod, iznos, status plaćanja, otkazivanja i povraćaja novca, kao i vreme i sadržaj saglasnosti za smernice\n- **Podrška:** odgovor na imejl adresu, upit i informacije koje je korisnik dobrovoljno priložio\n- **Informacije o vezi:** IP adresa, vreme pristupa i informacije o zahtevu koje provajderi usluga mogu da kreiraju radi bezbednosti i odgovora na incidente\n\nProteklo vreme od poslednjeg unosa sistema i stanje zaključavanja ekrana se proveravaju lokalno da bi se prikazao status odsustva. SIDEY ne prikuplja sadržaj unosa ili istoriju korišćenja aplikacije iz ovih signala.\n\n## 3. Kako se informacije prikupljaju\n\nInformacije se prikupljaju kada kreirate profil ili grupu, pošaljete poruku, povežete Google nalog, koristite Prijavi se sa Apple, zatražite plaćanje, obnavljanje ili povraćaj novca ili kontaktirate podršku. Signali prisutnosti i kucanja se obrađuju u realnom vremenu dok su povezani sa Uslugom.\n\nSIDEY ne prikuplja sadržaj ekrana, liste aktivnih aplikacija, tastere pritisnute u drugim aplikacijama, globalne koordinate pokazivača, sadržaj datoteke, zvuk mikrofona ili video zapis kamere. Ne proverava šta kucate izvan polja poruke SIDEY.\n\n## 4. Zadržavanje\n\n- **Poruke:** tri dana nakon kreiranja\n- **Signali prisutnosti i kucanja:** se obrađuju samo dok je ekran u realnom vremenu aktivan i ne zadržava se stalno\n- **Nalog, profil, grupa i članstvo:** do brisanja naloga ili ukidanja usluge; članska veza se briše kada napustite Grupu\n- **Nepotpun anonimni nalog bez profila ili grupe:** može biti uklonjen nakon sedam dana\n- **Sesija prijavljivanja sačuvana na uređaju:** do odjavljivanja, brisanja naloga ili brisanja podataka aplikacije\n\nEvidencije koje se po zakonu moraju čuvati koriste se samo u tu svrhu. Evidencija o prikazivanju i oglašavanju može se čuvati šest meseci; evidencija ugovora ili otkazivanja i evidencija plaćanja ili digitalne isporuke za pet godina; i evidenciju o žalbama potrošača ili sporovima za tri godine.\n\n## 5. Deljenje i otkrivanje trećih strana\n\nOperater ne otkriva lične podatke trećoj strani osim ako se ne slažete ili ako važeći zakon ne daje posebnu osnovu.\n\n### Članovi iste grupe\n\nDa biste obezbedili Grupe samo po pozivu, vaš nadimak, karakter, prisustvo i stanje kucanja, kao i poruke se prikazuju članovima iste grupe kojoj ste se pridružili. Poruke se čuvaju tri dana; signalima stanja u realnom vremenu se rukuje samo dok je njihov prikaz aktivan.\n\n### Organi koji deluju po zakonu\n\nInformacije se mogu otkriti u okviru iu roku dozvoljenom zakonom kada istražni ili drugi ovlašćeni organ podnese zahtev putem zakonitog postupka kao što je nalog.\n\n## 6. Dobavljači usluga i rukovanje u inostranstvu\n\nOperater koristi sledeće provajdere samo po potrebi za pružanje Usluge. Promene dobavljača ili svrhe biće otkrivene kroz ovu Politiku.\n\n- **Supabase Inc.:** upravlja nalogom UUID, profilima, grupama, porukama, statusom kupovine i informacijama o vezi za autentifikaciju, bazu podataka i komunikaciju u realnom vremenu. Podaci se čuvaju do brisanja naloga, raskida Usluge ili do kraja ugovora o usluzi; poruke se brišu nakon tri dana.\n- **Google LLC:** obrađuje identifikator naloga, adresu e-pošte i rezultat autentifikacije za vezu sa nalogom Google do prekida veze, brisanja naloga ili dovršetka svrhe.\n- **Apple Inc.:** upravlja identifikatorima naloga i transakcija i statusom autentikacije i plaćanja za prijavljivanje sa Apple, App Store plaćanje i vraćanje kupovine do brisanja naloga ili u periodu koji je propisan zakonom i smernicama Apple.\n- **Korea PortOne Co., Ltd. i povezani dobavljači usluga plaćanja:** upravljaju identifikatorima naloga i plaćanja, iznosom i rezultatom plaćanja za plaćanje, otkazivanje i refundiranje u okviru direktne distribucije, zadržavajući ih tokom perioda koji zahteva zakon o elektronskoj trgovini.\n- **GitHub, Inc.:** može da generiše IP adrese i informacije o vezi dok hostuje javnu veb lokaciju i može da ih zadrži u skladu sa praksama privatnosti GitHub i važećim zakonom.\n\nSupabase, Google, Apple i GitHub se nalaze u Sjedinjenim Državama i informacije se mogu prenositi preko komunikacionih mreža kada se koriste njihove usluge. Kada zakon zahteva odvojeno obaveštenje ili saglasnost za rukovanje u inostranstvu, primalac, država, artikli, svrha, metod i period zadržavanja biće otkriveni pre nego što se relevantna likovistika koristi. Možete izabrati da ne povežete Google, ali odbijanje rukovanja u inostranstvu koje je bitno za autentifikaciju ili skladištenje podataka može ograničiti ili sprečiti upotrebu dela ili celog SIDEY.\n\n## 7. Informacije o plaćanju i spoljne usluge\n\nApple obrađuje Mac App Store plaćanja. Za plaćanje koje se nudi u okviru direktne distribucije, dobavljač usluga plaćanja otvoren preko PortOne rukuje punim brojem kartice, lozinkom za plaćanje i informacijama o autentifikaciji bankovnog računa. SIDEY ne prima niti zadržava pune akreditive za plaćanje; obrađuje samo identifikatore i rezultate potrebne za verifikaciju, otkazivanje ili refundiranje porudžbine.\n\nKada koristite spoljnu stranicu za prijavu, prozor za plaćanje ili povezanu veb lokaciju, na informacije koje prikuplja nezavisno primenjuju se uslovi i politika privatnosti dobavljača.\n\n## 8. Vaša prava i kako ih ostvariti\n\nMožete zatražiti pristup, ispravku ili brisanje, suspenziju obrade ili povlačenje saglasnosti za vaše lične podatke. Korisnik prijave sa Apple može da izbriše nalog u podešavanjima aplikacije nakon ponovne autentifikacije. Drugi zahtevi za nalog ili podatke mogu se poslati e-poštom službeniku za privatnost u nastavku.\n\nPrava možete ostvariti preko zakonskog zastupnika ili drugog ovlašćenog lica. Operater može zahtevati obrazac ovlašćenja i minimum informacija potrebnih za potvrdu identiteta korisnika i predstavnika u skladu sa zakonom. U roku od 10 dana nakon prijema zahteva za pristup, Operater će objasniti kako će pristup biti obezbeđen ili, gde zakon dozvoljava ograničenje, odlaganje ili odbijanje, objasniće razlog i način prigovora.\n\nBrisanje može biti ograničeno dok drugi zakon zahteva da se zapis zadrži. SIDEY ne donosi automatizovane odluke koje proizvode pravne ili slične efekte na korisnike.\n\n## 9. Brisanje\n\nLični podaci se brišu bez nepotrebnog odlaganja kada istekne period njihovog čuvanja ili se postigne njihova svrha. Elektronski zapisi se brišu korišćenjem metoda namenjenih sprečavanju oporavka. Zapisi o transakcijama koji podležu posebnim obavezama čuvanja su odvojeni od opštih uslužnih podataka, koriste se samo u potrebnu svrhu i brišu se kada se taj period završi.\n\nBrisanjem naloga uklanjaju se profil, grupne veze i aktivne veze za ovlašćivanje SIDEY. Evidencija o minimalnim transakcijama može se čuvati odvojeno u pravne svrhe i svrhe poravnanja sa minimiziranim povezivanjem korisnika. Brisanje naloga ne briše automatski zapise o transakcijama koje drži Apple ili provajder platnih usluga i nije zahtev za povraćaj sredstava.\n\n## 10. Mere bezbednosti\n\nOperater ograničava pristup ličnim podacima na ono što je potrebno za rad i odvaja operativne privilegije i tajne. SIDEY koristi kontrole pristupa na nivou baze podataka, kapacitet grupe na strani servera i provere članstva, šifrovani transport i bezbedno skladištenje operativnog sistema. Kodovi poziva se ne čuvaju u otvorenom tekstu na serveru, a tajni ključevi plaćanja i administrativne privilegije nisu uključeni u aplikaciju ili javnu veb lokaciju.\n\nSIDEY nije predstavljen kao usluga sa implementiranom i verifikovanom end-to-end enkripcijom.\n\n## 11. Kolačići i slične tehnologije\n\nJavna veb lokacija SIDEY ne instalira kolačiće za personalizovano oglašavanje, analitiku ponašanja posetilaca ili pojedinačne preporuke. Pregledač ili provajder hostinga mogu da obrađuju informacije o vezi ili da koriste tehničku memoriju za posluživanje statičkih datoteka i zaštitu usluge.\n\nSpoljni provajder može da koristi kolačiće za funkcionalnost i bezbednost kada posetite Google ili Apple stranicu za prijavu ili stranicu za plaćanje. Pogledajte podešavanja privatnosti tog provajdera za dostupne kontrole.\n\n## 12. Službenik za privatnost\n\n- **Službenik za privatnost:** Taehyun Ryu\n- **E-pošta:** <ryu200112@gmail.com>\n\nPitanja, žalbe, pravni lekovi i zahtevi za ostvarivanje prava na privatnost mogu se slati na gorenavedenu e-poštu. Operater će pregledati i odgovoriti bez nepotrebnog odlaganja.\n\n## 13. Pravni lekovi za povredu privatnosti\n\nAko vam je potreban savet ili želite da prijavite povredu privatnosti u Koreji, možete kontaktirati:\n\n- [Komitet za posredovanje u sporovima sa ličnim informacijama](https://www.kopico.go.kr/) · 1833-6972\n- [KISA centar za prijavu kršenja privatnosti](https://privacy.kisa.or.kr/) · 118\n- [Vrhovno tužilaštvo](https://www.spo.go.kr/) · 1301\n- [Sistem za prijavu kibernetičkog kriminala korejske nacionalne policijske agencije](https://ecrm.police.go.kr/) · 182\n\n## 14. Eksterne usluge van ove Politike\n\nVeb lokacija i aplikacija SIDEY mogu da se povezuju sa uslugama kojima upravljaju drugi provajderi. Ova politika ne reguliše informacije kojima rukuje eksterna usluga koju Operator ne kontroliše. Pregledajte politiku privatnosti usluge koju posećujete.\n\n## 15. Promene ove Politike\n\nAko se ova Politika promeni zbog zakona, Usluge ili odnosa obrade van, datum stupanja na snagu i materijalne promene biće objavljene preko veb lokacije ili aplikacije. Promena sa značajnim uticajem na prava korisnika biće unapred najavljena za period propisan zakonom.\n\n## 16. Datum stupanja na snagu\n\nOva Politika privatnosti stupa na snagu 4. septembra 2026."
+    },
+    "refund": {
+      "title": "Politika refundiranja · SIDEY",
+      "description": "Uslovi otkazivanja i refundiranja za prava na digitalno prilagođavanje SIDEY.",
+      "heading": "Politika otkazivanja i refundiranja",
+      "introduction": "Plaćene stavke prilagođavanja SIDEY su digitalna prava koja se isporučuju na vaš nalog nakon što je uplata potvrđena.",
+      "translationNotice": "Ova stranica je prevod originalnog korejskog dokumenta.",
+      "originalLabel": "Pogledajte originalni dokument",
+      "body": "## Povraćaj novca zbog promene mišljenja nakon početka isporuke\n\nIsporuka prava na digitalnu stavku za prilagođavanje počinje čim se uplata potvrdi. Kada isporuka počne, otkazivanje ili povraćaj novca samo zbog promene mišljenja nije moguć.\n\n## Kada je moguć povraćaj celog iznosa\n\nCeo iznos biće vraćen kada se potvrdi zakonski priznat razlog, uključujući:\n\n- uplata je odobrena, ali Digitalno pravo nije isporučeno;\n- isporučena stavka ne odgovara opisu ili kupoprodajnom ugovoru;\n- ista porudžbina ili stavka naplaćena je više puta;\n- vlasnik Naloga nije odobrio plaćanje;\n- maloletno lice je kupilo stavku bez potrebne saglasnosti zakonskog zastupnika; ili\n- važeći zakon iz drugog razloga nalaže povraćaj celog iznosa.\n\n## Kako se obrađuju zahtevi\n\n1. Za kupovine preko Mac App Store zatražite povraćaj novca kroz Apple postupak za prijavu problema. Ako verzija za direktnu distribuciju nudi plaćanje preko PortOne, podršci pošaljite samo Nalog koji je obavio kupovinu, vreme plaćanja i podatke potrebne za pronalaženje porudžbine. Ne šaljite puni broj platne kartice ili lozinku.\n2. Kada Apple ili pružalac platnih usluga potvrdi povraćaj novca, pravo dodeljeno iz tog izvora plaćanja biće ukinuto.\n3. Ako ne postoji drugo važeće pravo za ukinutu stavku, a ona se trenutno koristi, kategorija se vraća na podrazumevanu stavku: podrazumevanog hrčka, oblačić za poruke ili igračku za bacanje.\n\n## Brisanje Naloga i povraćaj novca\n\nBrisanje SIDEY Naloga nije zahtev za povraćaj novca. Važeća Apple kupovina u aplikaciji može da se obnovi na novom SIDEY Nalogu pomoću istog Apple naloga koji je obavio kupovinu.\n\n## Evidencije i zakonska prava\n\nZahtevi za povraćaj novca i njihovi ishodi čuvaju se bezbedno onoliko dugo koliko je potrebno za rešavanje sporova i ispunjavanje zakonskih obaveza. Ova Politika ne ograničava prava na otkazivanje, raskid ili pravnu zaštitu koja garantuje važeći zakon.\n\n## Podrška\n\n- **Prodavac:** 싸이디(SIDEY)\n- **E-pošta:** <ryu200112@gmail.com>\n- **Registarski broj preduzeća:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Novi likovi i predmeti za bacanje, uz poboljšanja nedavnih poruka, podešavanja i veza između prijatelja."
+        ],
+        "new": [
+          "U prodavnicu i preklop Windows aplikacije dodato je pet likova — šiba inu, patka, kakica, tokboki i kvoka — i četiri predmeta za bacanje: teniska loptica, kuglica od maramice, ražnjić od ribljeg kolača i list.",
+          "Prozor nedavnih poruka možete da zakačite iznad ostalih prozora."
+        ],
+        "changed": [
+          "Aplikacija sada podržava 23 jezika.",
+          "Pri pregledanju starijih poruka, prozor nedavnih poruka zadržava mesto čitanja.",
+          "Podešavanja prečica preciznije prikazuju kombinacije tastera koje se koriste.",
+          "Ažuriranje sa starije verzije bezbedno premešta instalaciju i čuva podešavanja."
+        ],
+        "fixed": [
+          "Ispravljeno je kratko pojavljivanje polja za poruke pri dvostrukom kliku na lik.",
+          "Ispravljen je nagnut prikaz nadimaka likova blizu ivice ekrana.",
+          "Poboljšani su isporuka poruka i prikaz reakcija na bacanje između korisnika različitih verzija.",
+          "Ispravljeni su isteci vremena pri obnavljanju veza sa više soba nakon prekida."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Poboljšani su prijavljivanje preko Google naloga i upravljanje nalogom, kao i razgovori, prečice i preklop."
+        ],
+        "new": [
+          "Možete da se odjavite ili obrišete nalog u podešavanjima.",
+          "Šaljite poruke neposredno iz nedavnih poruka; položaj prozora za unos nakon prevlačenja čuva se i pri sledećem pokretanju.",
+          "Snimite sopstvene prečice za preklop, tihi režim, polje za poruke i nedavne poruke, i zamenite duplirane kombinacije tastera.",
+          "Proverite cene proizvoda i stavke koje posedujete u aplikaciji, pa otvorite stranicu za plaćanje na vebu."
+        ],
+        "changed": [
+          "Google prijavljivanje je sada deo obaveznog podešavanja. Dugme je onemogućeno dok se proverava sačuvano stanje prijave, kako bi se sprečila dupla autentifikacija.",
+          "Pre povratka na prijavu, prekid veze sa nalogom čisti veze u realnom vremenu i lokalno stanje.",
+          "Tihi režim skriva indikatore kucanja, a animacija zatvaranja preklopa odvija se glatko do kraja.",
+          "Poboljšani su povratak u aplikaciju posle autentifikacije i reakcije na kucanje u realnom vremenu.",
+          "Instalater sadrži potrebna izvršna okruženja Windows App SDK i .NET, uz bolji oporavak i uputstva ako ažuriranje, popravka ili deinstalacija ne uspe.",
+          "Greške povezivanja objašnjavaju uzrok, dok su nepotrebne greške tokom ponovnog povezivanja skrivene.",
+          "Stanje kretanja vašeg drveta deli se sa ostalim članovima grupe.",
+          "Obaveštenja o stanju u aplikaciji čitljivija su u svetloj i tamnoj temi."
+        ],
+        "fixed": [
+          "Ispravljeni su klikovi na likove tako da se polje za poruke otvara samo jednim klikom.",
+          "Otvaranje već pokrenute aplikacije bezbedno vraća postojeći prozor."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Nove stavke i prečice na tastaturi, uz slanje poruka neposredno iz nedavnih poruka."
+        ],
+        "new": [
+          "Dodato je devet proizvoda: pet likova i četiri predmeta za bacanje.",
+          "Dodate su globalne prečice za prikazivanje ili skrivanje preklopa, promenu tihog režima, otvaranje polja za poruke i nedavnih poruka.",
+          "Prilagodite kombinaciju tastera svake globalne prečice u podešavanjima.",
+          "Pišite i šaljite poruke neposredno iz prozora nedavnih poruka.",
+          "Dodata je podrška za korejski, engleski, japanski i tradicionalni kineski."
+        ],
+        "changed": [
+          "Oblačići za poruke zadržavaju uobičajeni smer i kada su likovi na levoj ili desnoj ivici ekrana."
+        ],
+        "fixed": [
+          "Ispravljeno je da likovi ne budu ošamućeni nakon više uzastopnih pogodaka predmetima za bacanje."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

@@ -2,7 +2,8 @@
 import DownloadButton from "./DownloadButton.astro";
 import Checksum from "./Checksum.astro";
 import type { Locale } from "../i18n/landing";
-import { getLandingCopy } from "../i18n/landing";
+import { getWebsiteReleases } from "../data/release-notes";
+import { getLandingCopy, localeRoot } from "../i18n/landing";
 import { appStoreURLForLocale, releases } from "../data/releases";
 import PhraseText from "./PhraseText.astro";
 
@@ -10,6 +11,8 @@ interface Props { locale: Locale; }
 const { locale } = Astro.props;
 const copy = getLandingCopy(locale).download;
 const titleParts = "titleParts" in copy ? copy.titleParts : null;
+const macVersion = getWebsiteReleases("macos")[0]?.version;
+const notesRoot = `${localeRoot(locale)}whats-new/`;
 const appStoreURL = appStoreURLForLocale(locale);
 ---
 
@@ -17,13 +20,13 @@ const appStoreURL = appStoreURLForLocale(locale);
   <div class="section-heading section-heading-split"><h2 id="download-title">{titleParts ? <PhraseText parts={titleParts} /> : copy.title}</h2><p>{copy.description}</p></div>
   <div class="download-grid">
     <article class="download-card">
-      <span class="platform-label"><img class="platform-logo platform-logo-macos" src={`${import.meta.env.BASE_URL}assets/platforms/macos-dark.svg`} alt="" width="16" height="16">macOS</span><h3>SIDEY</h3>
-      <div class="download-actions"><DownloadButton label={copy.macButton} platform="macos" id="macos-download-action" href={appStoreURL} appStoreLink legalNotice locale={locale} /></div>
+      <span class="platform-label"><img class="platform-logo platform-logo-macos" src={`${import.meta.env.BASE_URL}assets/platforms/macos-dark.svg`} alt="" width="16" height="16">macOS</span><h3>SIDEY{macVersion && <> v{macVersion}</>}</h3>
+      <div class="download-actions"><DownloadButton label={copy.macButton} platform="macos" id="macos-download-action" href={appStoreURL} appStoreLink legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}macos/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
       <p class="system-note">{copy.macSystem}</p>
     </article>
     <article class="download-card">
-      <span class="platform-label"><img class="platform-logo platform-logo-windows" src={`${import.meta.env.BASE_URL}assets/platforms/windows-dark.svg`} alt="" width="16" height="16">Windows</span><h3>SIDEY v{releases.windows.version}</h3>
-      <div class="download-actions"><DownloadButton label={copy.windowsButton} platform="windows" id="windows-download-action" href={releases.windows.url} describedBy="windows-card-status" legalNotice locale={locale} /><a class="button button-text" href={releases.windows.notes}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a></div>
+      <span class="platform-label"><img class="platform-logo platform-logo-windows" src={`${import.meta.env.BASE_URL}assets/platforms/windows-dark.svg`} alt="" width="16" height="16">Windows</span><h3>SIDEY v<span data-release-version="windows">{releases.windows.version}</span></h3>
+      <div class="download-actions"><DownloadButton label={copy.windowsButton} platform="windows" id="windows-download-action" href={releases.windows.url} describedBy="windows-card-status" legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}windows/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
       <p class="system-note" id="windows-card-status">{copy.windowsSystem}</p>
       <Checksum id="windows-download-sha256" value={releases.windows.sha256} copyLabel={copy.hashCopy} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} releasePlatform="windows" />
     </article>

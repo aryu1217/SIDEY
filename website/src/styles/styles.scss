@@ -81,7 +81,7 @@ html.theme-transition-fallback body, html.theme-transition-fallback body * { tra
   }
 
   .brand-link {
-    display: inline-flex; min-height: 3.125rem; align-items: center; gap: .5625rem; padding: .25rem .625rem .25rem .25rem; color: inherit; font-size: .96rem; font-weight: 800; letter-spacing: -.015em; text-decoration: none;
+    display: inline-flex; min-height: 3.125rem; align-items: center; gap: .5625rem; padding-block: .25rem; padding-inline: .25rem .625rem; color: inherit; font-size: .96rem; font-weight: 800; letter-spacing: -.015em; text-decoration: none;
 
     img { width: 2rem; height: 2rem; border-radius: .5rem; }
   }
@@ -175,7 +175,7 @@ main { overflow: hidden; }
 .button-text:hover { color: var(--ink); }
 .button-icon { font-size: 1.1em; line-height: 1; }
 .download-button, #windows-download-action {
-  min-height: 3.5rem; padding: .625rem .75rem .625rem 1.625rem; border: .0625rem solid rgba(118, 82, 156, .28); border-radius: 62.4375rem; color: #18181b; background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); font-size: .96rem; font-weight: 680;
+  min-height: 3.5rem; padding-block: .625rem; padding-inline: 1.625rem .75rem; border: .0625rem solid rgba(118, 82, 156, .28); border-radius: 62.4375rem; color: #18181b; background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); font-size: .96rem; font-weight: 680;
   @include glass(.5rem, 125%);
 
   &:hover { color: #000; border-color: rgba(91, 91, 214, .45); background: rgba(255, 255, 255, .88); }
@@ -196,9 +196,9 @@ main { overflow: hidden; }
 }
 .download-license-wrap:hover .download-license-tooltip, .download-license-wrap:focus-within .download-license-tooltip, .download-selector:hover .download-license-tooltip, .download-selector:focus-within .download-license-tooltip { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .download-selector { position: relative; display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) 2.625rem; }
-.download-selector .primary-download-action { border-radius: 62.4375rem 0 0 62.4375rem; border-right: 0; }
+.download-selector .primary-download-action { border-radius: 0; border-start-start-radius: 62.4375rem; border-end-start-radius: 62.4375rem; border-inline-end: 0; }
 .download-selector-toggle {
-  display: grid; min-width: 2.625rem; padding: 0; place-items: center; border: .0625rem solid rgba(118, 82, 156, .28); border-left-color: rgba(118, 82, 156, .16); border-radius: 0 62.4375rem 62.4375rem 0; color: var(--ink); background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); cursor: pointer;
+  display: grid; min-width: 2.625rem; padding: 0; place-items: center; border: .0625rem solid rgba(118, 82, 156, .28); border-inline-start-color: rgba(118, 82, 156, .16); border-radius: 0; border-start-end-radius: 62.4375rem; border-end-end-radius: 62.4375rem; color: var(--ink); background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); cursor: pointer;
   @include glass(.5rem, 125%);
 
   &:hover, &[aria-expanded="true"] { border-color: rgba(91, 91, 214, .45); background: rgba(255, 255, 255, .9); }
@@ -209,7 +209,7 @@ main { overflow: hidden; }
 .download-chevron .material-symbols-rounded { position: absolute; inset: 0; display: grid; width: 1.25rem; height: 1.25rem; place-items: center; font-size: 1.25rem; line-height: 1.25rem; transition: opacity 120ms ease; }
 .download-chevron-open { opacity: 0; }
 .download-platform-menu {
-  position: absolute; top: calc(100% + .625rem); right: 0; z-index: 10; display: grid; width: min(100%, 19.375rem); padding: .4375rem; border: .0625rem solid rgba(255, 255, 255, .8); border-radius: 1rem; background: rgba(255, 255, 255, .9); box-shadow: 0 1.125rem 2.625rem rgba(41, 37, 65, .18); opacity: 0; transform: translateY(-.625rem) scaleY(.96); transform-origin: top center; transition: opacity 160ms ease, transform 200ms cubic-bezier(.2, .8, .2, 1);
+  position: absolute; top: calc(100% + .625rem); inset-inline-end: 0; z-index: 10; display: grid; width: min(100%, 19.375rem); padding: .4375rem; border: .0625rem solid rgba(255, 255, 255, .8); border-radius: 1rem; background: rgba(255, 255, 255, .9); box-shadow: 0 1.125rem 2.625rem rgba(41, 37, 65, .18); opacity: 0; transform: translateY(-.625rem) scaleY(.96); transform-origin: top center; transition: opacity 160ms ease, transform 200ms cubic-bezier(.2, .8, .2, 1);
   @include glass(1.125rem, 135%);
 
   a { display: flex; min-height: 2.75rem; align-items: center; gap: .6875rem; padding: .5rem .75rem; border-radius: .625rem; font-size: .84rem; font-weight: 720; text-decoration: none; }
@@ -559,7 +559,7 @@ main { overflow: hidden; }
   .site-header.site-header-unified {
     width: calc(100% - 1rem); height: 4.375rem; transition: height 320ms cubic-bezier(.2, .8, .2, 1);
 
-    .nav-shell { position: relative; height: 100%; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 3.625rem minmax(0, 1fr); align-items: center; gap: 0 .5rem; min-height: 3.625rem; padding: .3125rem .4375rem .3125rem .5625rem; transition: border-radius 320ms cubic-bezier(.2, .8, .2, 1); }
+    .nav-shell { position: relative; height: 100%; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 3.625rem minmax(0, 1fr); align-items: center; gap: 0 .5rem; min-height: 3.625rem; padding-block: .3125rem; padding-inline: .5625rem .4375rem; transition: border-radius 320ms cubic-bezier(.2, .8, .2, 1); }
     .brand-link { min-height: 2.875rem; padding: .25rem; }
     .brand-link span { display: inline; font-size: .9rem; }
     .brand-link img { width: 1.875rem; height: 1.875rem; }
@@ -678,7 +678,7 @@ main { overflow: hidden; }
   .button-secondary { background: var(--surface); }
   .download-button, #windows-download-action { color: var(--ink); border-color: rgba(184, 182, 255, .28); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
   .download-button:hover, #windows-download-action:hover { color: #fff; border-color: rgba(184, 182, 255, .5); background: rgba(47, 47, 62, .96); }
-  .download-selector-toggle { color: var(--ink); border-color: rgba(184, 182, 255, .28); border-left-color: rgba(184, 182, 255, .14); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
+  .download-selector-toggle { color: var(--ink); border-color: rgba(184, 182, 255, .28); border-inline-start-color: rgba(184, 182, 255, .14); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
   .download-selector-toggle:hover, .download-selector-toggle[aria-expanded="true"] { border-color: rgba(184, 182, 255, .5); background: rgba(47, 47, 62, .96); }
   .download-platform-menu { border-color: rgba(255, 255, 255, .12); background: rgba(29, 29, 39, .94); box-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, .38); }
   .download-platform-logo { filter: invert(1); }
@@ -724,4 +724,12 @@ main { overflow: hidden; }
 
 @media (prefers-contrast: more) {
   :root { --line: #aaa9a2; --line-strong: #777770; --muted: #4c4d52; }
+}
+
+html[dir="rtl"] {
+  .section-heading-split p { text-align: start; }
+  .policy-markdown pre, .checksum-value { direction: ltr; text-align: left; }
+  .policy-markdown pre { overflow-x: auto; max-width: 100%; }
+  .material-symbols-rounded { direction: ltr; }
+  .download-actions .button-text .material-symbols-rounded { transform: scaleX(-1); }
 }

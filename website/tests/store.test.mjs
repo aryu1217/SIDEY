@@ -3,8 +3,15 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 
 const catalog = JSON.parse(readFileSync(new URL("../../assets/v1/commerce-catalog.json", import.meta.url)));
+const localeMetadata = JSON.parse(readFileSync(new URL("../../assets/v1/ui-localizations.json", import.meta.url)));
+const locales = localeMetadata.consumers.windows.locales;
+const bundles = Object.fromEntries(locales.map(locale => [locale,
+  JSON.parse(readFileSync(new URL(`../src/i18n/locales/${locale}.json`, import.meta.url))),
+]));
+const routeFor = locale => locale.toLowerCase();
+const escapeHTML = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("'", "&#39;").replaceAll('"', "&quot;");
 const commerceLocalizations = Object.fromEntries(
-  ["ko", "en", "ja", "zh-Hant"].map((locale) => [
+  locales.map((locale) => [
     locale,
     JSON.parse(readFileSync(new URL(`../../assets/v1/locale/commerce/${locale}.json`, import.meta.url))),
   ]),
@@ -13,6 +20,56 @@ const read = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url),
 const manifest = JSON.parse(readFileSync(new URL("../../assets/v1/manifest.json", import.meta.url)));
 const root = new URL("../../", import.meta.url);
 const included = { characters: 5, throwables: 1, bubbles: 1 };
+
+test("website locale registry and complete translations match Windows languages", () => {
+  assert.equal(locales.length, 23);
+  const registry = readFileSync(new URL("../src/i18n/landing.ts", import.meta.url), "utf8");
+  const declared = [...registry.match(/export const supportedLocales = \[([\s\S]*?)\] as const/)[1].matchAll(/"([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(declared, locales);
+  const shape = (value, key, original = false) => {
+    if (Array.isArray(value)) return value.map(child => shape(child, undefined, original));
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "titleParts").map(([key, child]) => [key, shape(child, key, original)]));
+    assert.equal(typeof value, "string");
+    if (!(original && ["translationNotice", "originalLabel"].includes(key))) assert.ok(value.trim().length > 0);
+    return "string";
+  };
+  for (const locale of locales) {
+    const copy = bundles[locale];
+    assert.deepEqual(shape(copy, undefined, locale === "ko"), shape(bundles.en), `${locale}: complete key and array coverage`);
+    assert.deepEqual([...copy.legalNotice.matchAll(/\{([^}]+)\}/g)].map(match => match[1]).sort(), ["privacy", "terms"]);
+    for (const policy of ["terms", "privacy", "refund"]) {
+      const body = copy.policies[policy].body;
+      const original = bundles.en.policies[policy].body;
+      assert.equal((body.match(/^## /gm) ?? []).length, (original.match(/^## /gm) ?? []).length, `${locale}/${policy}: every section retained`);
+      assert.equal((body.match(/^### /gm) ?? []).length, (original.match(/^### /gm) ?? []).length, `${locale}/${policy}: every subsection retained`);
+      assert.equal((body.match(/^- /gm) ?? []).length, (original.match(/^- /gm) ?? []).length, `${locale}/${policy}: every list item retained`);
+      if (locale !== "en") {
+        assert.notEqual(body, original, `${locale}/${policy}: translated body`);
+        assert.notEqual(copy.policies[policy].translationNotice, bundles.en.policies[policy].translationNotice, `${locale}/${policy}: native translation notice`);
+        assert.doesNotMatch(body, /\/SIDEY\/en\//, `${locale}/${policy}: localized policy links`);
+      }
+    }
+    assert.ok(copy.policies.terms.body.includes("AGPL-3.0-only"), `${locale}: historical licensing identifier`);
+    assert.ok(copy.policies.terms.body.includes("sidey-app/SIDEY"), `${locale}: public repository boundary`);
+  }
+});
+
+test("downloads show published versions and link both platform histories on the website", () => {
+  const windows = JSON.parse(readFileSync(new URL("../src/data/release-notes/recent.json", import.meta.url)))[0];
+  const macos = JSON.parse(readFileSync(new URL("../src/data/release-notes/macos.json", import.meta.url)))[0];
+  assert.equal(macos.version, "2.0.0", "published Mac App Store version");
+  assert.equal(windows.version, "2.1.0", "published Windows version");
+  assert.match(windows.asset.sha256, /^[a-f0-9]{64}$/);
+  for (const locale of locales) {
+    const route = routeFor(locale);
+    const html = read(`${route}/index.html`);
+    assert.ok(html.includes(`SIDEY v${macos.version}`), `${locale}: published macOS label`);
+    assert.ok(html.includes(`data-release-version="windows">${windows.version}</span>`), `${locale}: published Windows label`);
+    assert.ok(html.includes(windows.asset.url), `${locale}: published installer`);
+    assert.ok(html.includes(windows.asset.sha256), `${locale}: installer hash`);
+    for (const platform of ["macos", "windows"]) assert.ok(html.includes(`/SIDEY/${route}/whats-new/${platform}/`), `${locale}: ${platform} website notes`);
+  }
+});
 
 const checkoutPrepared = {
   product_id: "fixture-product",
@@ -124,16 +181,15 @@ async function createCheckoutHarness({ fetchResponse, requestPayment } = {}) {
   return { elements, requests, paymentRequests, assigned };
 }
 
-for (const locale of ["ko", "en", "ja", "zh-Hant"]) {
-  const routeLocale = locale === "zh-Hant" ? "zh-hant" : locale;
+for (const locale of locales) {
+  const routeLocale = routeFor(locale);
   for (const category of Object.keys(included)) {
     test(`${locale}/${category}: complete catalog, exact reference prices, assets, separate keepsakes`, () => {
       const html = read(`${routeLocale}/store/${category}/index.html`);
       const cards = [...html.matchAll(/<button class="store-product-card"[^>]*>[\s\S]*?<\/button>/g)].map(([card]) => card);
       const paid = catalog.filter((entry) => entry.kind === category.slice(0, -1));
       assert.equal(cards.length, paid.length + included[category]);
-      assert.match(html, /store-price-basis/);
-      assert.match(html, /reference prices|참고 가격|参考価格|參考價/);
+      assert.doesNotMatch(html, /store-price-basis/);
       assert.doesNotMatch(html, /Windows direct-purchase|Windows 직접 결제|Windows版の直接決済/);
       assert.doesNotMatch(html, /direct macOS edition|macOS 직배포판|macOS直接配布版/);
       for (const entry of paid) {
@@ -143,8 +199,8 @@ for (const locale of ["ko", "en", "ja", "zh-Hant"]) {
         assert.ok(card.includes(`<strong>${price}</strong>`), `${entry.id}: ${price}`);
         const localized = commerceLocalizations[locale][entry.id];
         assert.ok(localized, `${entry.id}: ${locale} localization`);
-        assert.ok(card.includes(localized.display_name), `${entry.id}: localized display name`);
-        assert.ok(card.includes(localized.description), `${entry.id}: localized description`);
+        assert.ok(card.includes(escapeHTML(localized.display_name)), `${entry.id}: localized display name`);
+        assert.ok(card.includes(escapeHTML(localized.description)), `${entry.id}: localized description`);
         const keepsake = catalog.find((candidate) => candidate.related_character_product_id === entry.id);
         if (keepsake) {
           assert.match(card, /store-keepsake-summary/);
@@ -531,15 +587,23 @@ test("localized terms preserve historical AGPL grants without presenting current
 });
 
 test("all locale support pages publish contact, diagnostics, and sensitive-data warnings", () => {
-  const expectations = {
-    ko: ["ryu200112@gmail.com", "운영체제와 SIDEY 버전", "초대 코드", "메시지 내용", "토큰"],
-    en: ["ryu200112@gmail.com", "operating system and SIDEY version", "invite codes", "message contents", "tokens"],
-    ja: ["ryu200112@gmail.com", "OSとSIDEYのバージョン", "招待コード", "メッセージ本文", "トークン"],
-    "zh-hant": ["ryu200112@gmail.com", "作業系統與 SIDEY 版本", "邀請碼", "訊息內容", "權杖"],
-  };
-  for (const [locale, phrases] of Object.entries(expectations)) {
-    const html = read(`${locale}/support/index.html`);
-    for (const phrase of phrases) assert.ok(html.includes(phrase), `${locale}: ${phrase}`);
+  for (const locale of locales) {
+    const html = read(`${routeFor(locale)}/support/index.html`);
+    const copy = bundles[locale].support;
+    for (const text of [copy.githubBody, copy.emailBody, copy.protectBody, copy.response, ...copy.details]) {
+      assert.ok(html.includes(escapeHTML(text)), `${locale}: complete support copy`);
+    }
+    assert.equal(copy.details.length, 6, `${locale}: required and optional issue fields`);
+    assert.ok(html.includes('href="https://github.com/sidey-app/SIDEY/issues/new?template=01-bug-report.yml"'));
+    assert.ok(html.includes('href="https://github.com/sidey-app/SIDEY/issues?q=is%3Aissue"'));
+    assert.ok(html.includes('href="mailto:ryu200112@gmail.com"'));
+    assert.ok(html.includes("uname -mprs"));
+    assert.ok(html.includes("Environment]::OSVersion.VersionString"));
+    assert.ok(html.includes("Environment]::Is64BitOperatingSystem"));
+    assert.ok(html.includes("log show --last 30m"));
+    assert.ok(html.includes("app.sidey.desktop"));
+    assert.ok(html.includes("SIDEY-Diagnostics-$(date +%Y%m%d-%H%M%S).log"));
+    assert.equal((html.match(/<pre\b[^>]*\bdir="ltr"/g) ?? []).length, 3, `${locale}: readable diagnostic commands`);
   }
 });
 
@@ -555,15 +619,36 @@ test("localized pages and sitemap use the zh-Hant language tag with the lowercas
   assert.doesNotMatch(sitemap, /\/SIDEY\/zh-Hant\//);
 });
 
-test("locale-neutral gates route Traditional Chinese regions to zh-hant and unsupported languages to English", () => {
+test("locale-neutral gates route language, region, script, aliases and preference lists", async () => {
+  const { runInNewContext } = await import("node:vm");
+  const cases = [
+    ...locales.map(locale => [[locale], routeFor(locale)]),
+    [["zh-TW"], "zh-hant"], [["zh-HK"], "zh-hant"], [["zh-MO"], "zh-hant"],
+    [["zh-CN"], "zh-hans"], [["zh-SG"], "zh-hans"], [["zh"], "zh-hans"],
+    [["zh-Hans-TW"], "zh-hans"], [["zh-Hant-CN"], "zh-hant"],
+    [["pt"], "pt-pt"], [["pt-AO"], "pt-pt"], [["pt-BR"], "pt-br"],
+    [["sr"], "sr-cyrl"], [["sr-RS"], "sr-cyrl"], [["sr-Latn-RS"], "sr-latn"],
+    [["iw-IL"], "he"], [["iw"], "he"], [["he-IL"], "he"],
+    [["nl-BE"], "nl-be"], [["nl-NL"], "nl"], [["de-AT"], "de"],
+    [["ar", "fr-CA"], "fr"], [["ar"], "en"], [[], "en"],
+  ];
   for (const path of ["", "store/", "privacy/", "refund/", "terms/", "support/", "whats-new/"]) {
     const html = read(`${path}index.html`);
-    assert.ok(html.includes('hreflang="zh-Hant"'));
-    assert.ok(html.includes(`/SIDEY/zh-hant/${path}`));
-    for (const language of ["zh-hant", "zh-tw", "zh-hk", "zh-mo"]) {
-      assert.ok(html.includes(`language.startsWith("${language}")`), `${path}: ${language}`);
+    for (const locale of locales) {
+      assert.ok(html.includes(`hreflang="${locale}"`));
+      assert.ok(html.includes(`/SIDEY/${routeFor(locale)}/${path}`));
     }
-    assert.match(html, /: englishTarget;/, `${path}: unsupported locale fallback`);
+    const source = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
+    assert.ok(source, `${path}: executable gateway`);
+    for (const [languages, expected] of cases) {
+      const destinations = [];
+      runInNewContext(source, {
+        URL,
+        navigator: { languages, language: languages[0] },
+        window: { location: { origin: "https://sidey-app.github.io", search: "?source=test", hash: "#section", replace: url => destinations.push(url) } },
+      });
+      assert.deepEqual(destinations, [`https://sidey-app.github.io/SIDEY/${expected}/${path}?source=test#section`], `${path}: ${languages}`);
+    }
   }
 });
 
@@ -578,14 +663,17 @@ test("Traditional Chinese release dates use zh-TW formatting", () => {
 
 test("localized pages use locale-default App Store storefronts consistently", () => {
   const storefronts = { ko: "kr", en: "us", ja: "jp", "zh-hant": "tw" };
-  for (const [locale, storefront] of Object.entries(storefronts)) {
+  for (const code of locales) {
+    const locale = routeFor(code);
+    const storefront = storefronts[locale] ?? "us";
     const url = `https://apps.apple.com/${storefront}/app/sidey/id6808528060?mt=12`;
     const landing = read(`${locale}/index.html`);
     assert.ok(landing.includes(`href="${url}"`), `${locale}: landing link`);
     assert.ok(landing.includes(`data-macos-url="${url}"`), `${locale}: platform selector`);
     assert.ok(landing.includes(`"downloadUrl":"${url}"`), `${locale}: structured data`);
     assert.ok(landing.match(/data-app-store-link/g)?.length >= 3, `${locale}: adjustable links`);
-    assert.ok(read(`${locale}/whats-new/index.html`).includes(`href="${url}" data-app-store-link`), `${locale}: version history link`);
+    assert.ok(read(`${locale}/whats-new/index.html`).includes('id="v2.0.0"'), `${locale}: local macOS version history`);
+    assert.ok(!read(`${locale}/whats-new/index.html`).includes("data-app-store-link"), `${locale}: release notes stay on website`);
   }
 });
 
@@ -633,46 +721,78 @@ test("localized refund policies cover every paid customization category", () => 
   }
 });
 
-test("non-Korean Windows release cards disclose and link to the Korean original", () => {
-  const notices = {
-    en: ["Full release notes are currently available in the original Korean.", "View the Korean original"],
-    ja: ["リリースノート全文は現在、韓国語の原文で提供しています。", "韓国語の原文を見る"],
-    "zh-hant": ["完整版本資訊目前僅提供韓文原文。", "查看韓文原文"],
-  };
-  assert.match(read("ko/whats-new/windows/index.html"), /class="update-copy" lang="ko"/);
-  for (const [locale, phrases] of Object.entries(notices)) {
-    const html = read(`${locale}/whats-new/windows/index.html`);
-    const cards = [...html.matchAll(/<details class="update-card"[\s\S]*?<div class="update-answer"><div class="update-copy">([\s\S]*?)<\/div><\/div>[\s\S]*?<\/details>/g)];
-    assert.ok(cards.length > 0, `${locale}: release cards`);
-    for (const [, card] of cards) {
-      for (const phrase of phrases) assert.ok(card.includes(phrase), `${locale}: every card includes ${phrase}`);
-      assert.doesNotMatch(card, /[\uac00-\ud7af]/, `${locale}: Korean body must not be presented as localized content`);
-      assert.match(card, /href="https:\/\/github\.com\/sidey-app\/SIDEY\/releases\/tag\/windows-v[^"]+"/);
+test("both platform histories preserve only 2.0+ and render complete categorized translations", () => {
+  for (const file of ["recent", "macos"]) {
+    const entries = JSON.parse(readFileSync(new URL(`../src/data/release-notes/${file}.json`, import.meta.url)));
+    for (const release of entries) {
+      assert.ok(Number(release.version.split(".")[0]) >= 2);
+      const platform = file === "macos" ? "macos" : "windows";
+      for (const locale of locales) {
+        const copy = bundles[locale].releases[platform][release.version];
+        const route = routeFor(locale);
+        const html = read(`${route}/whats-new/${file === "macos" ? "macos" : "windows"}/index.html`);
+        assert.ok(html.includes(`id="v${release.version}"`));
+        assert.ok(html.includes(`class="update-copy" lang="${locale}"`));
+        for (const category of ["introduction", "new", "changed", "fixed", "notes"]) {
+          assert.equal(copy[category].length, bundles.ko.releases[platform][release.version][category].length, `${release.version}/${locale}/${category}: translation coverage`);
+          for (const text of copy[category]) {
+            assert.doesNotMatch(text, /(?:\bPR\s*\d+|#\d+|@[a-zA-Z0-9-]+)/);
+            assert.ok(html.includes(text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("'", "&#39;").replaceAll('"', "&quot;")), `${release.version}/${locale}: rendered translation`);
+            if (locale !== "ko") assert.doesNotMatch(text, /[\uac00-\ud7af]/);
+          }
+        }
+      }
+    }
+  }
+  for (const code of locales) {
+    const locale = routeFor(code);
+    for (const platform of ["macos", "windows"]) {
+      const html = read(`${locale}/whats-new/${platform}/index.html`);
+      assert.doesNotMatch(html, /id="v1\./);
+      assert.doesNotMatch(html, /class="release-link"|href="https:\/\/github\.com\/sidey-app\/SIDEY\/releases\/tag\//);
+      for (const category of ["new", "changed", "fixed"]) assert.ok(html.includes(`data-release-category="${category}"`));
     }
   }
 });
 
-test("every localized footer preserves delivery, refund and seller contracts", () => {
-  const expectations = {
-    ko: ["배송일자", "교환·환불", "사업자등록번호", "통신판매업 신고번호"],
-    en: ["Delivery", "Cancellation and refunds", "Korean business registration number", "Online sales registration"],
-    ja: ["提供時期", "キャンセル・返金", "韓国事業者登録番号", "通信販売業届出番号"],
-    "zh-hant": ["提供時間", "取消與退款", "韓國營業登記號碼", "通訊販售業申報號碼"],
-  };
-  for (const [locale, phrases] of Object.entries(expectations)) {
-    const html = read(`${locale}/index.html`);
-    for (const phrase of phrases) assert.ok(html.includes(phrase), `${locale}: ${phrase}`);
-    assert.ok(html.includes("388-53-01259"), `${locale}: registration value`);
-    assert.ok(html.includes("ryu200112@gmail.com"), `${locale}: seller contact`);
+test("every public page has 23 corresponding language links and simplified navigation", () => {
+  for (const code of locales) {
+    const locale = routeFor(code);
+    for (const path of ["", "store/", "store/characters/", "store/bubbles/", "store/throwables/", "terms/", "privacy/", "refund/", "support/", "whats-new/", "whats-new/macos/", "whats-new/windows/"]) {
+      const html = read(`${locale}/${path}index.html`);
+      const header = html.match(/<header[\s\S]*?<\/header>/)[0];
+      const footer = html.match(/<footer[\s\S]*?<\/footer>/)[0];
+      assert.ok(!header.includes("github.com/sidey-app/SIDEY"));
+      assert.ok(!footer.match(/<div class="footer-links">([\s\S]*?)<\/div>/)[1].includes(`${locale}/support/`));
+      for (const language of locales.map(routeFor)) assert.ok(footer.includes(`/SIDEY/${language}/${path}`), `${locale}/${path}: ${language} switch`);
+    }
+  }
+});
+
+test("Korean footer retains business disclosures and other languages retain policy and language links", () => {
+  for (const locale of locales) {
+    const footer = read(`${routeFor(locale)}/index.html`).match(/<footer[\s\S]*?<\/footer>/)[0];
+    for (const policy of ["terms", "privacy", "refund"]) {
+      assert.ok(footer.includes(escapeHTML(bundles[locale].footer[policy])));
+      assert.ok(footer.includes(`/SIDEY/${routeFor(locale)}/${policy}/`));
+    }
+    if (locale === "ko") {
+      for (const phrase of ["배송일자", "교환·환불", "사업자등록번호", "통신판매업 신고번호", "388-53-01259", "ryu200112@gmail.com"]) assert.ok(footer.includes(phrase), phrase);
+      assert.match(footer, /footer-commerce-policy/);
+      assert.match(footer, /footer-details-business/);
+    } else {
+      assert.doesNotMatch(footer, /footer-commerce-policy|footer-details-business|388-53-01259|ryu200112@gmail.com/);
+    }
   }
 });
 
 test("support navigation and locale-neutral language metadata are explicit", () => {
-  for (const locale of ["ko", "en", "ja", "zh-hant"]) {
+  for (const code of locales) {
+    const locale = routeFor(code);
     assert.match(read(`${locale}/support/index.html`), new RegExp(`<a href="/SIDEY/${locale}/support/" aria-current="page">`));
   }
   for (const path of ["", "store/", "privacy/", "refund/", "terms/", "support/", "whats-new/"]) {
-    assert.match(read(`${path}index.html`), /<html lang="en">/);
+    assert.match(read(`${path}index.html`), /<html lang="en"(?:\s[^>]*)?>/);
   }
 });
 

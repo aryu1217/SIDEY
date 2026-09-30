@@ -13,11 +13,84 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts" / "pages"))
 from prepare_release_metadata import (
-    prepare, read_incremental_manifest, read_manifest, validate_repository,
+    APP_STORE_URLS, prepare, read_incremental_manifest, read_manifest,
+    replace_displayed_version, validate_repository,
 )
 
 
 class PrepareReleaseMetadataTests(unittest.TestCase):
+    @staticmethod
+    def write_landing_site(directory: Path) -> Path:
+        site = directory / "website"
+        for locale, app_store_url in {**APP_STORE_URLS, "he": APP_STORE_URLS["en"]}.items():
+            path = site / locale / "index.html"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'<a id="primary-download-action" href="{app_store_url}" '
+                f'data-macos-url="{app_store_url}" data-windows-url="https://old.invalid/">'
+                'Download</a>'
+                f'<a id="macos-download-action" href="{app_store_url}">Mac</a>'
+                '<a id="windows-download-action" href="https://old.invalid/">Windows</a>'
+                '<code id="windows-download-sha256" data-release-platform="windows">'
+                + "0" * 64 + '</code>'
+                '<h3>SIDEY v<span data-release-version="windows">0.0.0</span></h3>',
+                encoding="utf-8",
+            )
+        support = site / "support" / "index.html"
+        support.parent.mkdir()
+        support.write_text("<h1>Support</h1><p>Contact SIDEY.</p>", encoding="utf-8")
+        return site
+
+    def test_updates_discovered_landing_and_preserves_non_landing_page(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-Localized-Pages-") as temporary:
+            root = Path(temporary)
+            site = self.write_landing_site(root)
+            manifest = self.write_manifest(root)
+            installer = root / "SIDEY-Windows-x64-v2.0.1-Setup.exe"
+            installer.write_bytes(b"verified localized installer")
+            output = root / "published"
+            prepare(site, output, manifest, installer)
+            html = (output / "he/index.html").read_text(encoding="utf-8")
+            url = "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.1/" + installer.name
+            self.assertIn(f'data-windows-url="{url}"', html)
+            self.assertIn(f'id="windows-download-action" href="{url}"', html)
+            self.assertIn(hashlib.sha256(installer.read_bytes()).hexdigest(), html)
+            self.assertIn(f'data-macos-url="{APP_STORE_URLS["en"]}"', html)
+            self.assertIn(f'id="macos-download-action" href="{APP_STORE_URLS["en"]}"', html)
+            self.assertIn('<span data-release-version="windows">2.0.1</span>', html)
+            self.assertNotIn("https://old.invalid/", html)
+            self.assertEqual(
+                (site / "support/index.html").read_bytes(),
+                (output / "support/index.html").read_bytes(),
+            )
+
+    def test_discovered_malformed_landing_fails_validation(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-Malformed-Pages-") as temporary:
+            root = Path(temporary)
+            site = self.write_landing_site(root)
+            landing = site / "he/index.html"
+            html = landing.read_text(encoding="utf-8").replace(
+                'id="macos-download-action"', 'id="removed-macos-download-action"'
+            )
+            landing.write_text(html, encoding="utf-8")
+            manifest = self.write_manifest(root)
+            installer = root / "SIDEY-Windows-x64-v2.0.1-Setup.exe"
+            installer.write_bytes(b"verified installer")
+            with self.assertRaisesRegex(ValueError, "macos-download-action"):
+                prepare(site, root / "published", manifest, installer)
+
+    def test_displayed_version_hook_is_optional_but_must_be_unique_and_valid(self) -> None:
+        legacy = "<h3>SIDEY v2.0.0</h3>"
+        self.assertEqual(replace_displayed_version(legacy, "windows", "2.0.1"), legacy)
+        valid = '<span data-release-version="windows">2.0.0</span>'
+        self.assertEqual(
+            replace_displayed_version(valid, "windows", "2.0.1"),
+            '<span data-release-version="windows">2.0.1</span>',
+        )
+        for invalid in (valid + valid, '<div data-release-version="windows">2.0.0</div>'):
+            with self.subTest(html=invalid), self.assertRaisesRegex(ValueError, "one displayed"):
+                replace_displayed_version(invalid, "windows", "2.0.1")
+
     @staticmethod
     def write_incremental(directory: Path, version: str = "2.0.1") -> Path:
         prefix = f"SIDEY-Windows-x64-v{version}"
