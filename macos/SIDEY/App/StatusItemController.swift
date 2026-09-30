@@ -102,7 +102,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func makeMenu() -> NSMenu {
         let menu = NSMenu(title: AppPresentation.displayName)
         menu.delegate = self
-        menu.minimumWidth = 350
         let overlay = NSMenuItem(
             title: L10n.text(
                 overlayVisible ? "status.menu.overlay.hide" : "status.menu.overlay.show"
@@ -208,7 +207,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let suffix = shortcut.displayShortcut + annotation
         let title = item.title
         let paragraph = NSMutableParagraphStyle()
-        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: 310)]
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: 220)]
         let attributedTitle = NSMutableAttributedString(string: "\(title)\t\(suffix)")
         attributedTitle.addAttribute(
             .paragraphStyle,

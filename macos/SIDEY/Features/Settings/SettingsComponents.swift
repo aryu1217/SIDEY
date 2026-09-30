@@ -5,26 +5,30 @@ struct ConnectionControls: View {
     let onReconnect: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
-            ConnectionBadge(state: state)
-            Button("connection.retry.action", action: onReconnect)
-                .buttonStyle(.glass)
-                .controlSize(.small)
-                .disabled(state == .connecting)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
+        ConnectionBadge(state: state, onReconnect: onReconnect)
     }
 }
 
 struct ConnectionBadge: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let state: BackendConnectionState
+    let onReconnect: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(localizedLabel).font(.caption.weight(.medium))
             Spacer()
+            Button(action: onReconnect) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption.weight(.semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(state == .connecting)
+            .help("connection.retry.action")
+            .accessibilityLabel("connection.retry.action")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
