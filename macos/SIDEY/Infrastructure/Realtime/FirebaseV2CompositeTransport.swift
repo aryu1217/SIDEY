@@ -811,12 +811,15 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
 
     private func replaceActiveRoom(
         _ roomID: UUID?,
-        session: FirebaseV2CompositeSession
+        session: FirebaseV2CompositeSession,
+        updateSupabasePresence: Bool = true
     ) async throws {
         roomTransitionGeneration &+= 1
         let transitionGeneration = roomTransitionGeneration
         let operation = activeRoomState.request(roomID)
-        try await supabasePlane.setActiveRoom(roomID)
+        if updateSupabasePresence {
+            try await supabasePlane.setActiveRoom(roomID)
+        }
         try requireRunning()
         guard transitionGeneration == roomTransitionGeneration else {
             throw CancellationError()
@@ -1446,7 +1449,11 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             restartInboxListener()
             try await replaceActiveRoom(
                 activeRoomID,
-                session: recovered
+                session: recovered,
+                // Supabase Presence is independent of Firebase credentials.
+                // Re-publishing every room here can hit its rate limit, and a
+                // temporary Presence failure must not revoke a valid token.
+                updateSupabasePresence: false
             )
             startWarmLiveListeners(session: recovered)
             if chatAuthenticationRecoveryPending {

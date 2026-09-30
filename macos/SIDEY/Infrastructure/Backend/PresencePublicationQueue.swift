@@ -1,5 +1,41 @@
 import Foundation
 
+/// Remembers semantic state per room subscription. Timestamps are metadata,
+/// not a reason to publish an otherwise identical Presence payload.
+struct PresencePublicationLedger {
+    private struct Publication: Equatable {
+        let channelGeneration: Int
+        let state: PresenceState
+    }
+
+    private var published: [UUID: Publication] = [:]
+    private(set) var invalidationRevision: UInt64 = 0
+
+    func needsPublication(roomID: UUID, channelGeneration: Int, state: PresenceState) -> Bool {
+        published[roomID] != Publication(channelGeneration: channelGeneration, state: state)
+    }
+
+    @discardableResult
+    mutating func didPublish(
+        roomID: UUID, channelGeneration: Int, state: PresenceState,
+        observedRevision: UInt64
+    ) -> Bool {
+        guard observedRevision == invalidationRevision else { return false }
+        published[roomID] = Publication(channelGeneration: channelGeneration, state: state)
+        return true
+    }
+
+    mutating func invalidate(roomID: UUID) {
+        invalidationRevision &+= 1
+        published.removeValue(forKey: roomID)
+    }
+
+    mutating func invalidateAll() {
+        invalidationRevision &+= 1
+        published.removeAll()
+    }
+}
+
 /// Serializes complete Presence publications while retaining only the newest
 /// state that has not started yet. Callers whose intermediate state is
 /// coalesced complete with the newer full publication.

@@ -879,6 +879,35 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertEqual(fixture.values.writeOperations.count, 1)
     }
 
+    func testCredentialGrantRecoveryKeepsAuthorizedRoomWhenSupabasePresenceIsUnavailable() async throws {
+        let fixture = try Fixture()
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room], activeRoomID: fixture.room.id
+        )
+        let previousPresenceUpdates = await fixture.supabase.activeRoomRequests.count
+        await fixture.supabase.rejectActiveRoomUpdates()
+        let nextRevision = try XCTUnwrap(
+            RealtimeRevision(rawValue: "00000000000000000002")
+        )
+
+        try await fixture.transport.convergeAccessGrant(
+            revision: nextRevision,
+            requiresEntitlement: false
+        )
+        let diagnostics = await fixture.transport.diagnostics()
+        XCTAssertTrue(diagnostics.grantOpen)
+        XCTAssertFalse(diagnostics.shutDown)
+        XCTAssertEqual(diagnostics.activeRoomID, fixture.room.id)
+        let presenceUpdates = await fixture.supabase.activeRoomRequests.count
+        let invalidations = await fixture.credentials.invalidateCount
+        XCTAssertEqual(presenceUpdates, previousPresenceUpdates)
+        XCTAssertEqual(invalidations, 0)
+        try await fixture.transport.publishCharacterPulse(
+            roomID: fixture.room.id, eventID: UUID()
+        )
+        XCTAssertEqual(fixture.values.writeOperations.count, 1)
+    }
+
     func testShutdownCancelsBothPlanesAndPreventsFurtherOperations() async throws {
         let fixture = try Fixture()
         _ = try await fixture.transport.synchronize(
@@ -989,6 +1018,7 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
             rooms: [fixture.room],
             activeRoomID: fixture.room.id
         )
+        let previousPresenceUpdates = await fixture.supabase.activeRoomRequests.count
 
         try await fixture.transport.refreshRolloutLease()
 
@@ -1005,6 +1035,8 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertEqual(fixture.values.paths.filter {
             $0 == FirebaseV2Path.liveRoom(fixture.room.id)
         }.count, 1)
+        let presenceUpdates = await fixture.supabase.activeRoomRequests.count
+        XCTAssertEqual(presenceUpdates, previousPresenceUpdates)
         let leaseStatus = await fixture.transport.rolloutLeaseStatus()
         let lease = try XCTUnwrap(leaseStatus)
         XCTAssertGreaterThan(lease.expiresIn, .seconds(599))
@@ -1467,6 +1499,7 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     private var beforeRepair: (@Sendable () async -> Void)?
     private(set) var shutdownCount = 0
     private(set) var activeRoomRequests: [UUID?] = []
+    private var activeRoomUpdatesRejected = false
     private(set) var transientPublications: [CompositeTransientPublication] = []
 
     init(reconciliation: BackendReconciliation) {
@@ -1521,11 +1554,13 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
 
     func setActiveRoom(_ roomID: UUID?) async throws {
         activeRoomRequests.append(roomID)
+        if activeRoomUpdatesRejected { throw URLError(.timedOut) }
         guard let roomID, blockedActiveRooms.contains(roomID) else { return }
         await withCheckedContinuation { continuation in
             activeRoomContinuations[roomID] = continuation
         }
     }
+    func rejectActiveRoomUpdates() { activeRoomUpdatesRejected = true }
     func setLocalPresence(_ state: PresenceState) async throws {}
 
     func publishTyping(roomID: UUID, event: String) async throws {

@@ -66,6 +66,7 @@ actor SideyBackend {
     private var typingExpiryTasks: [String: Task<Void, Never>] = [:]
     private var activeRoomID: UUID?
     private var localPresence: PresenceState = .online
+    private var presencePublicationLedger = PresencePublicationLedger()
     private lazy var presencePublicationQueue = PresencePublicationQueue<PresencePublicationIntent> {
         [weak self] intent in
         guard let self else { return }
@@ -1298,6 +1299,7 @@ actor SideyBackend {
         }
         connectionTracker.setSubscribed(false, roomID: roomID)
         presenceReplay.invalidate(roomID: roomID)
+        presencePublicationLedger.invalidate(roomID: roomID)
         guard let roomChannels = channels.removeValue(forKey: roomID) else { return }
         let current = realtime
         roomChannels.tasks.forEach { $0.cancel() }
@@ -1316,6 +1318,12 @@ actor SideyBackend {
         guard isCurrentChannel(roomID: roomID, generation: generation) else { return }
         guard let pair = channels[roomID] else { return }
         let currentStatus = isPresenceChannel ? pair.ephemeral.status : pair.database.status
+        // Even a delayed reset means the server discarded our old publication.
+        // Keep connection/replay state fenced below, but allow the same SDK
+        // channel object to publish again after its automatic rejoin.
+        if isPresenceChannel, status != .subscribed {
+            presencePublicationLedger.invalidate(roomID: roomID)
+        }
         // AsyncStream can deliver an old reset after the SDK has rejoined.
         guard status == currentStatus else { return }
         if status == .unsubscribed {
@@ -1330,6 +1338,18 @@ actor SideyBackend {
         switch status {
         case .subscribed:
             updateRoomSubscription(roomID: roomID)
+            if rebuildingGeneration == nil, hasHealthyRealtimeTopology() {
+                do {
+                    try await publishPresence()
+                } catch {
+                    guard !isShuttingDown, !Task.isCancelled,
+                          isCurrentChannel(roomID: roomID, generation: generation) else { return }
+                    recoveryReconciled = false
+                    recoverChannelOrSocketFailure(trigger: .channel)
+                }
+                guard !isShuttingDown, !Task.isCancelled,
+                      isCurrentChannel(roomID: roomID, generation: generation) else { return }
+            }
             if rebuildingGeneration == nil, !recoveryReconciled, hasHealthyRealtimeTopology() {
                 // The SDK may have finished rejoining between watchdog ticks.
                 // Complete reconciliation even if no .unsubscribed was observed.
@@ -1403,6 +1423,12 @@ actor SideyBackend {
                 activeRoomID: intent.activeRoomID,
                 localPresence: intent.localPresence
             )
+            guard presencePublicationLedger.needsPublication(
+                roomID: roomID,
+                channelGeneration: roomChannels.callbackGeneration,
+                state: state
+            ) else { continue }
+            let publicationRevision = presencePublicationLedger.invalidationRevision
             try await roomChannels.ephemeral.track(PresencePayload(
                 userID: userID,
                 state: state,
@@ -1429,6 +1455,14 @@ actor SideyBackend {
                           && desiredTopology.epoch(for: roomID) == current.epoch
                   })
             else {
+                throw SideyBackendError.realtimeUnavailable
+            }
+            guard presencePublicationLedger.didPublish(
+                roomID: roomID,
+                channelGeneration: roomChannels.callbackGeneration,
+                state: state,
+                observedRevision: publicationRevision
+            ) else {
                 throw SideyBackendError.realtimeUnavailable
             }
         }
@@ -1697,6 +1731,7 @@ actor SideyBackend {
     }
 
     private func markAllRoomsUnsubscribed() {
+        presencePublicationLedger.invalidateAll()
         presenceReplay.invalidateAll()
         for roomID in connectionTracker.desiredRoomIDs {
             connectionTracker.setSubscribed(false, roomID: roomID)

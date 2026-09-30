@@ -1181,6 +1181,79 @@ final class PresenceAndRealtimeTests: XCTestCase {
         pipeline.cancel()
     }
 
+    func testRepeatedRoomReconciliationPublishesPresenceOnlyOncePerUnchangedRoom() {
+        var ledger = PresencePublicationLedger()
+        let activeRoom = UUID()
+        let otherRoom = UUID()
+        var publications: [UUID] = []
+        for _ in 0..<10 {
+            for roomID in [activeRoom, otherRoom] {
+                let state = PresencePublicationPlan.state(
+                    for: roomID, activeRoomID: activeRoom, localPresence: .online
+                )
+                if ledger.needsPublication(roomID: roomID, channelGeneration: 1, state: state) {
+                    publications.append(roomID)
+                    ledger.didPublish(roomID: roomID, channelGeneration: 1, state: state,
+                                      observedRevision: ledger.invalidationRevision)
+                }
+            }
+        }
+        XCTAssertEqual(publications, [activeRoom, otherRoom])
+        XCTAssertTrue(ledger.needsPublication(
+            roomID: activeRoom, channelGeneration: 1, state: .away
+        ))
+        XCTAssertFalse(ledger.needsPublication(
+            roomID: otherRoom, channelGeneration: 1, state: .offline
+        ))
+    }
+
+    func testRejoiningRoomRepublishesPresenceWithoutRepublishingHealthyRoom() {
+        var ledger = PresencePublicationLedger()
+        let repairedRoom = UUID()
+        let healthyRoom = UUID()
+        for roomID in [repairedRoom, healthyRoom] {
+            ledger.didPublish(roomID: roomID, channelGeneration: 1, state: .online,
+                              observedRevision: ledger.invalidationRevision)
+        }
+        // A new channel object needs an initial track even with identical state.
+        XCTAssertTrue(ledger.needsPublication(
+            roomID: repairedRoom, channelGeneration: 2, state: .online
+        ))
+        // The SDK can also rejoin the same channel object after an unsubscribe.
+        let revisionBeforeUnsubscribe = ledger.invalidationRevision
+        ledger.invalidate(roomID: repairedRoom)
+        XCTAssertNotEqual(ledger.invalidationRevision, revisionBeforeUnsubscribe)
+        XCTAssertTrue(ledger.needsPublication(
+            roomID: repairedRoom, channelGeneration: 1, state: .online
+        ))
+        XCTAssertFalse(ledger.needsPublication(
+            roomID: healthyRoom, channelGeneration: 1, state: .online
+        ))
+        ledger.invalidateAll()
+        XCTAssertTrue(ledger.needsPublication(
+            roomID: healthyRoom, channelGeneration: 1, state: .online
+        ))
+    }
+
+    func testSubscriptionResetDuringTrackCannotSuppressRetryAfterRejoin() {
+        var ledger = PresencePublicationLedger()
+        let roomID = UUID()
+        let revisionBeforeTrack = ledger.invalidationRevision
+        XCTAssertTrue(ledger.needsPublication(roomID: roomID, channelGeneration: 1, state: .online))
+        // Same SDK object has already rejoined when its delayed reset arrives.
+        ledger.invalidate(roomID: roomID)
+        XCTAssertFalse(ledger.didPublish(
+            roomID: roomID, channelGeneration: 1, state: .online,
+            observedRevision: revisionBeforeTrack
+        ))
+        XCTAssertTrue(ledger.needsPublication(roomID: roomID, channelGeneration: 1, state: .online))
+        XCTAssertTrue(ledger.didPublish(
+            roomID: roomID, channelGeneration: 1, state: .online,
+            observedRevision: ledger.invalidationRevision
+        ))
+        XCTAssertFalse(ledger.needsPublication(roomID: roomID, channelGeneration: 1, state: .online))
+    }
+
     func testPresencePublicationCoalescesToLatestFullStateAndRunsSerially() async throws {
         let firstStarted = expectation(description: "첫 Presence 게시 시작")
         let gate = AsyncTestGate()
