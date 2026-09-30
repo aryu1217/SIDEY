@@ -16,6 +16,7 @@ presence, typing과 짧은 메시지를 보여 주는 초대 전용 desktop ambi
   [messaging.md](messaging.md)를 따른다.
 - 캐릭터, 말풍선과 투척물은 승인 asset 및 commerce catalog에서 파생한다. 자세한
   동작은 [characters-and-projectiles.md](characters-and-projectiles.md)를 따른다.
+- 그룹 안의 뽑기 결과와 화면 재생은 [draw-games.md](draw-games.md)를 따른다.
 - 공개 웹사이트는 소개·다운로드·정책·상점 정보를 제공하지만 메시징 client는 아니다.
 
 ## 언어와 지역 형식
@@ -58,6 +59,11 @@ Dock icon을 표시하지 않는다. 메뉴바 메뉴에서 설정, 최근 기�
 
 설정 창은 어느 Space에서 열든 현재 활성 Space로 옮겨 표시하며, 이전에 설정 창이 있던
 Space로 사용자를 전환하지 않는다.
+
+macOS는 설정과 온보딩에 서버 연결 상태와 재연결 버튼을 표시한다. 연결을 시도하는
+동안에는 재연결 버튼을 비활성화한다. 프로필 설정의 닉네임 저장 버튼은 입력란
+바로 아래에 둔다. 최근 기록 창은 Liquid Glass 표면을 사용하고 창 내부 우상단의
+닫기 버튼은 표시하지 않는다.
 
 캐릭터를 한 번 클릭하면 입력창을 즉시 토글한다. 두 번 클릭하면 첫 클릭의 토글을
 되돌려 클릭 시퀀스 직전의 입력창 표시 상태를 복원하고 기존 리액션만 실행한다. 첫
