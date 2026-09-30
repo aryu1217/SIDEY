@@ -104,7 +104,7 @@ public sealed class FirebaseRealtimeListenerTests
         Assert.Equal(0, clients);
         Assert.False(listener.IsReady);
 
-        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        time.Advance(TimeSpan.FromSeconds(7));
 
         await WaitUntilAsync(() => credentials.RequestCount == 2 && listener.IsReady);
         Assert.Equal(1, clients);
@@ -251,7 +251,7 @@ public sealed class FirebaseRealtimeListenerTests
         await WaitUntilAsync(() => events.OfType<BackendEvent.Diagnostic>().Any(item =>
             item.Stage.StartsWith("firebase-listener-disconnected", StringComparison.Ordinal))
             && time.ActiveTimers >= 1);
-        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        time.Advance(TimeSpan.FromSeconds(7));
         await WaitUntilAsync(() => listener.IsReady);
         Assert.Equal(2, clients);
     }
@@ -304,23 +304,39 @@ public sealed class FirebaseRealtimeListenerTests
     }
 
     [Fact]
-    public async Task BootstrapRetryAfterWaitIsBoundedByThirtyMinutes()
+    public async Task BootstrapRetryAfterLongerThanLocalCapIsHonoredInFull()
     {
         TimerTimeProvider time = new();
         ScriptedCredentialProvider credentials = new((_, _) =>
-            throw new FirebaseRealtimeRetryException("Bootstrap unavailable.", HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1)));
+            throw new FirebaseRealtimeRetryException("Bootstrap unavailable.", HttpStatusCode.ServiceUnavailable, TimeSpan.FromMinutes(40)));
         await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient(), time);
         await listener.StartAsync(s_roomId, CancellationToken.None);
         await WaitUntilAsync(() => credentials.RequestCount == 1 && time.ActiveTimers >= 1);
 
-        time.Advance(TimeSpan.FromMinutes(29));
+        time.Advance(TimeSpan.FromMinutes(39));
         Assert.Equal(1, credentials.RequestCount);
         time.Advance(TimeSpan.FromMinutes(1));
         await WaitUntilAsync(() => credentials.RequestCount == 2);
     }
 
     [Fact]
-    public async Task RepeatedConnectionFailuresDoNotRetryEverySecond()
+    public async Task RateLimitedConnectionWithoutServerDelayWaitsAtLeastThirtySeconds()
+    {
+        TimerTimeProvider time = new();
+        ScriptedCredentialProvider credentials = new((_, _) =>
+            throw new HttpRequestException("Rate limited.", null, HttpStatusCode.TooManyRequests));
+        await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient(), time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => credentials.RequestCount == 1 && time.ActiveTimers >= 1);
+
+        time.Advance(TimeSpan.FromSeconds(29));
+        Assert.Equal(1, credentials.RequestCount);
+        time.Advance(TimeSpan.FromSeconds(8));
+        await WaitUntilAsync(() => credentials.RequestCount == 2);
+    }
+
+    [Fact]
+    public async Task ConnectionFailuresUseFiveThenTenSecondExponentialDelays()
     {
         TimerTimeProvider time = new();
         System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
@@ -334,15 +350,17 @@ public sealed class FirebaseRealtimeListenerTests
                 item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal)) == 1
             && time.ActiveTimers >= 1);
 
-        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        time.Advance(TimeSpan.FromSeconds(3));
+        Assert.Equal(1, credentials.RequestCount);
+        time.Advance(TimeSpan.FromSeconds(4));
         await WaitUntilAsync(() => credentials.RequestCount == 2
             && events.OfType<BackendEvent.Diagnostic>().Count(item =>
                 item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal)) == 2
             && time.ActiveTimers >= 1);
-        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        time.Advance(TimeSpan.FromSeconds(7));
         Assert.Equal(2, credentials.RequestCount);
 
-        time.Advance(TimeSpan.FromMilliseconds(1_200));
+        time.Advance(TimeSpan.FromSeconds(6));
         await WaitUntilAsync(() => credentials.RequestCount == 3);
         await listener.StopAsync(CancellationToken.None);
         time.Advance(TimeSpan.FromMinutes(1));
@@ -350,7 +368,7 @@ public sealed class FirebaseRealtimeListenerTests
     }
 
     [Fact]
-    public async Task SustainedFailuresKeepAutomaticRetryAtMostThirtyMinutes()
+    public async Task SustainedFailuresKeepLocalRetryAtMostFiveMinutes()
     {
         TimerTimeProvider time = new();
         System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
@@ -372,9 +390,9 @@ public sealed class FirebaseRealtimeListenerTests
             }
         }
 
-        time.Advance(TimeSpan.FromMinutes(20));
+        time.Advance(TimeSpan.FromMinutes(3));
         Assert.Equal(12, credentials.RequestCount);
-        time.Advance(TimeSpan.FromMinutes(10));
+        time.Advance(TimeSpan.FromMinutes(2));
         await WaitUntilAsync(() => credentials.RequestCount == 13);
     }
 
@@ -731,19 +749,21 @@ public sealed class FirebaseRealtimeListenerTests
     [Fact]
     public async Task ReconnectsWhenEitherActiveStreamEnds()
     {
-        var credentials = new FakeCredentialProvider();
-        var roomEnd = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var listener = new FirebaseRealtimeListener(
+        TimerTimeProvider time = new();
+        FakeCredentialProvider credentials = new();
+        TaskCompletionSource roomEnd = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using FirebaseRealtimeListener listener = new(
             credentials,
             _ => { },
-            _ => CreateClient(roomEnd.Task));
+            _ => CreateClient(roomEnd.Task), time);
 
         await listener.StartAsync(s_roomId, CancellationToken.None);
         await WaitUntilAsync(() => listener.IsReady);
 
         roomEnd.TrySetResult();
 
-        await WaitUntilAsync(() => credentials.RequestCount >= 2);
+        await WaitUntilAsync(() => credentials.RequestCount >= 2,
+            () => time.Advance(TimeSpan.FromSeconds(1)));
     }
 
     [Fact]

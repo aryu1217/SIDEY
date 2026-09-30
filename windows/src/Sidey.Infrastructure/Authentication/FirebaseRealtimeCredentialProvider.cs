@@ -59,6 +59,7 @@ internal sealed class FirebaseRealtimeRetryException(
     string failureCode = "transport-error") : FirebaseRealtimeHttpException(message, statusCode, failureCode)
 {
     public TimeSpan RetryAfter { get; } = retryAfter;
+    public TimeSpan? ServerRetryAfter { get; init; }
 }
 
 internal sealed class FirebaseRealtimeCredential
@@ -123,10 +124,12 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
     private readonly ICredentialStore _credentials;
     private readonly HttpClient _httpClient;
     private readonly TimeProvider _timeProvider;
+    private readonly Func<double> _retryJitter;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Lock _lifecycleGate = new();
     private readonly Dictionary<SessionKey, TokenState> _states = [];
     private readonly Dictionary<SessionKey, RetryCooldown> _retryCooldowns = [];
+    private readonly Dictionary<SessionKey, RetryState> _retryStates = [];
     private readonly Dictionary<SessionKey, long> _rejectedAuthVersions = [];
     private readonly Dictionary<SessionKey, Task<FirebaseRealtimeCredential>> _inflight = [];
     private readonly Dictionary<SessionKey, long> _inflightGenerations = [];
@@ -144,12 +147,14 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         IAuthSessionAccessor sessions,
         ICredentialStore credentials,
         HttpClient httpClient,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Func<double>? retryJitter = null)
     {
         _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _retryJitter = retryJitter ?? (() => Random.Shared.NextDouble());
     }
 
     public ValueTask<FirebaseRealtimeCredential> GetCredentialAsync(
@@ -215,7 +220,10 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
                 TimeSpan remaining = cooldown.Delay - _timeProvider.GetElapsedTime(cooldown.StartedTimestamp);
                 if (remaining > TimeSpan.Zero)
                 {
-                    throw new FirebaseRealtimeRetryException(cooldown.Message, cooldown.StatusCode, remaining, cooldown.FailureCode);
+                    throw new FirebaseRealtimeRetryException(cooldown.Message, cooldown.StatusCode, remaining, cooldown.FailureCode)
+                    {
+                        ServerRetryAfter = cooldown.ServerRetryAfter,
+                    };
                 }
                 _retryCooldowns.Remove(key);
             }
@@ -377,6 +385,7 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         {
             _states.Clear();
             _retryCooldowns.Clear();
+            _retryStates.Clear();
             _rejectedAuthVersions.Clear();
             _inflight.Clear();
             _inflightGenerations.Clear();
@@ -506,7 +515,12 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         }
         catch (Exception exception)
         {
-            await RemoveFailedOperationAsync(key, generation, exception).ConfigureAwait(false);
+            FirebaseRealtimeRetryException? adjusted = await RemoveFailedOperationAsync(key, generation, exception)
+                .ConfigureAwait(false);
+            if (adjusted is not null)
+            {
+                throw adjusted;
+            }
             throw;
         }
     }
@@ -664,16 +678,16 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         catch (HttpRequestException exception)
         {
             throw exception.StatusCode is null
-                ? new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30))
+                ? new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero)
                 : new HttpRequestException(failureMessage, inner: null, exception.StatusCode);
         }
         catch (OperationCanceledException)
         {
-            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30));
+            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero);
         }
         catch (IOException)
         {
-            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30));
+            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero);
         }
         catch (Exception)
         {
@@ -718,16 +732,16 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         catch (HttpRequestException exception)
         {
             throw exception.StatusCode is null
-                ? new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30))
+                ? new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero)
                 : new HttpRequestException(failureMessage, inner: null, exception.StatusCode);
         }
         catch (OperationCanceledException)
         {
-            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30));
+            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero);
         }
         catch (IOException)
         {
-            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.FromSeconds(30));
+            throw new FirebaseRealtimeRetryException(failureMessage, null, TimeSpan.Zero);
         }
         catch (Exception)
         {
@@ -780,8 +794,11 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
             ?? (retry?.Date is DateTimeOffset retryAt
                 ? retryAt - (response.Headers.Date ?? _timeProvider.GetUtcNow())
                 : TimeSpan.Zero);
-        delay = TimeSpan.FromTicks(Math.Max(delay.Ticks, TimeSpan.FromSeconds(30).Ticks));
-        return new FirebaseRealtimeRetryException(message, response.StatusCode, delay, failureCode);
+        delay = TimeSpan.FromTicks(Math.Max(delay.Ticks, 0));
+        return new FirebaseRealtimeRetryException(message, response.StatusCode, delay, failureCode)
+        {
+            ServerRetryAfter = retry is not null ? delay : null,
+        };
     }
 
     private static async Task<byte[]> ReadBoundedAsync(
@@ -871,6 +888,8 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
             _states[key] = state;
             _rejectedAuthVersions.Remove(key);
             _retryCooldowns.Remove(key);
+            _retryStates.TryGetValue(key, out RetryState? retryState);
+            _retryStates[key] = new RetryState(retryState?.Failures ?? 0, _timeProvider.GetTimestamp());
             if (_minimumAccessRevisions.TryGetValue(key, out string? minimumAccessRevision)
                 && StringComparer.Ordinal.Compare(
                     bootstrap.AccessRevision,
@@ -887,8 +906,10 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         }
     }
 
-    private async Task RemoveFailedOperationAsync(SessionKey key, long generation, Exception exception)
+    private async Task<FirebaseRealtimeRetryException?> RemoveFailedOperationAsync(
+        SessionKey key, long generation, Exception exception)
     {
+        FirebaseRealtimeRetryException? adjusted = null;
         await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
@@ -897,8 +918,23 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
             {
                 if (exception is FirebaseRealtimeRetryException retry)
                 {
+                    _retryStates.TryGetValue(key, out RetryState? previousRetry);
+                    int failures = previousRetry?.Failures ?? 0;
+                    if (previousRetry?.LastSuccessTimestamp is long success
+                        && _timeProvider.GetElapsedTime(success) >= FirebaseRealtimeRetryPolicy.StableConnection)
+                    {
+                        failures = 0;
+                    }
+                    failures = Math.Min(failures + 1, 17);
+                    TimeSpan delay = FirebaseRealtimeRetryPolicy.CalculateDelay(
+                        failures, retry.StatusCode, retry.RetryAfter, _retryJitter());
+                    _retryStates[key] = new RetryState(failures, null);
                     _retryCooldowns[key] = new RetryCooldown(
-                        _timeProvider.GetTimestamp(), retry.RetryAfter, retry.Message, retry.StatusCode, retry.FailureCode);
+                        _timeProvider.GetTimestamp(), delay, retry.Message, retry.StatusCode, retry.FailureCode, retry.ServerRetryAfter);
+                    adjusted = new FirebaseRealtimeRetryException(retry.Message, retry.StatusCode, delay, retry.FailureCode)
+                    {
+                        ServerRetryAfter = retry.ServerRetryAfter,
+                    };
                 }
                 else if (exception is not OperationCanceledException)
                 {
@@ -912,6 +948,7 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         {
             _gate.Release();
         }
+        return adjusted;
     }
 
     private async Task DiscardPersistedSessionAsync(
@@ -1194,12 +1231,15 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         public override string ToString() => nameof(BootstrapGrant);
     }
 
+    private sealed record RetryState(int Failures, long? LastSuccessTimestamp);
+
     private sealed record RetryCooldown(
         long StartedTimestamp,
         TimeSpan Delay,
         string Message,
         HttpStatusCode? StatusCode,
-        string FailureCode);
+        string FailureCode,
+        TimeSpan? ServerRetryAfter);
 
     private sealed record TokenState(
         Guid UserId,

@@ -462,7 +462,8 @@ public sealed class FirebaseRealtimeCredentialProviderTests
             : new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromMinutes(40));
         FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
             () => provider.GetCredentialAsync().AsTask());
-        Assert.Equal(TimeSpan.FromMinutes(40), failure.RetryAfter);
+        Assert.InRange(failure.RetryAfter.TotalMinutes, 40, 48);
+        Assert.Equal(TimeSpan.FromMinutes(40), failure.ServerRetryAfter);
         Assert.Equal((HttpStatusCode)status, failure.StatusCode);
         Assert.Equal(persisted, store.Value(CredentialKey.FirebaseRealtimeSession));
         FirebaseRealtimeCredential usable = await provider.GetUsableCredentialAsync();
@@ -472,7 +473,7 @@ public sealed class FirebaseRealtimeCredentialProviderTests
         time.SetUtcNow(s_initialTime.AddYears(1));
         FirebaseRealtimeRetryException cooling = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
             () => provider.GetCredentialAsync().AsTask());
-        Assert.Equal(TimeSpan.FromMinutes(40) - TimeSpan.FromSeconds(10), cooling.RetryAfter);
+        Assert.Equal(failure.RetryAfter - TimeSpan.FromSeconds(10), cooling.RetryAfter);
         Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
         time.Advance(TimeSpan.FromMinutes(5));
         await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(() => provider.GetUsableCredentialAsync().AsTask());
@@ -505,16 +506,50 @@ public sealed class FirebaseRealtimeCredentialProviderTests
         handler.RejectNextBootstrap = transportFailure == 0 ? HttpStatusCode.ServiceUnavailable : null;
         FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
             () => provider.GetCredentialAsync().AsTask());
-        Assert.Equal(TimeSpan.FromSeconds(30), failure.RetryAfter);
+        Assert.InRange(failure.RetryAfter.TotalSeconds, 4, 6);
         FirebaseRealtimeCredential usable = await provider.GetUsableCredentialAsync();
         Assert.Equal(initial.IdToken, usable.IdToken);
         Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
-        time.Advance(TimeSpan.FromSeconds(30));
+        time.Advance(failure.RetryAfter);
         time.SetUtcNow(s_initialTime.AddSeconds(250));
         handler.RolloutLeaseExpiresAt = s_initialTime.AddSeconds(550).ToUnixTimeMilliseconds();
         FirebaseRealtimeCredential renewed = await provider.GetCredentialAsync();
         Assert.True(renewed.ExpiresAfter > TimeSpan.FromMinutes(4));
         Assert.Equal(3, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+    }
+
+    [Fact]
+    public async Task SessionFailureCountSurvivesBriefSuccessAndResetsAfterThirtySeconds()
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        ManualTimeProvider time = new();
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, time, retryJitter: () => 0.5);
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException first = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(5), first.RetryAfter);
+        time.Advance(first.RetryAfter);
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException second = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.RecoverRejectedCredentialAsync(initial).AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(10), second.RetryAfter);
+        time.Advance(second.RetryAfter);
+        FirebaseRealtimeCredential recovered = await provider.GetCredentialAsync();
+        time.Advance(TimeSpan.FromSeconds(30));
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException stable = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.RecoverRejectedCredentialAsync(recovered).AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(5), stable.RetryAfter);
+        int requests = handler.RequestKinds.Count(kind => kind == "bootstrap");
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(() => provider.GetUsableCredentialAsync().AsTask());
+        Assert.Equal(requests, handler.RequestKinds.Count(kind => kind == "bootstrap"));
     }
 
     [Theory]
@@ -562,7 +597,8 @@ public sealed class FirebaseRealtimeCredentialProviderTests
         FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
             () => provider.GetCredentialAsync().AsTask());
         Assert.Equal(HttpStatusCode.TooManyRequests, failure.StatusCode);
-        Assert.Equal(TimeSpan.FromMinutes(40), failure.RetryAfter);
+        Assert.InRange(failure.RetryAfter.TotalMinutes, 40, 48);
+        Assert.Equal(TimeSpan.FromMinutes(40), failure.ServerRetryAfter);
         Assert.Equal("transport-error", failure.FailureCode);
     }
 

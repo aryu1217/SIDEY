@@ -25,8 +25,6 @@ internal interface IFirebaseRealtimeListener : IAsyncDisposable
 internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
 {
     private static readonly TimeSpan s_rotationDeadline = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan s_stableConnection = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan s_maxReconnectDelay = TimeSpan.FromMinutes(30);
 
     private readonly IFirebaseRealtimeCredentialProvider _credentials;
     private readonly Func<Uri, FirebaseRtdbRestClient> _createClient;
@@ -241,22 +239,31 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         async Task DelayAfterFailureAsync(Exception? failure = null)
         {
             if (readySince is long timestamp
-                && _timeProvider.GetElapsedTime(timestamp) >= s_stableConnection)
+                && _timeProvider.GetElapsedTime(timestamp) >= FirebaseRealtimeRetryPolicy.StableConnection)
             {
                 consecutiveFailures = 0;
             }
             readySince = null;
-            consecutiveFailures = Math.Min(consecutiveFailures + 1, 12);
-            int baseSeconds = Math.Min(
-                1 << (consecutiveFailures - 1),
-                (int)s_maxReconnectDelay.TotalSeconds);
-            double jitter = 0.8 + Random.Shared.NextDouble() * 0.4;
-            double minimumSeconds = failure is FirebaseRealtimeRetryException retryFailure
-                ? retryFailure.RetryAfter.TotalSeconds
-                : 0;
-            double retrySeconds = Math.Max(baseSeconds * jitter, minimumSeconds * (1 + Random.Shared.NextDouble() * 0.2));
-            await Task.Delay(
-                TimeSpan.FromSeconds(Math.Min(retrySeconds, s_maxReconnectDelay.TotalSeconds)),
+            consecutiveFailures = Math.Min(consecutiveFailures + 1, 17);
+            System.Net.HttpStatusCode? statusCode = failure switch
+            {
+                HttpRequestException request => request.StatusCode,
+                FirebaseRealtimeStreamRequestException request => request.StatusCode,
+                FirebaseRtdbRequestException request => request.StatusCode,
+                _ => null,
+            };
+            TimeSpan delay = FirebaseRealtimeRetryPolicy.CalculateDelay(
+                consecutiveFailures,
+                failure is FirebaseRealtimeRetryException ? null : statusCode,
+                retryAfter: null,
+                Random.Shared.NextDouble());
+            if (failure is FirebaseRealtimeRetryException retryFailure && retryFailure.RetryAfter > delay)
+            {
+                // The provider already applies jitter to its shared deadline.
+                delay = retryFailure.RetryAfter;
+            }
+            await FirebaseRealtimeRetryPolicy.DelayAsync(
+                delay,
                 _timeProvider,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -374,9 +381,10 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
 
                 if (!cancellationToken.IsCancellationRequested)
                 {
+                    Exception? failure = current.Failure;
                     await DisconnectStreamSetAsync(current, generation, activeRoomId).ConfigureAwait(false);
                     current = null;
-                    await DelayAfterFailureAsync().ConfigureAwait(false);
+                    await DelayAfterFailureAsync(failure).ConfigureAwait(false);
                 }
             }
         }
