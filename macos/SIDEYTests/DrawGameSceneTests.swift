@@ -236,20 +236,21 @@ final class DrawGameSceneTests: XCTestCase {
             let lot = DrawLotScene(event: event(.lot), room: room, size: size)
             let papers = lot.children
             XCTAssertEqual(papers.count, count)
+            let printedContents = try papers.map { paper in
+                try XCTUnwrap(paper.children.first { content in
+                    content.children.contains { $0 is DrawCharacterNode }
+                })
+            }
             lot.setProgress(0.125) // Fully folded at 0.5 seconds.
-            for paper in papers {
-                let printedCharacter = try XCTUnwrap(paper.children.first { $0 is DrawCharacterNode })
-                XCTAssertEqual(printedCharacter.alpha, 0, accuracy: 0.001)
+            for content in printedContents {
+                XCTAssertEqual(content.alpha, 0, accuracy: 0.001)
             }
             lot.setProgress(1)
             XCTAssertEqual(papers[winnerIndex].alpha, 1, accuracy: 0.001)
             XCTAssertTrue(papers.enumerated().allSatisfy { index, paper in
                 index == winnerIndex || paper.zPosition < papers[winnerIndex].zPosition
             })
-            let revealedCharacter = try XCTUnwrap(
-                papers[winnerIndex].children.first { $0 is DrawCharacterNode }
-            )
-            XCTAssertEqual(revealedCharacter.alpha, 1, accuracy: 0.001)
+            XCTAssertEqual(printedContents[winnerIndex].alpha, 1, accuracy: 0.001)
 
             let roulette = DrawRouletteScene(event: event(.roulette), room: room, size: size)
             let wheel = try XCTUnwrap(roulette.children.first)

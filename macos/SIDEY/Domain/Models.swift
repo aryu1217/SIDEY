@@ -466,10 +466,13 @@ enum RealtimeChannelGenerationPolicy {
     static func accepts(
         candidateGeneration: Int,
         currentGeneration: Int,
+        candidateCallbackGeneration: Int,
+        currentCallbackGeneration: Int,
         desiredEpoch: Int?,
         channelEpoch: Int?
     ) -> Bool {
         candidateGeneration == currentGeneration
+            && candidateCallbackGeneration == currentCallbackGeneration
             && desiredEpoch != nil
             && desiredEpoch == channelEpoch
     }

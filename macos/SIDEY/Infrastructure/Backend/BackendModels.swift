@@ -59,6 +59,48 @@ enum RealtimeConnectionStatusPolicy {
     }
 }
 
+enum RealtimeRoomChannelRepair {
+    /// Runs a room-scoped repair against the latest RLS-authorized snapshot.
+    /// The caller owns the shared socket; a failed subscribe leaves other
+    /// rooms in place so a later snapshot can retry the affected room.
+    static func run(
+        rooms: [Room],
+        liveEpochs: [UUID: Int],
+        healthyRoomIDs: Set<UUID>,
+        removeChannel: @Sendable (UUID) async -> Void,
+        configureChannels: @Sendable ([Room]) async throws -> Void
+    ) async throws -> Bool {
+        let authorizedRooms = Array(rooms.prefix(5))
+        let authorizedRoomIDs = Set(authorizedRooms.map(\.id))
+        let unhealthyRoomIDs = authorizedRoomIDs.subtracting(healthyRoomIDs)
+        let topologyChanged = RealtimeTopology(rooms: authorizedRooms)
+            != RealtimeTopology(channelEpochs: liveEpochs)
+        guard topologyChanged || !unhealthyRoomIDs.isEmpty else { return false }
+        for roomID in unhealthyRoomIDs.sorted(by: { $0.uuidString < $1.uuidString }) {
+            await removeChannel(roomID)
+        }
+        try await configureChannels(authorizedRooms)
+        return true
+    }
+}
+
+struct RealtimeStructuralSnapshotRetry {
+    private(set) var failures = 0
+
+    var delay: Duration {
+        failures == 0 ? .milliseconds(150)
+            : .seconds(RealtimeRecoveryPolicy.delay(forAttempt: failures))
+    }
+
+    mutating func failed() {
+        failures = min(failures + 1, 6)
+    }
+
+    mutating func succeeded() {
+        failures = 0
+    }
+}
+
 struct MessageHistoryCursor: Equatable, Sendable {
     let rawCreatedAt: String
     let id: UUID

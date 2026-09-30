@@ -241,6 +241,43 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }.count, 1)
     }
 
+    func testMemberJoiningAnotherRoomKeepsBothLiveListenersAndActiveDelivery() async throws {
+        let secondRoomID = UUID()
+        let fixture = try Fixture(additionalAuthorizedRoomID: secondRoomID)
+        var secondRoom = fixture.makeRoom(id: secondRoomID)
+        await fixture.supabase.replaceRooms([fixture.room, secondRoom])
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room, secondRoom], activeRoomID: fixture.room.id
+        )
+
+        secondRoom.members.append(RoomMember(
+            userID: UUID(), nickname: "새 친구", characterID: "pixel_penguin",
+            presence: .offline
+        ))
+        await fixture.supabase.replaceRooms([fixture.room, secondRoom])
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room, secondRoom], activeRoomID: fixture.room.id
+        )
+
+        let activePath = FirebaseV2Path.liveRoom(fixture.room.id)
+        let changedPath = FirebaseV2Path.liveRoom(secondRoomID)
+        XCTAssertEqual(fixture.values.paths.filter { $0 == activePath }.count, 1)
+        XCTAssertEqual(fixture.values.paths.filter { $0 == changedPath }.count, 1)
+        let diagnostics = await fixture.transport.diagnostics()
+        XCTAssertEqual(diagnostics.liveListenerCount, 2)
+
+        var events = fixture.transport.events.makeAsyncIterator()
+        fixture.values.yield(Data("""
+        {"x":{"\(fixture.friendID.uuidString.lowercased())":{
+          "k":"18","t":1800000000000,"u":"\(fixture.ownID.uuidString.lowercased())"
+        }}}
+        """.utf8), at: activePath)
+        guard case .characterThrow(let value) = await events.next() else {
+            return XCTFail("An unchanged active room must keep delivering events")
+        }
+        XCTAssertEqual(value.actorUserID, fixture.friendID)
+    }
+
     func testLiveListenerMustDeliverInitialSnapshotBeforeRoomCommit() async throws {
         let fixture = try Fixture(
             automaticallyYieldLiveBaseline: false,
@@ -281,7 +318,7 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
                 && synchronizeCount >= 2
                 && fixture.values.paths.filter {
                     $0 == FirebaseV2Path.liveRoom(fixture.room.id)
-                }.count == 2
+                }.count == 1
         }
         let requests = await fixture.credentials.establishRequests
         XCTAssertEqual(requests, [
@@ -298,7 +335,69 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }.count, 2)
         XCTAssertEqual(fixture.values.paths.filter {
             $0 == FirebaseV2Path.liveRoom(fixture.room.id)
-        }.count, 2)
+        }.count, 1)
+    }
+
+    func testMembershipRevisionKeepsAuthorizedListenersAndPrunesRevokedRoom() async throws {
+        let secondRoomID = UUID()
+        let fixture = try Fixture(
+            additionalAuthorizedRoomID: secondRoomID,
+            recoveryRevokesAdditionalRoom: true
+        )
+        let secondRoom = fixture.makeRoom(id: secondRoomID)
+        await fixture.supabase.replaceRooms([fixture.room, secondRoom])
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room, secondRoom], activeRoomID: fixture.room.id
+        )
+        fixture.values.yield(
+            Data(#"{"a":"00000000000000000002","r":{}}"#.utf8),
+            at: FirebaseV2Path.inbox(userID: fixture.ownID)
+        )
+
+        try await eventually {
+            let diagnostics = await fixture.transport.diagnostics()
+            let synchronizeCount = await fixture.supabase.synchronizeCount
+            return synchronizeCount >= 2 && diagnostics.liveListenerCount == 1
+        }
+        let activePath = FirebaseV2Path.liveRoom(fixture.room.id)
+        let revokedPath = FirebaseV2Path.liveRoom(secondRoomID)
+        XCTAssertEqual(fixture.values.paths.filter { $0 == activePath }.count, 1)
+        XCTAssertEqual(fixture.values.paths.filter { $0 == revokedPath }.count, 1)
+        try await fixture.transport.publishCharacterPulse(
+            roomID: fixture.room.id, eventID: UUID()
+        )
+        await assertThrowsAsync(FirebaseV2CompositeTransportError.roomNotAuthorized) {
+            try await fixture.transport.setActiveRoom(secondRoomID)
+        }
+    }
+
+    func testPeerMembershipRevisionKeepsBothAuthorizedRoomListeners() async throws {
+        let secondRoomID = UUID()
+        let fixture = try Fixture(additionalAuthorizedRoomID: secondRoomID)
+        let secondRoom = fixture.makeRoom(id: secondRoomID)
+        await fixture.supabase.replaceRooms([fixture.room, secondRoom])
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room, secondRoom], activeRoomID: fixture.room.id
+        )
+        fixture.values.yield(
+            Data(#"{"a":"00000000000000000002","r":{}}"#.utf8),
+            at: FirebaseV2Path.inbox(userID: fixture.ownID)
+        )
+
+        try await eventually {
+            let establishCount = await fixture.credentials.establishCount
+            let synchronizeCount = await fixture.supabase.synchronizeCount
+            return establishCount == 2 && synchronizeCount >= 2
+        }
+        XCTAssertEqual(fixture.values.paths.filter {
+            $0 == FirebaseV2Path.liveRoom(fixture.room.id)
+        }.count, 1)
+        XCTAssertEqual(fixture.values.paths.filter {
+            $0 == FirebaseV2Path.liveRoom(secondRoomID)
+        }.count, 1)
+        let diagnostics = await fixture.transport.diagnostics()
+        XCTAssertEqual(diagnostics.liveListenerCount, 2)
+        XCTAssertTrue(diagnostics.grantOpen)
     }
 
     func testAccessRevisionRecoveryFailurePreservesSharedBackendForRetry() async throws {
@@ -699,7 +798,7 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }
     }
 
-    func testRolloutLeaseRefreshReplacesAuthGenerationAndBothFirebaseListeners() async throws {
+    func testRolloutLeaseRefreshReauthorizesWithoutReplacingLiveListener() async throws {
         let fixture = try Fixture(leaseRefreshExpiresAt: 1_800_000_600_000)
         _ = try await fixture.transport.synchronize(
             rooms: [fixture.room],
@@ -720,7 +819,7 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }.count, 2)
         XCTAssertEqual(fixture.values.paths.filter {
             $0 == FirebaseV2Path.liveRoom(fixture.room.id)
-        }.count, 2)
+        }.count, 1)
         let leaseStatus = await fixture.transport.rolloutLeaseStatus()
         let lease = try XCTUnwrap(leaseStatus)
         XCTAssertGreaterThan(lease.expiresIn, .seconds(599))
@@ -919,6 +1018,7 @@ private struct Fixture {
 
     init(
         additionalAuthorizedRoomID: UUID? = nil,
+        recoveryRevokesAdditionalRoom: Bool = false,
         automaticallyYieldLiveBaseline: Bool = true,
         liveReadinessTimeout: Duration = .seconds(1),
         initialLeaseExpiresAt: Int64 = 1_800_000_300_000,
@@ -964,7 +1064,7 @@ private struct Fixture {
         let recoveredSession = FirebaseV2CompositeSession(
             identity: initialSession.identity,
             bootstrap: try Self.makeBootstrap(
-                rooms: authorizedRooms,
+                rooms: recoveryRevokesAdditionalRoom ? [room.id] : authorizedRooms,
                 wireCode: throwWireCode,
                 accessRevision: recoveredRevision.rawValue,
                 rolloutLeaseExpiresAt: initialLeaseExpiresAt

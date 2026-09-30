@@ -735,23 +735,112 @@ final class PresenceAndRealtimeTests: XCTestCase {
         XCTAssertTrue(plan.removals.isEmpty)
     }
 
+    func testDeniedRoomRepairRetriesLatestEpochWithoutRemovingHealthyRoom() async throws {
+        let ownerID = UUID()
+        let stableRoom = Room(
+            id: UUID(), name: "유지 방", ownerID: ownerID, members: [],
+            inviteCodeHint: "AB••••", realtimeEpoch: 3
+        )
+        var changedRoom = Room(
+            id: UUID(), name: "변경 방", ownerID: ownerID, members: [],
+            inviteCodeHint: "CD••••", realtimeEpoch: 2
+        )
+        let probe = RoomRepairProbe()
+
+        do {
+            _ = try await RealtimeRoomChannelRepair.run(
+                rooms: [stableRoom, changedRoom],
+                liveEpochs: [stableRoom.id: 3, changedRoom.id: 1],
+                healthyRoomIDs: [stableRoom.id],
+                removeChannel: { await probe.remove($0) },
+                configureChannels: { try await probe.configure($0) }
+            )
+            XCTFail("A stale epoch subscription must fail before retry")
+        } catch RoomRepairProbeError.denied {
+            // The next attempt must use a new authorized snapshot.
+        }
+
+        changedRoom.realtimeEpoch = 3
+        let repaired = try await RealtimeRoomChannelRepair.run(
+            rooms: [stableRoom, changedRoom],
+            liveEpochs: [stableRoom.id: 3],
+            healthyRoomIDs: [stableRoom.id],
+            removeChannel: { await probe.remove($0) },
+            configureChannels: { try await probe.configure($0) }
+        )
+
+        let result = await probe.snapshot()
+        XCTAssertTrue(repaired)
+        XCTAssertEqual(result.removed, [changedRoom.id, changedRoom.id])
+        XCTAssertEqual(result.configuredEpochs, [2, 3])
+        XCTAssertEqual(result.stableRoomIDs, [stableRoom.id, stableRoom.id])
+    }
+
+    func testPersistentRoomDenialBacksOffWithoutRemovingOtherRoom() async throws {
+        let ownerID = UUID()
+        let stableRoom = Room(
+            id: UUID(), name: "유지 방", ownerID: ownerID, members: [],
+            inviteCodeHint: "AB••••", realtimeEpoch: 3
+        )
+        let deniedRoom = Room(
+            id: UUID(), name: "거부 방", ownerID: ownerID, members: [],
+            inviteCodeHint: "CD••••", realtimeEpoch: 2
+        )
+        let probe = RoomRepairProbe(failuresToInject: 4)
+        var retry = RealtimeStructuralSnapshotRetry()
+
+        for expectedDelay in [Duration.seconds(8), .seconds(16), .seconds(30), .seconds(30)] {
+            do {
+                _ = try await RealtimeRoomChannelRepair.run(
+                    rooms: [stableRoom, deniedRoom],
+                    liveEpochs: [stableRoom.id: 3],
+                    healthyRoomIDs: [stableRoom.id],
+                    removeChannel: { await probe.remove($0) },
+                    configureChannels: { try await probe.configure($0) }
+                )
+                XCTFail("Injected permission denial must fail this room repair")
+            } catch RoomRepairProbeError.denied {
+                retry.failed()
+            }
+            XCTAssertEqual(retry.delay, expectedDelay)
+        }
+
+        let result = await probe.snapshot()
+        XCTAssertEqual(result.removed, Array(repeating: deniedRoom.id, count: 4))
+        XCTAssertEqual(result.stableRoomIDs, Array(repeating: stableRoom.id, count: 4))
+    }
+
     func testRealtimeGenerationRejectsStaleCallbacksAndEpochs() {
         XCTAssertTrue(RealtimeChannelGenerationPolicy.accepts(
             candidateGeneration: 4,
             currentGeneration: 4,
+            candidateCallbackGeneration: 2,
+            currentCallbackGeneration: 2,
             desiredEpoch: 9,
             channelEpoch: 9
         ))
         XCTAssertFalse(RealtimeChannelGenerationPolicy.accepts(
             candidateGeneration: 3,
             currentGeneration: 4,
+            candidateCallbackGeneration: 2,
+            currentCallbackGeneration: 2,
             desiredEpoch: 9,
             channelEpoch: 9
         ))
         XCTAssertFalse(RealtimeChannelGenerationPolicy.accepts(
             candidateGeneration: 4,
             currentGeneration: 4,
+            candidateCallbackGeneration: 2,
+            currentCallbackGeneration: 2,
             desiredEpoch: 10,
+            channelEpoch: 9
+        ))
+        XCTAssertFalse(RealtimeChannelGenerationPolicy.accepts(
+            candidateGeneration: 4,
+            currentGeneration: 4,
+            candidateCallbackGeneration: 1,
+            currentCallbackGeneration: 2,
+            desiredEpoch: 9,
             channelEpoch: 9
         ))
     }
@@ -1159,5 +1248,34 @@ private actor SerialExecutionProbe<Value: Sendable & Equatable> {
 
     func snapshot() -> (started: [Value], maximumConcurrent: Int) {
         (started, maximumConcurrent)
+    }
+}
+
+private enum RoomRepairProbeError: Error {
+    case denied
+}
+
+private actor RoomRepairProbe {
+    private let failuresToInject: Int
+    private var removed: [UUID] = []
+    private var configuredEpochs: [Int] = []
+    private var stableRoomIDs: [UUID] = []
+
+    init(failuresToInject: Int = 1) {
+        self.failuresToInject = failuresToInject
+    }
+
+    func remove(_ roomID: UUID) {
+        removed.append(roomID)
+    }
+
+    func configure(_ rooms: [Room]) throws {
+        stableRoomIDs.append(rooms[0].id)
+        configuredEpochs.append(rooms[1].realtimeEpoch)
+        if configuredEpochs.count <= failuresToInject { throw RoomRepairProbeError.denied }
+    }
+
+    func snapshot() -> (removed: [UUID], configuredEpochs: [Int], stableRoomIDs: [UUID]) {
+        (removed, configuredEpochs, stableRoomIDs)
     }
 }
