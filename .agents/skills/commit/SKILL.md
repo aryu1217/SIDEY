@@ -15,12 +15,18 @@ commit. A message-only request must not change the index or repository.
 
 For a local commit:
 
+Follow the [logical task and Git boundaries](../remote-branch-workflow/SKILL.md#logical-task-and-git-boundaries).
+Keep focused implementation, test, and documentation commits for the same
+logical task on its existing branch. Changing commit type or invoking this
+skill does not create a task, branch, or PR.
+
 1. Confirm that the worktree and branch belong to the current task. Inspect
    `git status`, the unstaged diff, the staged diff, untracked files and the
    complete diff against the task base.
 2. Choose one coherent commit boundary. Never include unrelated user or agent
-   changes. If the requested paths mix independent work, split the commits or
-   stop and report the ownership conflict.
+   changes. Separate independent logical tasks under that contract; separate
+   commits alone do not justify mixing unrelated work into the task's PR.
+   Stop and report unresolved ownership conflicts.
 3. Stage only explicit paths. Do not use `git add .`, broad globs, interactive
    staging or a command that can capture unknown files.
 4. Review `git diff --cached` and verify that every staged path belongs to the
@@ -40,5 +46,6 @@ For a local commit:
    changes left in the worktree.
 
 Never push, create a pull request, merge, tag, release or deploy as part of
-this skill. A request to continue with a pull request is a separate
-`$create-pr` task with its own remote authorization check.
+this skill. Pull-request publication is a separate authorized operation handled
+by `$create-pr`, with its own remote authorization check. It does not create a
+new logical task, worktree, or branch.

@@ -101,6 +101,64 @@ final class FirebaseV2ChatClientTests: XCTestCase {
         )
     }
 
+    func testUnauthenticatedNotifiesOnceWithoutResendingOrLookingUpMessage() async {
+        let caller = FirebaseV2ChatCallerStub(result: .failure(NSError(
+            domain: FunctionsErrorDomain,
+            code: FunctionsErrorCode.unauthenticated.rawValue
+        )))
+        let lookup = FirebaseV2CommittedMessageLookupStub(results: [])
+        let notification = FirebaseV2ChatAuthenticationNotificationStub()
+        let client = FirebaseV2ChatClient(
+            caller: caller,
+            committedMessageLookup: lookup,
+            senderUserID: UUID(),
+            bubbleCatalogIDByWireCode: [:]
+        )
+
+        let outcome = await client.send(
+            roomID: UUID(),
+            body: "hello",
+            messageID: UUID(),
+            onUnauthenticated: { await notification.record() }
+        )
+
+        XCTAssertEqual(outcome, .definitelyRejected(
+            message: L10n.text("firebase.chat.error.authentication_expired")
+        ))
+        let notificationCount = await notification.count
+        let callCount = await caller.callCount
+        let lookupCount = await lookup.requestCount
+        XCTAssertEqual(notificationCount, 1)
+        XCTAssertEqual(callCount, 1)
+        XCTAssertEqual(lookupCount, 0)
+    }
+
+    func testOtherFunctionFailureDoesNotNotifyAuthenticationRecovery() async {
+        let caller = FirebaseV2ChatCallerStub(result: .failure(NSError(
+            domain: FunctionsErrorDomain,
+            code: FunctionsErrorCode.permissionDenied.rawValue
+        )))
+        let notification = FirebaseV2ChatAuthenticationNotificationStub()
+        let client = FirebaseV2ChatClient(
+            caller: caller,
+            senderUserID: UUID(),
+            bubbleCatalogIDByWireCode: [:]
+        )
+
+        let outcome = await client.send(
+            roomID: UUID(),
+            body: "hello",
+            messageID: UUID(),
+            onUnauthenticated: { await notification.record() }
+        )
+
+        XCTAssertEqual(outcome, .definitelyRejected(
+            message: L10n.text("firebase.chat.error.permission_denied")
+        ))
+        let notificationCount = await notification.count
+        XCTAssertEqual(notificationCount, 0)
+    }
+
     func testResponseRejectsUnsafeSequence() {
         let json = #"{"b":"x","i":"11111111-1111-4111-8111-111111111111","n":9007199254740992,"t":1}"#
         XCTAssertThrowsError(try JSONDecoder().decode(
@@ -172,6 +230,14 @@ private actor FirebaseV2ChatCallerStub: FirebaseV2ChatCalling {
     func call(_ request: FirebaseV2ChatRequest) async throws -> FirebaseV2ChatResponse {
         callCount += 1
         return try result.get()
+    }
+}
+
+private actor FirebaseV2ChatAuthenticationNotificationStub {
+    private(set) var count = 0
+
+    func record() {
+        count += 1
     }
 }
 

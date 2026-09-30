@@ -523,7 +523,6 @@ public sealed class MvvmArchitectureTests
         {
             "AutoInstallUpdates",
             "NotifyWhenUpdateAvailable",
-            "ShowReleaseNotesAfterUpdate",
         })
         {
             Assert.Contains(details.Descendants(), element =>
@@ -531,6 +530,8 @@ public sealed class MvvmArchitectureTests
                 && element.Attribute("IsChecked")?.Value
                     == $"{{Binding {preference}, Mode=TwoWay}}");
         }
+
+        Assert.Equal(2, details.Descendants().Count(element => element.Name.LocalName == "CheckBox"));
 
         foreach (string action in new[] { "DownloadUpdateCommand", "InstallUpdateCommand" })
         {

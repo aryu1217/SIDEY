@@ -6,7 +6,7 @@ export default defineConfig({
   output: "static",
   trailingSlash: "always",
   i18n: {
-    locales: ["ko", "en", "ja", "zh-hant"],
+    locales: ["ko", "en", "ja", "zh-hans", "zh-hant", "uk", "ru", "it", "pt-pt", "es", "cs", "tr", "ro", "bg", "pt-br", "sr-cyrl", "pl", "sr-latn", "nl-be", "fr", "nl", "he", "de"],
     defaultLocale: "ko",
     routing: {
       prefixDefaultLocale: true,

@@ -1,13 +1,13 @@
 ---
-import { localePathSegment, type Locale } from "../i18n/landing";
+import { getWebsiteCopy, localePathSegment, type Locale } from "../i18n/landing";
+import LanguageLinks from "./LanguageLinks.astro";
 
 interface Props { locale: Locale; }
 const { locale } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const path = localePathSegment(locale);
-const koreanHome = `${base}ko/`;
 
-const content: Record<Locale, {
+const content: Record<string, {
   commerceAria: string; delivery: string; deliveryBody: string; refund: string; refundBody: string; refundLink: string;
   businessName: string; registration: string; contact: string; address: string; addressValue: string;
   representative: string; onlineSalesRegistration: string; onlineSalesValue: string;
@@ -18,34 +18,17 @@ const content: Record<Locale, {
     refund: "교환·환불", refundBody: "결제 확인과 동시에 사용권 제공이 시작되어 단순 변심에 따른 환불은 불가합니다. 다만 미제공·계약 불일치·중복 또는 무단 결제 등 관련 법령상 사유가 확인되면 전액 환불합니다.", refundLink: "자세한 규정",
     businessName: "상호명", registration: "사업자등록번호", contact: "연락처", address: "사업장 주소", addressValue: "경기도 용인시 기흥구 서천동로21번길 20-6",
     representative: "대표자명", onlineSalesRegistration: "통신판매업 신고번호", onlineSalesValue: "신고 면제(간이과세자)",
-    links: [{ href: "terms/", label: "이용약관" }, { href: "privacy/", label: "개인정보 처리방침" }, { href: "refund/", label: "청약철회 및 환불 정책" }, { href: "support/", label: "지원" }],
+    links: [{ href: "terms/", label: "이용약관" }, { href: "privacy/", label: "개인정보 처리방침" }, { href: "refund/", label: "청약철회 및 환불 정책" }],
   },
-  en: {
-    commerceAria: "Delivery and cancellation or refund information", delivery: "Delivery", deliveryBody: "Digital items are available immediately after payment is completed.",
-    refund: "Cancellation and refunds", refundBody: "Delivery of the digital entitlement begins as soon as payment is confirmed, so change-of-mind refunds are unavailable. A full refund is provided when required by law, including non-delivery, mismatch with the contract, duplicate charges, or unauthorized payment.", refundLink: "Full policy",
-    businessName: "Business name", registration: "Korean business registration number", contact: "Contact", address: "Business address", addressValue: "20-6, Seocheondong-ro 21beon-gil, Giheung-gu, Yongin-si, Gyeonggi-do, Republic of Korea",
-    representative: "Representative", onlineSalesRegistration: "Online sales registration", onlineSalesValue: "Filing exempt (simplified taxpayer)",
-    links: [{ href: "terms/", label: "Terms of Use" }, { href: "privacy/", label: "Privacy Policy" }, { href: "refund/", label: "Refund Policy" }, { href: "support/", label: "Support" }],
-  },
-  ja: {
-    commerceAria: "提供時期およびキャンセル・返金のご案内", delivery: "提供時期", deliveryBody: "デジタル商品は決済完了後、すぐに利用できます。",
-    refund: "キャンセル・返金", refundBody: "決済確認と同時にデジタル利用権の提供が始まるため、自己都合による返金はできません。ただし、未提供、契約内容との不一致、重複決済または未承認決済など、法令上認められる理由が確認された場合は全額返金します。", refundLink: "詳しい規定",
-    businessName: "商号", registration: "韓国事業者登録番号", contact: "連絡先", address: "事業所所在地", addressValue: "大韓民国 京畿道 龍仁市 器興区 西川洞路21番ギル 20-6",
-    representative: "代表者", onlineSalesRegistration: "通信販売業届出番号", onlineSalesValue: "届出免除（簡易課税者）",
-    links: [{ href: "terms/", label: "利用規約" }, { href: "privacy/", label: "プライバシーポリシー" }, { href: "refund/", label: "キャンセル・返金ポリシー" }, { href: "support/", label: "サポート" }],
-  },
-  "zh-Hant": {
-    commerceAria: "提供時間與取消、退款說明", delivery: "提供時間", deliveryBody: "數位商品可在付款完成後立即使用。",
-    refund: "取消與退款", refundBody: "確認付款後即開始提供數位使用權，因此不接受單純改變心意的退款。若確認未提供、與契約內容不符、重複扣款或未經授權付款等依法成立的事由，將提供全額退款。", refundLink: "查看完整政策",
-    businessName: "商號", registration: "韓國營業登記號碼", contact: "聯絡方式", address: "營業地址", addressValue: "韓國京畿道龍仁市器興區西川洞路21街 20-6",
-    representative: "負責人", onlineSalesRegistration: "通訊販售業申報號碼", onlineSalesValue: "免申報（簡易課稅業者）",
-    links: [{ href: "terms/", label: "使用條款" }, { href: "privacy/", label: "隱私權政策" }, { href: "refund/", label: "取消與退款政策" }, { href: "support/", label: "支援" }],
-  },
+
 };
-const copy = content[locale];
+const copy = content.ko;
+const labels = getWebsiteCopy(locale).footer;
+const links = [{href:"terms/", label:labels.terms},{href:"privacy/",label:labels.privacy},{href:"refund/",label:labels.refund}];
 ---
 
 <footer class="site-footer">
+  {locale === "ko" && <>
   <div class="footer-commerce-policy" aria-label={copy.commerceAria}>
     <p><strong>{copy.delivery}</strong><span>{copy.deliveryBody}</span></p>
     <p><strong>{copy.refund}</strong><span>{copy.refundBody} <a href={`${base}${path}/refund/`}>{copy.refundLink}</a></span></p>
@@ -58,11 +41,12 @@ const copy = content[locale];
     <div><dt>{copy.representative}</dt><dd><span lang="ko">류태현</span></dd></div>
     <div><dt>{copy.onlineSalesRegistration}</dt><dd>{copy.onlineSalesValue}</dd></div>
   </dl>
+  </>}
   <div class="footer-row">
     <div class="footer-brand"><img src={`${base}assets/app-icon.png`} alt="" width="36" height="36"><strong>SIDEY</strong></div>
     <div class="footer-links">
-      {copy.links.map((link) => <a href={`${base}${path}/${link.href}`}>{link.label}</a>)}
-      {locale !== "ko" && <a href={koreanHome} lang="ko" hreflang="ko">한국어</a>}
+      {links.map((link) => <a href={`${base}${path}/${link.href}`}>{link.label}</a>)}
     </div>
   </div>
+  <LanguageLinks locale={locale} />
 </footer>

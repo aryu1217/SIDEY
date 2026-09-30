@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Ekranınızın kenarındaki arkadaşlarınız",
+      "description": "SIDEY, en yakın arkadaşlarınızın çevrimiçi durumunu ve kısa mesajlarını ekranınızın kenarında minik piksel hayvanlar olarak gösteren bir masaüstü mesajlaşma uygulamasıdır.",
+      "ogTitle": "SIDEY — Ekranınızın kenarındaki minik arkadaşlar.",
+      "ogDescription": "En yakın arkadaşlarınızın çevrimiçi durumunu ve kısa mesajlarını minik piksel hayvanlarla takip edin.",
+      "ogAlt": "Ekranın kenarı boyunca dizilmiş beş piksel hayvanın yer aldığı SIDEY sosyal kartı"
+    },
+    "skip": "İçeriğe atla",
+    "navigation": {
+      "navigation": "Ana gezinme",
+      "home": "SIDEY ana sayfa",
+      "openMenu": "Menüyü aç",
+      "closeMenu": "Menüyü kapat",
+      "features": "Özellikler",
+      "download": "İndir",
+      "faq": "SSS",
+      "whatsNew": "Yenilikler",
+      "store": "Mağaza",
+      "support": "Destek",
+      "characters": "Karakterler",
+      "throwables": "Atılabilir oyuncaklar",
+      "bubbles": "Konuşma balonları",
+      "useLightTheme": "Açık temaya geç",
+      "useDarkTheme": "Koyu temaya geç"
+    },
+    "hero": {
+      "title": "Arkadaşlar ekranınızın kenarında.",
+      "description": "Arkadaşlarınız, ekranınızın kenarında dolaşan minik piksel karakterlere dönüşür. Çalışırken bir göz atın; aklınıza geldiklerinde kısa bir mesaj gönderin.",
+      "downloadsLabel": "İndirme seçenekleri",
+      "appStoreDownload": "App Store'dan indir",
+      "macDownload": "macOS için indirin",
+      "windowsDownload": "Windows için indirin",
+      "choosePlatform": "Platformunuzu seçin",
+      "platformMenu": "Manuel olarak bir platform seçin",
+      "menuToggle": "Başka bir platform seçin",
+      "windowsStatus": "Windows 10 1809 (derleme 17763) veya üzeri · x64",
+      "browserTitle": "Bugünün görevleri | Notlar",
+      "browserNote": "Bugünün listesi",
+      "message": "Yedide buluşalım mı?",
+      "typingLabel": "Rosie yazıyor",
+      "names": {
+        "kong": "Mochi · BEN",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rosie"
+      },
+      "caption": "Bir monitörün içindeki tarayıcının alt kısmında piksel hayvan arkadaşlarının yürüdüğü, uyukladığı ve uyuduğu bir SIDEY sahnesi"
+    },
+    "motion": {
+      "title": "Yerinde durmak sıkıcı olurdu.",
+      "description": "Arkadaşlar çevrimiçi olduklarında yürürler, uzaktayken uyuklarlar ve çevrimdışıyken uyurlar. Siz de biraz birbirinizle uğraşabilirsiniz.",
+      "label": "SIDEY karakter durumları ve eylemleri",
+      "presence": {
+        "eyebrow": "Günlük durumlar",
+        "title": "Yürümek, uyuklamak, uyumak.",
+        "description": "Çevrimiçi, uzakta ya da çevrimdışı: karakterleri, durumlarına göre değişir.",
+        "online": "Çevrimiçi",
+        "away": "Uzakta",
+        "offline": "Çevrimdışı"
+      },
+      "throw": {
+        "eyebrow": "Bir arkadaşınla oyna",
+        "title": "Bazen yumuşak bir top bunu en iyi şekilde anlatır.",
+        "description": "Coco yumuşak bir top fırlatıyor ve top Rosie'nin üzerine hafifçe çarpıyor.",
+        "source": "Coco",
+        "target": "Rosie"
+      },
+      "pulse": {
+        "eyebrow": "Büyük merhaba",
+        "title": "Bazen merhabanın daha büyük olması gerekir.",
+        "description": "Charlie'ye çift tıklayın; karakteri ekranınızın kenarında bir anda büyüsün.",
+        "name": "Charlie"
+      },
+      "names": {
+        "kong": "Mochi",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Sen çalışırken orada.",
+      "introduction": "SIDEY siz çalışırken ekranınızın kenarında kalır. Arkadaşlarınızın neler yaptığını görmek için göz atın ve aklınızdan geçtiklerinde bir şeyler söyleyin.",
+      "label": "SIDEY ekranınıza nasıl sığar?",
+      "caption": "SIDEY, macOS çalışma alanının yanında",
+      "alt": "Notlar penceresi ve ekranın alt kenarında SIDEY piksel arkadaşları bulunan macOS masaüstü bilgisayar",
+      "steps": [
+        [
+          "01",
+          "Yaptığın şeyi yapmaya devam et",
+          "Normalde yaptığınız gibi SIDEY'nin arkasındaki uygulamayı tıklayıp kullanmaya devam edebilirsiniz."
+        ],
+        [
+          "02",
+          "Ne yaptıklarını görün",
+          "Yürümek, uyuklamak ve uyumak arkadaşlarınızın etrafta olup olmadığını gösterir."
+        ],
+        [
+          "03",
+          "İstediğin zaman bir şey söyle",
+          "Kısa bir mesaj göndermek veya biraz yaramazlık yapmak için SIDEY'yi açın."
+        ]
+      ]
+    },
+    "download": {
+      "title": "SIDEY'yi masaüstünüze getirin.",
+      "description": "SIDEY, macOS ve Windows için kullanılabilir. Bilgisayarınıza uygun sürümü seçin ve yükleyin.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Windows için indirin",
+      "releaseNotes": "Sürüm notları",
+      "macSystem": "macOS 26 veya üzeri · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (derleme 17763) veya üzeri · x64",
+      "copyFailure": "Kopyalanamadı. Lütfen karmayı manuel olarak seçin.",
+      "hashCopy": "SHA-256 karma değerini kopyala",
+      "hashCopied": "SHA-256 karma kopyalandı."
+    },
+    "faq": {
+      "title": "Aklınıza gelebilecek sorular.",
+      "intro": "Başlamadan önce bilmeye değer birkaç şey.",
+      "items": [
+        [
+          "SIDEY nedir?",
+          "SIDEY, en yakın arkadaşlarınızın ekranınızın kenarında küçük piksel karakterler olarak takıldığı, yalnızca davetle girilebilen bir masaüstü mesajlaşma programıdır. Her özel grupta en fazla 12 kişi bulunabilir."
+        ],
+        [
+          "Hangi bilgisayarlar destekleniyor?",
+          "SIDEY, macOS 26 veya üzeri sürüme sahip Apple silikon Mac'lerde ve Windows 10 1809 (derleme 17763) veya üzeri sürüme sahip x64 PC'lerde çalışır. Intel Mac'ler şu anda desteklenmemektedir."
+        ],
+        [
+          "Arkadaşlarımı nasıl davet ederim?",
+          "Özel bir grup oluşturun ve davet kodunu doğrudan arkadaşlarınıza gönderin. Bir grupta en fazla 12 üye bulunabilir ve her kişi en fazla beş gruba katılabilir."
+        ],
+        [
+          "SIDEY bilgisayarımda yaptıklarımı izliyor mu?",
+          "Hayır. SIDEY ekranınızı, açık uygulamalarınızı, diğer uygulamalardaki tuş vuruşlarınızı, işaretçi konumunu, dosyaları, mikrofonu veya kamerayı toplamaz. Yazma durumu yalnızca siz SIDEY'nin kendi mesaj kutusuna yazarken gönderilir."
+        ],
+        [
+          "Mesajlar ne kadar süreyle saklanıyor?",
+          "Son mesajlar üç gün süreyle saklanır, ardından kalıcı olarak silinir."
+        ],
+        [
+          "SIDEY her oyunda ve tam ekran uygulamada görünecek mi?",
+          "Her zaman değil. SIDEY normal masaüstü kullanımı sırasında görünür kalır ancak güvenli ekranlarda, DRM korumalı uygulamalarda, yükseltilmiş uygulamalarda veya bazı özel tam ekran oyunlarda görünmeyebilir."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Yenilikler",
+      "intro": "SIDEY'de macOS ve Windows'ye göre gruplandırılmış en son değişiklikleri görün.",
+      "tabs": {
+        "label": "İşletim sistemine göre yenilikler",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "Yenilikler",
+        "changed": "Neler değişti",
+        "fixed": "Neler düzeltildi?"
+      },
+      "versionNotes": "Bu sürüme ilişkin notlar",
+      "empty": "Henüz sürüm notu yok.",
+      "viewRelease": "GitHub sürümünü görüntüle",
+      "openDetails": "Değişiklikleri göster",
+      "closeDetails": "Değişiklikleri gizle",
+      "loadedMore": "Daha önceki güncellemeler yüklendi."
+    }
+  },
+  "storeChrome": {
+    "store": "SIDEY Mağazası",
+    "keepsake": "Hatıra",
+    "separate": "Ayrı satılır",
+    "treeHint": "macOS uygulamasında durdurmak için ağaca sağ tıklayın. Yürümesine izin vermek için tekrar sağ tıklayın.",
+    "sound": "Ses",
+    "categories": "Mağaza kategorileri",
+    "characters": "Karakterler",
+    "throwables": "Atılabilir oyuncaklar",
+    "bubbles": "Konuşma balonları",
+    "preview": "Önizlemeyi aç",
+    "previewAction": "Önizleme",
+    "closePreview": "Önizlemeyi kapat",
+    "bubbleMessage": "Bugün takılmak ister misin?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Karakterler",
+      "title": "Ekranınız için yeni arkadaşlar.",
+      "description": "SIDEY'de her karakterin nasıl hareket ettiğini görmek için bir önizleme açın.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Bebek Hamsterı",
+          "description": "Minik kulakları ve pembe yanakları ile SIDEY'nin orijinal arkadaşı.",
+          "price": "Dahil",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Bebek Kedi",
+          "description": "Bir çift mükemmel sivri kulağı olan yumuşak gri bir tekir.",
+          "price": "Dahil",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Kabarık Köpek Yavrusu",
+          "description": "Harika kabarık bir yüze sahip, karamel kulaklı bir yavru.",
+          "price": "Dahil",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Bebek Tavşan",
+          "description": "Uzun kulaklar ve mor bir eşarp bu küçük dostun fark edilmesini kolaylaştırıyor.",
+          "price": "Dahil",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Küçük Penguen",
+          "description": "Nane rengi bir eşarpla paytak paytak yürüyen lacivert bir penguen.",
+          "price": "Dahil",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Atılabilir oyuncaklar",
+      "title": "Yumuşak toplardan mini toplara kadar.",
+      "description": "Yumuşak toplardan kalplere ve mini toplara kadar arkadaşlarınıza fırlatabileceğiniz oyuncakların önizlemesini yapın.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Yamalı yumuşak top",
+          "description": "Her SIDEY karakterinin bir arkadaşına atabileceği yumuşak küçük top.",
+          "price": "Dahil",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Konuşma balonları",
+      "title": "Balonlarınıza kendi tarzınızı katın.",
+      "description": "Mesajlardaki ve yazma göstergelerindeki renkleri ve küçük süslemeleri değiştirin.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Klasik konuşma balonu",
+          "description": "SIDEY'nin her masaüstü için net, okunması kolay baloncuğu.",
+          "price": "Dahil",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Destek · SIDEY",
+    "description": "GitHub'de bir SIDEY sorununu bildirin veya e-posta yoluyla bizimle özel olarak iletişime geçin.",
+    "heading": "SIDEY Desteği",
+    "introduction": "GitHub'de tekrarlanabilir hataları bildirin. Satın alma işlemleri, hesaplar veya gizli kalması gereken konular için bizimle e-posta yoluyla iletişime geçin.",
+    "githubTitle": "GitHub'de bir hata bildirin",
+    "githubBody": "Önce mevcut sorunları arayın. Aynı sorun zaten bildirilmişse, sorunun kopyasını oluşturmak yerine bu soruna olumlu yanıt ekleyin. Bir sorunu göndermek için bir GitHub hesabı gereklidir.",
+    "searchIssues": "Mevcut sorunları arayın",
+    "reportIssue": "Hata raporu formunu açın",
+    "emailTitle": "Bize e-posta yoluyla ulaşın",
+    "emailBody": "Satın alma veya hesapla ilgili sorular ve özel bilgiler içeren raporlar için bize e-posta gönderin. Konuya SIDEY ve işletim sisteminizi ekleyin.",
+    "emailAction": "E-posta gönder",
+    "include": "Hata raporu formunda istenen bilgiler",
+    "details": [
+      "İşletim sistemi ve mimarisi (gerekli): Aşağıdaki komutun çıktısını yapıştırın.",
+      "SIDEY sürümü (gerekli): aşağıdaki talimatları kullanarak sürümü bulun.",
+      "Ne oldu (zorunlu): sorunu açıkça anlatın; hassas bilgilerden arındırılmış günlükler, ekran görüntüleri veya bir video yardımcı olabilir.",
+      "Yeniden oluşturma adımları (gerekli): soruna yol açan eylemleri sırayla açıklayın.",
+      "Beklenen davranış (isteğe bağlı): Ne olması gerektiğini açıklayın.",
+      "Ek bilgiler (isteğe bağlı): İlgili diğer bağlamları ekleyin."
+    ],
+    "diagnostics": "Sürümünüzü ve tanılama günlüklerinizi bulma",
+    "operatingSystem": "İşletim sistemi bilgileri",
+    "macosLabel": "macOS (Terminal)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: Finder'da SIDEY.app'ye sağ tıklayın ve Bilgi Al (⌘I) öğesini seçin.",
+    "windowsVersion": "Windows: Ayarlar → Hakkında → Güncellemeler'i açın.",
+    "macDiagnostics": "macOS: Aşağıdaki komut SIDEY günlüklerinin son 30 dakikasını Masaüstünüzdeki bir dosyaya kaydeder.",
+    "windowsDiagnostics": "Windows: Ayarlar → Hakkında → Tanılamayı dışa aktar'ı açın. Günlük dosyaları Masaüstünüze kaydedilir. Kurulum sorunu için kurulumcu tarafından gösterilen tanılama verilerini ekleyin.",
+    "protect": "Hassas bilgileri gizli tutun",
+    "protectBody": "GitHub sorunları herkese açıktır. Metinlerden, günlüklerden, ekran görüntülerinden ve videolardan davet kodlarını, mesaj içeriklerini, oturum açma veya kimlik doğrulama jetonlarını, şifreleri, tam ödeme kartı numaralarını ve kişisel bilgileri kaldırın. Bu sırları e-postayla da göndermeyin; Gerekirse hassas olmayan belirli ayrıntılar isteyeceğiz.",
+    "response": "Yanıt süreleri dile göre değişebilir; dile özgü yanıt süresi garanti edilmez."
+  },
+  "footer": {
+    "terms": "Kullanım Koşulları",
+    "privacy": "Gizlilik Politikası",
+    "refund": "Geri Ödeme Politikası",
+    "language": "Dil seçin"
+  },
+  "legalNotice": "Resmi SIDEY hizmetini kullanarak {terms} ve {privacy}'yi kabul etmiş olursunuz.",
+  "policies": {
+    "terms": {
+      "title": "Kullanım Koşulları · SIDEY",
+      "description": "SIDEY masaüstü hizmetine ve dijital özelleştirme öğelerine ilişkin şartlar.",
+      "heading": "SIDEY Kullanım Koşulları",
+      "introduction": "Bu Şartlar, SIDEY masaüstü hizmetini ve dijital özelleştirme öğelerini kullandığınızda geçerli olan hakları ve sorumlulukları belirler.",
+      "translationNotice": "Bu sayfa orijinal Kore belgesinin çevirisidir.",
+      "originalLabel": "Orijinal belgeyi görüntüle",
+      "body": "## 1. Amaç ve kapsam\n\nBu Şartlar, SIDEY operatörü (\"Operatör\") tarafından sağlanan SIDEY uygulamasını, web sitesini ve ilgili hizmetleri (toplu olarak \"Hizmet\") yönetir. Resmi Hizmeti kullanarak bu Koşulları ve ayrıca açıklanan işletim politikalarını kabul etmiş olursunuz. Geçerli yasa size bu Şartlardan daha fazla koruma sağlıyorsa, o yasa geçerli olacaktır.\n\n## 2. Anahtar terimler\n\n\"Hesap\", bir kullanıcıyı ayırt etmek ve grupları, mesajları ve dijital yetkileri birbirine bağlamak için kullanılan tanımlayıcıdır. “Grup” yalnızca davet kodu alan arkadaşların erişebildiği özel bir alandır. “Dijital Yetki”, satın alma Hesabı aracılığıyla bir karakteri veya başka bir özelleştirme öğesini kullanma hakkıdır; öğenin kendisindeki mülkiyeti veya telif hakkını devretmez.\n\n## 3. Yayın ve değişiklikler\n\nOperatör bu Koşulları web sitesinde kullanıma sunar. Kanun veya Hizmet nedeniyle bir değişiklik yapılması gerekiyorsa, Operatör değişikliğin yürürlük tarihini ve nedenini açıklayacaktır. Kullanıcıları dezavantajlı duruma düşürecek önemli değişiklikler, ilgili mevzuatın gerektirdiği yöntemle ve süre boyunca önceden duyurulacaktır. Kanunen zorunlu kılınmadığı veya taraflarca mutabakata varılmadığı sürece, değişiklikten önce oluşturulan bir satın alma sözleşmesi, oluşturulduğu tarihte yürürlükte olan şartlara tabi olmaya devam eder.\n\n## 4. Hizmet\n\nSIDEY, gerçek arkadaşları piksel karakterler olarak temsil eden bir masaüstü yer paylaşımlı mesajlaşma programıdır. Belirli özellikleri, desteklenen ortamlar, kullanım kapsamı ve sınırlamalar uygulamada veya web sitesinde açıklanmıştır ve yayın kanalına veya sürüme göre değişiklik gösterebilir.\n\n## 5. Hesaplar ve Gruplar\n\nMevcut oturum açma yöntemleri sürüm kanalına göre değişiklik gösterebilir. Farklı kanallardaki Hesaplar, Gruplar ve satın alma kayıtları otomatik olarak birleştirilemez veya aktarılamaz; Gerektiğinde ek rehberlik sağlanacaktır. Cihazınızı ve oturum açma yönteminizi güvende tutmak sizin sorumluluğunuzdadır. Davetiye kodlarını herkese açık olarak göndermeyin veya başka bir kişinin Hesabını izinsiz kullanmayın.\n\n## 6. Mesajlar ve kabul edilebilir kullanım\n\nYasadışı materyal iletmemelisiniz; başka bir kişinin itibarını, mahremiyetini veya telif hakkını ihlal etmek; başkalarını taciz etmek; Hizmete veya sunucularına anormal şekilde erişmek; satın alma doğrulamasını atlayın; kötü amaçlı kod dağıtmak; veya başka bir kullanıcının Hizmeti normal kullanımına müdahale etmek.\n\n## 7. Değişiklikler, askıya alma ve sonlandırma\n\nOperatör, güvenlik güncellemeleri, işletim sistemi değişiklikleri, bakım, iletişim arızaları veya hizmet iyileştirmeleri nedeniyle Hizmetin bir bölümünü değiştirebilir veya geçici olarak askıya alabilir. Öngörülebilecek önemli değişiklikler önceden web sitesi veya uygulama aracılığıyla duyurulacaktır. Acil güvenlik veya olay müdahaleleri daha sonra duyurulabilir. Hizmetin durdurulması durumunda makul bir bildirimde bulunulacak ve kullanılmayan ücretli haklar, geçerli yasa ve Geri Ödeme Politikası kapsamında ele alınacaktır.\n\n## 8. Satın almalar ve ödeme\n\nÜrün adını, fiyatını ve teslimat koşullarını inceleyip ödemeyi tamamladığınızda bir satın alma sözleşmesi oluşturulur. Ödeme, bir uygulama pazarı veya Operatör tarafından belirlenen bir ödeme hizmeti aracılığıyla gerçekleştirilebilir. Operatör, ödemeyi onayladıktan sonra Dijital Yetkiyi verir. Yanlış bilgi içeren, mükerrer talepler içeren veya teknik olarak tedarik edilemeyen ürünler içeren siparişler reddedilebilir veya iptal edilebilir.\n\n## 9. Dijital teslimat ve iptal\n\nDijital teslimatın zamanlaması ve iptal veya geri ödeme koşulları, geçerli yasalara ve [Geri Ödeme Politikasına](https://sidey-app.github.io/SIDEY/tr/refund/) tabidir. Operatör, satın alma işleminden önce maddi teslimat koşullarını ve iptale ilişkin tüm limitleri hazırlayacaktır. Bu Koşullarda yer alan hiçbir şey, yürürlükteki yasaların garanti ettiği hakları sınırlamaz.\n\n## 10. Küçükler\n\nYasal bir temsilcinin onayına ihtiyaç duyan reşit olmayan bir kişinin, satın alma işlemi yapmadan önce bu onayı alması gerekir. Reşit olmayan kişi veya yasal temsilci, gerekli izin olmadan yapılan belirli satın alma işlemleri de dahil olmak üzere, geçerli yasaların izin verdiği durumlarda iptal talebinde bulunabilir.\n\n## 11. Yazılım lisansı ve fikri mülkiyet\n\nSIDEY’nin güncel kaynak kodu, özel mülkiyete tabi kapalı kaynaklı yazılımdır. Dağıtım kanalı ve bu Koşullar kapsamında yalnızca resmi uygulamayı yükleme ve kullanma hakkı verilir. Lisans değişikliğinden önce AGPL-3.0-only kapsamında yayımlanmış her revizyon, o revizyonda belirtilen lisansa tabi kalır. Ne bu Koşullar ne de kaynak kod deposunun özel hale getirilmesi, bu revizyonları çalıştırmak, kopyalamak, değiştirmek veya dağıtmak için daha önce verilmiş hakları geri alır ya da bunlara ek kısıtlamalar getirir. Herkese açık `sidey-app/SIDEY` deposu web sitesini, politikaları, sürümleri ve yükleyicileri dağıtır; ürünün güncel kaynak kod deposu değildir. Ayrıntılı kapsam için [lisanslama kılavuzuna](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md) bakın. Üçüncü taraf bileşenler kendi lisanslarına ve bildirimlerine tabi olmaya devam eder.\n\nÜcretli kişiselleştirme öğeleri yalnızca satın almayı yapan Hesap üzerinden kullanım hakkı verir; dosyaların, karakterlerin veya tasarımların mülkiyetini ya da telif haklarını devretmez. Yazılım lisansı, SIDEY adı veya logosu üzerinde marka hakları ya da ayrı koşullarla sunulan karakter ve kişiselleştirme varlıklarına ilişkin haklar vermez. Hak sahibinin izni olmadan bu varlıkları kopyalayamaz, satamaz, kiralayamaz, yeniden dağıtamaz, alt lisanslayamaz veya bunlardan hak bildirimlerini kaldıramazsınız. Resmi Hizmetin satın alma, kullanım hakkı veya güvenlik kontrollerini atlatamazsınız. Bu kısıtlamalar, geçmişte yayımlanmış bir revizyona uygulanan açık kaynak lisansının ya da üçüncü taraf lisansının verdiği hakları sınırlayacak şekilde yorumlanamaz.\n\n## 12. Erişim kısıtlamaları ve Hesap silme\n\nYasaların veya bu Koşulların maddi bir ihlalinin ya da Hizmetin güvenliğini tehdit eden bir davranışın doğrulanması durumunda, Operatör, bildirimde bulunulduktan ve makul bir düzeltme fırsatı verildikten sonra resmi Hizmete erişimi kısıtlayabilir veya sonlandırabilir. Acil bir güvenlik riski veya başkalarına zarar verme riski önce kısıtlanabilir ve daha sonra açıklanabilir. Hizmet erişiminin kısıtlanması veya bir Hesabın silinmesi, geçmişe yönelik kamuya açık revizyon veya üçüncü taraf yazılımlar için ayrıca geçerli olan bir lisansın sonlandırma koşullarını değiştirmez.\n\nBir Hesap, uygulamada sağlanan işlem yoluyla silinebilir. Hesabın silinmesi, geri ödeme talebinden ayrıdır ve bir satın alma işleminin geri getirilip getirilemeyeceği ilgili sürüm kanalına ve ödeme sağlayıcısına bağlıdır. Fikri mülkiyet, sorumluluk ve ihtilaf hükümleri dahil olmak üzere doğası gereği fesihten sonra da geçerli olması gereken hükümler yürürlükte kalmaya devam edecektir.\n\n## 13. Bildirimler ve üçüncü taraf hizmetleri\n\nOperatör, uygulama, web sitesi veya sağladığınız iletişim bilgileri aracılığıyla hizmet bildirimleri gönderebilir. Bağlantılı veya entegre hizmetler, ilgili sağlayıcının kendi şart ve politikalarına tabidir. Operatör, doğrudan sağlamadığı bir hizmetin bağımsız olarak işletileceğini garanti etmez.\n\n## 14. Hizmet sınırlamaları ve sorumluluk\n\nBazı özellikler cihaza, işletim sistemine, güvenlik ayarlarına, diğer yazılımlara veya ağ ortamına bağlı olarak sınırlı olabilir veya farklı davranabilir. Belirli teknik sınırlamalar uygulamada veya web sitesinde açıklanmıştır. SIDEY güvenlik açısından kritik, tıbbi, acil durum veya anında ve kesintisiz teslimat gerektiren diğer kullanımlar için tasarlanmamıştır. Bu Şartlardaki hiçbir şey, ürün sorumluluğu veya tüketiciyi koruma kanunu kapsamında hariç tutulamayacak sorumluluğu veya Operatörün kasıtlı suistimalinden veya ağır ihmalinden kaynaklanan sorumluluğu hariç tutmaz.\n\n## 15. Geçerli kanunlar ve anlaşmazlıklar\n\nBu Şartlar Kore Cumhuriyeti yasalarına tabidir. Taraflar öncelikle iyi niyetle anlaşmazlığı çözmeye çalışacaklardır. Çözümsüz kalması halinde dava, Kore Medeni Usul Kanunu ve diğer geçerli kanunlar kapsamında yargı yetkisine sahip bir mahkeme tarafından görüşülecektir. Kullanıcılar ayrıca, Kore Tüketici Ajansı tarafından sunulanlar da dahil olmak üzere, yasal olarak mevcut tüketici anlaşmazlık çözüm prosedürlerini de kullanabilirler.\n\n## 16. Yürürlük tarihi ve önerilen revizyon\n\nOrijinal Şartlar 4 Eylül 2026'da yürürlüğe girdi. Önerilen bu revizyon, mevcut özel mülkiyet kaynağını, tarihsel kamu revizyonlarındaki AGPLv3 haklarını ve resmi Hizmet ile ücretli varlıkları yöneten şartları birbirinden ayırmak için 20 Eylül 2026'da hazırlandı. Yürürlük tarihi, Bölüm 3 kapsamındaki değişiklik bildirimiyle ayrı olarak duyurulacaktır. Bu teklifin hazırlanması, mevcut Şartları değiştirmez veya değişiklikleri geçmiş satın almalara veya geçmiş kamu revizyonlarının lisanslarına geriye dönük olarak uygulamaz."
+    },
+    "privacy": {
+      "title": "Gizlilik Politikası · SIDEY",
+      "description": "SIDEY kişisel bilgileri, saklamayı, dışarıda işlemeyi ve kullanıcı haklarını nasıl ele alır?",
+      "heading": "SIDEY Gizlilik Politikası",
+      "introduction": "SIDEY geçerli gizlilik kanunlarına uyar ve yalnızca arkadaş Grupları ve mesajlaşma sağlamak için gereken bilgileri işler. Bu Politika neyin ele alındığını, neden gerekli olduğunu, ne zaman silineceğini ve haklarınızı nasıl kullanabileceğinizi açıklar.",
+      "translationNotice": "Bu sayfa orijinal Kore belgesinin çevirisidir.",
+      "originalLabel": "Orijinal belgeyi görüntüle",
+      "body": "## 1. Kişisel bilgiler neden işleniyor?\n\nOperatör, kişisel bilgileri yalnızca aşağıdaki amaçlar doğrultusunda gerektiği şekilde kullanır. Bir amaç değişirse, Operatör ayrı bir onay alacak veya Kore Kişisel Bilgilerin Korunması Yasası'nın 18. Maddesi ve diğer geçerli yasalar uyarınca gereken başka bir adımı atacaktır.\n\n### Hizmetin sağlanması ve sözleşmelerin yerine getirilmesi\n\nBilgiler, Hesapların kimliğini doğrulamak ve oturumları geri yüklemek; yalnızca davetle erişilen Gruplar oluşturmak ve bunlara katılmak; arkadaşların çevrimiçi durumunu göstermek; mesaj göndermek; karakterler ve kişiselleştirme öğeleri sunmak; satın alımları doğrulamak, geri yüklemek veya iade etmek için kullanılır.\n\n### Kullanıcıların ve Hizmetin yönetimi\n\nBilgiler; kullanıcıları tanımlamak, Grup kapasitesi ve kullanım sınırlarını uygulamak, kötüye kullanımı önlemek, güvenliği korumak, hatalara, sorulara ve uyuşmazlıklara yanıt vermek ve hizmet bildirimleri iletmek için kullanılır.\n\nSIDEY, kişisel bilgileri ilgi alanlarına dayalı reklamlar, kişiselleştirilmiş öneriler veya tanıtım mesajları için işlemez.\n\n## 2. İşlenen bilgiler\n\n- **Profil:** takma ad ve seçilen karakter\n- **Google hesap bağlantısı:** Google hesap tanımlayıcı ve e-posta adresi\n- **Apple ile oturum açın:** Apple hesap tanımlayıcı ve Apple bunu sağladığında bir e-posta adresi\n- **Hesap ve oturum:** anonim kullanıcı UUID, oturum açma sağlayıcısı ve oturum tanımlayıcıları\n- **Gruplar:** Grup adı, Grup ve üyelik tanımlayıcıları, sahip durumu ve katılma zamanı\n- **Mesajlar ve gerçek zamanlı durum:** mesaj metni, oluşturulma zamanı, gönderen ve Grup tanımlayıcıları, iletişim durumu ve yalnızca SIDEY mesaj alanında oluşturulan yazma sinyalleri\n- **Satın almalar:** sipariş ve işlem tanımlayıcıları, ürün, tutar, ödeme, iptal ve geri ödeme durumu ile politika onayının zamanı ve içeriği\n- **Destek:** kullanıcı tarafından gönüllü olarak eklenen e-posta adresini, sorguyu ve bilgileri yanıtlayın\n- **Bağlantı bilgileri:** Hizmet sağlayıcıların güvenlik ve olay müdahalesi için oluşturabileceği IP adresi, erişim süresi ve istek bilgileri\n\nSon sistem girişinden bu yana geçen süre ve ekran kilidi durumu, durumu göstermek için yerel olarak kontrol edilir. SIDEY, bu sinyallerden giriş içeriğini veya uygulama kullanım geçmişini toplamaz.\n\n## 3. Bilgiler nasıl toplanır\n\nBir profil veya Grup oluşturduğunuzda, mesaj gönderdiğinizde, bir Google hesabı bağladığınızda, Apple ile Oturum Aç'ı kullandığınızda, ödeme, restorasyon veya para iadesi talep ettiğinizde veya destek ekibiyle iletişime geçtiğinizde bilgiler toplanır. Hizmete bağlıyken varlık ve yazma sinyalleri gerçek zamanlı olarak işlenir.\n\nSIDEY ekran içeriğini, etkin uygulama listelerini, diğer uygulamalarda basılan tuşları, genel işaretçi koordinatlarını, dosya içeriklerini, mikrofon sesini veya kamera videosunu toplamaz. SIDEY mesaj alanı dışında yazdıklarınızı denetlemez.\n\n## 4. Elde Tutma\n\n- **Mesajlar:** oluşturulduktan üç gün sonra\n- **Mevcudiyet ve yazma sinyalleri:** yalnızca gerçek zamanlı ekran etkinken ve sürekli olarak saklanmadığında işlenir\n- **Hesap, profil, Grup ve üyelik:** Hesap silinene veya Hizmet sonlandırılana kadar; Gruptan ayrıldığınızda üyelik bağlantısı silinir\n- **Profili veya Grubu olmayan eksik anonim Hesap:** yedi gün sonra kaldırılabilir\n- **Bir cihazda saklanan oturum açma oturumu:** oturum kapatılana, Hesap silinene veya uygulama verileri silinene kadar\n\nKanunen tutulması gereken kayıtlar yalnızca bu amaç için kullanılır. Teşhir ve reklam kayıtları altı ay süreyle saklanabilir; beş yıl süreyle sözleşme veya iptal kayıtları ve ödeme veya dijital teslimat kayıtları; ve tüketici şikayeti veya anlaşmazlık kayıtları üç yıl süreyle saklanacaktır.\n\n## 5. Paylaşım ve üçüncü tarafların ifşa edilmesi\n\nOperatör, sizin onayınız olmadığı veya yürürlükteki yasanın özel bir temel sağlamadığı sürece kişisel bilgileri üçüncü bir tarafa açıklamaz.\n\n### Aynı Grubun üyeleri\n\nYalnızca davetli Gruplar sağlamak için takma adınız, karakteriniz, iletişim durumunuz ve yazma durumunuz ve mesajlarınız katıldığınız aynı Grubun üyelerine gösterilir. Mesajlar üç gün boyunca saklanır; gerçek zamanlı durum sinyalleri yalnızca ekranları etkinken işlenir.\n\n### Yasalara göre hareket eden yetkililer\n\nSoruşturmacının veya başka bir yetkili makamın, tutuklama emri gibi yasal bir süreç yoluyla talepte bulunması halinde, bilgiler yasaların izin verdiği kapsam ve süre içerisinde açıklanabilecektir.\n\n## 6. Hizmet sağlayıcılar ve yurt dışı işlemler\n\nOperatör, aşağıdaki sağlayıcıları yalnızca Hizmeti sağlamak için gerektiği şekilde kullanır. Sağlayıcıda veya amaçta yapılan değişiklikler bu Politika aracılığıyla açıklanacaktır.\n\n- **Supabase Inc.:** kimlik doğrulama, veritabanı ve gerçek zamanlı iletişim için UUID Hesabını, profilleri, Grupları, mesajları, satın alma durumunu ve bağlantı bilgilerini yönetir. Veriler, Hesabın silinmesine, Hizmetin feshedilmesine veya hizmet sözleşmesinin sonuna kadar saklanır; mesajlar üç gün sonra silinir.\n- **Google LLC:** bağlantı kesilene, Hesap silinene veya amaç tamamlanana kadar Google hesap bağlantısı için hesap tanımlayıcıyı, e-posta adresini ve kimlik doğrulama sonucunu yönetir.\n- **Apple Inc.:** Apple ile oturum açma, App Store ödemesi ve Hesap silinene kadar veya yasaların ve Apple politikalarının gerektirdiği süre boyunca satın alma geri yüklemesi için Hesap ve işlem tanımlayıcılarını ve kimlik doğrulama ve ödeme durumunu yönetir.\n- **Korea PortOne Co., Ltd. ve bağlı ödeme hizmeti sağlayıcıları:** sipariş ve ödeme tanımlayıcılarını, tutarı ve ödeme, iptal ve geri ödemeye ilişkin ödeme sonucunu doğrudan dağıtım yapısında yönetir ve bunları e-ticaret yasalarının gerektirdiği süre boyunca saklar.\n- **GitHub, Inc.:** halka açık web sitesini barındırırken IP adresleri ve bağlantı bilgileri oluşturabilir ve bunları GitHub'nin gizlilik uygulamaları ve geçerli yasalar kapsamında saklayabilir.\n\nSupabase, Google, Apple ve GitHub, Amerika Birleşik Devletleri merkezlidir ve hizmetleri kullanıldığında iletişim ağları üzerinden bilgi iletilebilir. Yasaların yurt dışında kullanım için ayrı bir bildirim veya onay gerektirdiği durumlarda, alıcı, ülke, öğeler, amaç, yöntem ve saklama süresi, ilgili özellik kullanılmadan önce açıklanacaktır. Google'yi bağlamamayı seçebilirsiniz ancak kimlik doğrulama veya veri depolama için gerekli olan yurt dışı işlemleri reddetmek, SIDEY'nin bir kısmının veya tamamının kullanımını sınırlayabilir veya engelleyebilir.\n\n## 7. Ödeme bilgileri ve dış hizmetler\n\nApple, Mac App Store ödemelerini işler. Doğrudan dağıtım yapısında sunulan bir ödeme için PortOne aracılığıyla açılan bir ödeme hizmeti sağlayıcısı, tam kart numarasını, ödeme şifresini ve banka hesabı kimlik doğrulama bilgilerini yönetir. SIDEY ödeme kimlik bilgilerinin tamamını almaz veya saklamaz; yalnızca bir siparişi doğrulamak, iptal etmek veya para iadesi yapmak için gereken tanımlayıcıları ve sonuçları yönetir.\n\nDışarıdan bir oturum açma sayfası, ödeme penceresi veya bağlantılı web sitesi kullandığınızda, sağlayıcının bağımsız olarak topladığı bilgiler için sağlayıcının kendi şartları ve gizlilik politikası geçerli olur.\n\n## 8. Haklarınız ve bunların nasıl kullanılacağı\n\nKişisel bilgilerinize erişmeyi, bunların düzeltilmesini veya silinmesini, işlenmesinin askıya alınmasını veya onayınızın geri çekilmesini talep edebilirsiniz. Apple ile Oturum Açma kullanıcısı, yeniden kimlik doğrulama sonrasında uygulamanın ayarlarından bir Hesabı silebilir. Diğer Hesap veya veri talepleri aşağıdaki Gizlilik Görevlisine e-posta yoluyla gönderilebilir.\n\nHaklarınızı yasal bir temsilci veya başka bir yetkili kişi aracılığıyla kullanabilirsiniz. Operatör, yasaların izin verdiği ölçüde kullanıcı ve temsilcinin kimliğini doğrulamak için gereken yetki formunu ve minimum bilgileri talep edebilir. Erişim talebinin alınmasından sonraki 10 gün içinde Operatör, erişimin nasıl sağlanacağını açıklayacak veya yasaların kısıtlamaya, gecikmeye veya reddetmeye izin verdiği durumlarda nedenini ve nasıl itiraz edileceğini açıklayacaktır.\n\nBaşka bir yasa bir kaydın saklanmasını gerektirdiğinde silme işlemi sınırlı olabilir. SIDEY, kullanıcılar üzerinde yasal veya benzer derecede önemli etkiler yaratan otomatik kararlar vermez.\n\n## 9. Silme\n\nKişisel bilgiler, saklama süresi sona erdiğinde veya amacına ulaşıldığında gereksiz bir gecikme olmaksızın silinir. Elektronik kayıtlar, kurtarılmasını engellemeye yönelik yöntemler kullanılarak silinir. Ayrı saklama yükümlülüğüne tabi olan işlem kayıtları, genel hizmet verilerinden ayrılarak yalnızca gerekli amaç için kullanılır ve bu süre sona erdiğinde silinir.\n\nBir Hesabın silinmesi profili, Grup bağlantılarını ve etkin SIDEY yetkilendirme bağlantılarını kaldırır. Minimum işlem kayıtları, kullanıcı bağlantısı en aza indirilerek yasal amaçlar ve ödeme amaçları için ayrı ayrı tutulabilir. Hesabın silinmesi, Apple veya bir ödeme hizmeti sağlayıcısı tarafından tutulan işlem kayıtlarını otomatik olarak silmez ve bir geri ödeme talebi değildir.\n\n## 10. Güvenlik önlemleri\n\nOperatör, kişisel bilgilere erişimi iş için gerekenlerle sınırlar ve operasyonel ayrıcalıkları ve sırları ayırır. SIDEY, veritabanı satır düzeyinde erişim kontrollerini, sunucu tarafı Grup kapasitesini ve üyelik kontrollerini, şifreli taşımayı ve işletim sistemi güvenli depolamasını kullanır. Davetiye kodları sunucuda düz metin olarak saklanmaz ve ödeme gizli anahtarları ve yönetici ayrıcalıkları uygulamaya veya genel web sitesine dahil edilmez.\n\nSIDEY, uçtan uca şifrelemenin uygulandığı ve doğrulandığı bir hizmet olarak temsil edilmez.\n\n## 11. Çerezler ve benzeri teknolojiler\n\nSIDEY genel web sitesi kişiselleştirilmiş reklam, ziyaretçi davranışı analizi veya bireysel öneriler için çerezler yüklemez. Bir tarayıcı veya barındırma sağlayıcısı, statik dosyalar sunmak ve hizmeti korumak için bağlantı bilgilerini işleyebilir veya teknik depolamayı kullanabilir.\n\nBir dış sağlayıcı, Google veya Apple oturum açma sayfasını veya ödeme sayfasını ziyaret ettiğinizde işlevsellik ve güvenlik amacıyla çerezleri kullanabilir. Mevcut kontroller için sağlayıcının gizlilik ayarlarına bakın.\n\n## 12. Gizlilik Görevlisi\n\n- **Gizlilik Görevlisi:** Taehyun Ryu\n- **E-posta:** <ryu200112@gmail.com>\n\nSorular, şikayetler, çözümler ve gizlilik haklarının kullanılmasına yönelik talepler yukarıdaki e-postaya gönderilebilir. Operatör, gereksiz gecikme olmaksızın inceleyecek ve yanıt verecektir.\n\n## 13. Gizlilik ihlaline karşı çareler\n\nTavsiyeye ihtiyacınız varsa veya Kore'de bir gizlilik ihlalini bildirmek istiyorsanız aşağıdaki adresle iletişime geçebilirsiniz:\n\n- [Kişisel Bilgi Anlaşmazlıkları Arabuluculuk Komitesi](https://www.kopico.go.kr/) · 1833-6972\n- [KISA Gizlilik İhlali Rapor Merkezi](https://privacy.kisa.or.kr/) · 118\n- [Yüksek Savcılar Ofisi](https://www.spo.go.kr/) · 1301\n- [Kore Ulusal Polis Teşkilatı Siber Suç Rapor Sistemi](https://ecrm.police.go.kr/) · 182\n\n## 14. Bu Politikanın dışındaki harici hizmetler\n\nSIDEY web sitesi ve uygulaması, diğer sağlayıcılar tarafından işletilen hizmetlere bağlantı verebilir. Bu Politika, Operatörün kontrol etmediği harici bir hizmet tarafından işlenen bilgileri yönetmez. Ziyaret ettiğiniz hizmetin gizlilik politikasını inceleyin.\n\n## 15. Bu Politikadaki Değişiklikler\n\nBu Politikanın yasa, Hizmet veya harici işleme ilişkileri nedeniyle değişmesi durumunda, yürürlük tarihi ve önemli değişiklikler web sitesi veya uygulama aracılığıyla duyurulacaktır. Kullanıcı haklarını önemli ölçüde etkileyecek bir değişiklik, kanunun gerektirdiği süre boyunca önceden duyurulacaktır.\n\n## 16. Yürürlük tarihi\n\nBu Gizlilik Politikası 4 Eylül 2026 tarihinde yürürlüğe girecektir."
+    },
+    "refund": {
+      "title": "Geri Ödeme Politikası · SIDEY",
+      "description": "SIDEY dijital özelleştirme haklarına ilişkin iptal ve geri ödeme koşulları.",
+      "heading": "İptal ve İade Politikası",
+      "introduction": "Ücretli SIDEY özelleştirme öğeleri, ödeme onaylandıktan sonra Hesabınıza gönderilen dijital yetkilerdir.",
+      "translationNotice": "Bu sayfa orijinal Kore belgesinin çevirisidir.",
+      "originalLabel": "Orijinal belgeyi görüntüle",
+      "body": "## Dijital teslimat başladıktan sonra fikir değişikliği nedeniyle iade\n\nDijital kişiselleştirme kullanım hakkının teslimatı, ödeme onaylanır onaylanmaz başlar. Teslimat başladıktan sonra yalnızca fikir değişikliği nedeniyle iptal veya iade yapılamaz.\n\n## Tam iadenin mümkün olduğu durumlar\n\nHukuken geçerli bir neden doğrulandığında tam iade yapılır. Bu nedenlere şunlar dahildir:\n\n- ödemenin onaylanmasına rağmen Dijital Kullanım Hakkının teslim edilmemesi;\n- teslim edilen öğenin açıklamasına veya satın alma sözleşmesine uymaması;\n- aynı sipariş veya öğe için birden fazla ücret alınması;\n- ödemenin Hesap sahibi tarafından onaylanmamış olması;\n- bir küçüğün yasal temsilcisinden gereken onayı almadan satın alma yapması; veya\n- yürürlükteki hukukun başka bir nedenle tam iade gerektirmesi.\n\n## Talepler nasıl işlenir?\n\n1. Mac App Store satın almalarında, Apple’ın Sorun Bildir süreci üzerinden iade talep edin. Doğrudan dağıtılan bir sürümde PortOne aracılığıyla ödeme sunuluyorsa desteğe yalnızca satın alan Hesabı, ödeme zamanını ve siparişi bulmak için gerekli bilgileri gönderin. Tam ödeme kartı numarasını veya şifrenizi göndermeyin.\n2. Apple veya ödeme hizmeti sağlayıcısı iadeyi onayladıktan sonra, ilgili ödeme kaynağının verdiği kullanım hakkı geri alınır.\n3. Geri alınan öğeyi kapsayan başka bir geçerli hak yoksa ve öğe kullanımdaysa ilgili kategori varsayılan öğesine döner: varsayılan hamster, konuşma balonu veya atılabilir oyuncak.\n\n## Hesap silme ve iadeler\n\nSIDEY Hesabını silmek, satın alma için iade talebi oluşturmaz. Geçerli bir Apple uygulama içi satın alımı, satın alma yapılan aynı Apple hesabıyla yeni bir SIDEY Hesabına geri yüklenebilir.\n\n## Kayıtlar ve yasal haklar\n\nİade talepleri ve sonuçları, uyuşmazlıkları çözmek ve yasal yükümlülükleri yerine getirmek için gereken süre boyunca güvenle saklanır. Bu Politika, yürürlükteki hukukun güvence altına aldığı iptal, fesih veya hukuki çözüm haklarını sınırlamaz.\n\n## Destek\n\n- **Satıcı:** 싸이디(SIDEY)\n- **E-posta:** <ryu200112@gmail.com>\n- **İşletme kayıt numarası:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Son mesajlar, ayarlar ve arkadaşlar arasındaki bağlantılarda iyileştirmeler içeren yeni karakterler ve atılabilir öğeler."
+        ],
+        "new": [
+          "Windows mağazasına ve ekran katmanına beş karakter (Shiba Inu, ördek, kaka, tteokbokki ve quokka) ve dört fırlatılabilir öğe eklendi: tenis topu, kağıt mendil topu, balık köftesi şişi ve yaprak.",
+          "Son mesajlar penceresini diğer pencerelerin üzerine sabitleyebilirsiniz."
+        ],
+        "changed": [
+          "Uygulama dili desteği 23 dile genişletildi.",
+          "Son mesajlar artık eski mesajlara göz attığınızda okuma konumunuzu koruyor.",
+          "Kısayol ayarları, o anda kullanımda olan tuş kombinasyonlarını daha doğru bir şekilde gösterir.",
+          "Eski bir sürümden güncelleme yapmak, ayarlarınızı korurken kurulumu güvenli bir şekilde taşır."
+        ],
+        "fixed": [
+          "Bir karaktere çift tıkladığınızda mesaj girişinin kısa süreliğine görünmesi düzeltildi.",
+          "Karakter takma adlarının ekranın kenarına yakın bir açıda görünmesi düzeltildi.",
+          "Farklı sürümlerdeki kullanıcılar arasında mesaj teslimi ve tepkiler iyileştirildi.",
+          "Bağlantı kesildikten sonra birden fazla odaya bağlantıların düzelmesi durumunda oluşan zaman aşımları düzeltildi."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Sohbet, kısayollar ve yer paylaşımının yanı sıra Google hesapta oturum açma ve hesap yönetimi iyileştirildi."
+        ],
+        "new": [
+          "Ayarlardan çıkış yapabilir veya hesabınızı silebilirsiniz.",
+          "Doğrudan son mesajlardan mesaj gönderin ve başlatmalar arasında giriş penceresinin sürüklenen konumunu koruyun.",
+          "Kaplama, sessiz mod, mesaj girişi ve son mesajlar için kendi kısayollarınızı kaydedin ve yinelenen tuş kombinasyonlarını değiştirin.",
+          "Uygulamada ürün fiyatlarını ve sahip olunan öğeleri kontrol edin, ardından web ödemesini açın."
+        ],
+        "changed": [
+          "Google oturum açma artık gerekli kurulumun bir parçası; yinelenen kimlik doğrulamayı önlemek için kayıtlı oturum açma durumu kontrol edilirken oturum açma düğmesi devre dışı kalır.",
+          "Hesabınızın bağlantısını kesmek, oturum açmaya geri dönmeden önce canlı bağlantıları ve yerel durumu temizler.",
+          "Sessiz mod, yazma göstergelerini gizler ve ekran katmanının kapanış animasyonu sorunsuz bir şekilde oynatılır.",
+          "Kimlik doğrulama ve gerçek zamanlı yazma yanıtlarından sonra uygulamaya dönüş iyileştirildi.",
+          "Yükleyici, gerekli Windows App SDK ve .NET çalışma zamanlarını içerir; güncelleme, onarım veya kaldırma işlemi başarısız olursa daha iyi kurtarma ve rehberlik sağlar.",
+          "Bağlantı hataları nedenlerini açıklarken, yeniden bağlanma sırasında oluşan gereksiz hatalar gizlenir.",
+          "Ağacınızın yürüme durumu aynı gruptaki diğer kişilerle paylaşılır.",
+          "Uygulama içi durum bildirimlerinin hem açık hem de koyu temalarda okunması daha kolaydır."
+        ],
+        "fixed": [
+          "Mesaj girişinin yalnızca tek bir tıklamayla açılmasını sağlayacak şekilde karakter tıklamaları düzeltildi.",
+          "Zaten çalışmakta olan bir uygulamayı açtığınızda, güvenli bir şekilde mevcut pencereye geri dönersiniz."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Doğrudan son mesajlardan mesajlaşma ile yeni öğeler ve klavye kısayolları."
+        ],
+        "new": [
+          "Dokuz ürün eklendi: beş karakter ve dört atılabilir öğe.",
+          "Kaplamayı göstermek veya gizlemek, sessiz moda geçiş yapmak, mesaj girişini açmak ve son mesajları açmak için genel kısayollar eklendi.",
+          "Ayarlarda her genel kısayolun tuş kombinasyonunu özelleştirin.",
+          "Doğrudan son mesajlar penceresinden mesaj yazın ve gönderin.",
+          "Korece, İngilizce, Japonca ve Geleneksel Çince için destek eklendi."
+        ],
+        "changed": [
+          "Konuşma balonları, karakterler ekranın sol veya sağ kenarına yerleştirildiğinde bile normal yönlerini korur."
+        ],
+        "fixed": [
+          "Fırlatılabilir eşyalarla art arda vurulan karakterlerin sersemlememesi düzeltildi."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@ import contextlib
 import io
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -17,12 +18,27 @@ spec.loader.exec_module(w)
 
 
 class WorkflowTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        template = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(template.cleanup)
+        cls.template_root = Path(template.name)
+        remote = cls.template_root / 'origin.git'
+        primary = cls.template_root / 'main'
+        other = cls.template_root / 'other'
+        cls.command(cls.template_root, 'git', 'init', '--bare', str(remote))
+        cls.command(cls.template_root, 'git', 'clone', str(remote), str(primary))
+        cls.configure(primary)
+        w.git(primary, 'checkout', '-b', 'main')
+        (primary / 'README.md').write_text('initial\n')
+        cls.commit(primary, 'initial')
+        w.git(primary, 'push', '-u', 'origin', 'main')
+        w.git(remote, 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        cls.command(cls.template_root, 'git', 'clone', str(remote), str(other))
+        cls.configure(other)
+
     def setUp(self):
-        remote_patch = patch.object(
-            w,
-            'main_remote',
-            return_value='origin',
-        )
+        remote_patch = patch.object(w, 'main_remote', return_value='origin')
         remote_patch.start()
         self.addCleanup(remote_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
@@ -31,32 +47,23 @@ class WorkflowTests(unittest.TestCase):
         self.remote = self.root / 'origin.git'
         self.primary = self.root / 'main'
         self.other = self.root / 'other'
-        self.command(self.root, 'git', 'init', '--bare', str(self.remote))
-        self.command(self.root, 'git', 'clone', str(self.remote), str(self.primary))
-        self.configure(self.primary)
-        w.git(self.primary, 'checkout', '-b', 'main')
-        (self.primary / 'README.md').write_text('initial\n')
-        self.commit(self.primary, 'initial')
-        w.git(self.primary, 'push', '-u', 'origin', 'main')
-        w.git(self.remote, 'symbolic-ref', 'HEAD', 'refs/heads/main')
-        self.command(self.root, 'git', 'clone', str(self.remote), str(self.other))
-        self.configure(self.other)
+        for name in ('origin.git', 'main', 'other'):
+            shutil.copytree(self.template_root / name, self.root / name)
+        for repo in (self.primary, self.other):
+            w.git(repo, 'remote', 'set-url', 'origin', str(self.remote))
 
-    def command(self, root, *args):
+    @staticmethod
+    def command(root, *args):
         return w.run(root, *args)
 
-    def test_subprocess_output_decodes_utf8_and_legacy_locale(self):
-        self.assertEqual(w.decode_output('기여자'.encode('utf-8')), '기여자')
-        with patch.object(w.locale, 'getencoding', return_value='cp949'):
-            self.assertEqual(w.decode_output('검증'.encode('cp949')), '검증')
-        self.assertEqual(w.decode_output(b'first\r\nsecond\rthird'), 'first\nsecond\nthird')
-
-    def configure(self, root):
+    @staticmethod
+    def configure(root):
         w.git(root, 'config', 'user.email', 'workflow@example.test')
         w.git(root, 'config', 'user.name', 'Workflow test')
         w.git(root, 'config', 'commit.gpgsign', 'false')
 
-    def commit(self, root, message):
+    @staticmethod
+    def commit(root, message):
         w.git(root, 'add', '.')
         w.git(root, 'commit', '-m', message)
 
@@ -560,6 +567,501 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(opened), 1)
         self.assertEqual(w.read_state(path)['task']['status'], 'complete')
 
+    def advance(self):
+        (self.other / 'advance.md').write_text('remote update\n')
+        self.commit(self.other, 'advance main')
+        w.git(self.other, 'push', 'origin', 'main')
+        return w.head(self.other)
+
+    def test_start_fetches_real_remote_not_stale_tracking_ref(self):
+        old = w.git(self.primary, 'rev-parse', 'origin/main')
+        new = self.advance()
+        self.assertNotEqual(old, new)
+        task = self.start()
+        self.assertEqual(w.head(task), new)
+
+    def test_start_preserves_another_dirty_worktree(self):
+        (self.primary / 'README.md').write_text('in progress\n')
+        (self.primary / 'untracked.swift').write_text('user source\n')
+        self.start()
+        self.assertEqual((self.primary / 'README.md').read_text(), 'in progress\n')
+        self.assertTrue((self.primary / 'untracked.swift').exists())
+
+    def test_start_refuses_existing_directory_and_duplicate_owner(self):
+        task = self.start()
+        with self.assertRaises(w.WorkflowError):
+            w.main(['--repo', str(self.primary), 'start', 'task', '--platform', 'shared', '--worktree', str(task)])
+
+    def test_task_state_round_trips_korean_as_utf8(self):
+        task = self.start()
+        state = w.read_state(task)['task']
+        state['merge_intent'] = {'subject': '한글 squash 제목'}
+        w.update_task(task, 'task', state)
+        state_path = w.common_dir(task) / 'sidey-workflow' / 'tasks.json'
+        self.assertIn('한글 squash 제목', state_path.read_bytes().decode('utf-8'))
+        self.assertEqual(w.read_state(task)['task']['merge_intent']['subject'], '한글 squash 제목')
+
+    def test_legacy_locale_task_state_is_migrated_to_utf8(self):
+        task = self.start()
+        state_path = w.common_dir(task) / 'sidey-workflow' / 'tasks.json'
+        state = w.read_state(task)
+        state['task']['merge_intent'] = {'subject': '예전 한글 제목'}
+        state_path.write_bytes(json.dumps(state, ensure_ascii=False).encode('cp949'))
+        with patch.object(w.locale, 'getencoding', return_value='cp949'):
+            self.assertEqual(w.read_state(task)['task']['merge_intent']['subject'], '예전 한글 제목')
+        self.assertIn('예전 한글 제목', state_path.read_bytes().decode('utf-8'))
+
+    def test_moved_file_checks_deleted_platform_path(self):
+        (self.primary / 'macos').mkdir()
+        (self.primary / 'macos/source.swift').write_text('native\n')
+        self.commit(self.primary, 'fixture')
+        w.git(self.primary, 'push')
+        task = self.start()
+        w.git(task, 'mv', 'macos/source.swift', 'source.swift')
+        paths = w.changed_paths(task, 'origin/main', dirty=True)
+        self.assertIn('macos/source.swift', paths)
+        with self.assertRaises(w.WorkflowError):
+            w.validate_paths('shared/task', paths)
+
+    def test_untracked_platform_file_cannot_escape_guard(self):
+        task = self.start()
+        (task / 'windows').mkdir()
+        (task / 'windows/new.cs').write_text('source\n')
+        with self.assertRaises(w.WorkflowError):
+            w.validate_paths('shared/task', w.changed_paths(task, 'origin/main', dirty=True))
+
+    def test_shared_commits_already_in_main_are_excluded(self):
+        task = self.start(platform='macos')
+        (task / 'macos').mkdir()
+        (task / 'macos/source.swift').write_text('native\n')
+        self.commit(task, 'native')
+        new = self.advance()
+        w.fetch_main(task)
+        w.git(task, 'merge', '--no-edit', new)
+        self.assertEqual(w.changed_paths(task, new), ['macos/source.swift'])
+
+    def test_check_invalidates_when_main_advances_during_checks(self):
+        task = self.start()
+        with patch.object(w, 'local_checks', side_effect=lambda *_: self.advance()):
+            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
+                w.check_task(task, 'task')
+        self.assertNotIn('checked', w.owned_task(task, 'task'))
+
+    def test_native_pass_survives_web_main_advance_and_sync(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        tested_head = w.head(task)
+
+        def complete_then_advance(root, platform, paths, complete, skipped):
+            self.assertNotIn('windows', skipped)
+            complete('windows')
+            (self.other / 'website').mkdir()
+            (self.other / 'website/page.html').write_text('web')
+            self.commit(self.other, 'web main')
+            w.git(self.other, 'push', 'origin', 'main')
+
+        with patch.object(w, 'local_checks', side_effect=complete_then_advance):
+            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
+                w.check_task(task, 'task')
+        self.assertEqual(w.owned_task(task, 'task')['scope_results']['windows']['head'], tested_head)
+        w.sync_task(task, 'task')
+        with patch.object(w, 'local_checks') as checks:
+            checked = w.check_task(task, 'task')['checked']
+        self.assertIn('windows', checks.call_args.args[4])
+        proof = checked['scope_evidence']['windows']
+        self.assertEqual(proof['tested']['head'], tested_head)
+        self.assertTrue(proof['reused'])
+        self.assertEqual(proof['head'], w.head(task))
+
+    def test_changed_native_or_shared_input_does_not_reuse(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        with patch.object(w, 'local_checks', side_effect=lambda r, p, paths, complete, skip: complete('windows')):
+            w.check_task(task, 'task')
+        for name in ('windows/app.cs', '.editorconfig', 'scripts/sidey_version.py'):
+            with self.subTest(input=name):
+                owner = task if name.startswith('windows/') else self.other
+                source = owner / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text(name + ' changed')
+                self.commit(owner, 'input changed')
+                if owner == self.other:
+                    w.git(self.other, 'push', 'origin', 'main')
+                    w.sync_task(task, 'task')
+                with patch.object(w, 'local_checks') as checks:
+                    w.check_task(task, 'task')
+                self.assertNotIn('windows', checks.call_args.args[4])
+
+    def test_windows_distribution_web_inputs_invalidate_fingerprint(self):
+        task = self.start(platform='windows')
+        before = w.scope_input_fingerprint(task, 'windows')
+        for name in ('website/windows-latest.json', 'website/windows/update.json'):
+            with self.subTest(input=name):
+                source = task / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('{}')
+                self.commit(task, 'distribution input')
+                after = w.scope_input_fingerprint(task, 'windows')
+                self.assertNotEqual(before, after)
+                before = after
+
+    def test_failed_native_check_is_not_saved(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        with patch.object(w, 'local_checks', side_effect=w.WorkflowError('native failed')):
+            with self.assertRaisesRegex(w.WorkflowError, 'native failed'):
+                w.check_task(task, 'task')
+        self.assertNotIn('windows', w.owned_task(task, 'task').get('scope_results', {}))
+
+    def test_scope_command_changes_invalidate_only_the_matching_platform(self):
+        script = self.primary / 'scripts/skills/workflow.py'
+        script.parent.mkdir(parents=True)
+        template = "def run_scope_checks(root, scope):\n    if scope == 'macos':\n        run(root, 'mac')\n    elif scope == 'windows':\n        run(root, '{windows}')\n    elif scope == 'web':\n        run(root, '{web}')\n    else:\n        raise ValueError(scope)\n"
+        script.write_text(template.format(windows='windows-one', web='web-one'))
+        self.commit(self.primary, 'initial routes')
+        initial = w.scope_input_fingerprint(self.primary, 'windows')
+        script.write_text(template.format(windows='windows-one', web='web-two'))
+        self.commit(self.primary, 'web route')
+        self.assertEqual(initial, w.scope_input_fingerprint(self.primary, 'windows'))
+        script.write_text(template.format(windows='windows-two', web='web-two'))
+        self.commit(self.primary, 'windows route')
+        self.assertNotEqual(initial, w.scope_input_fingerprint(self.primary, 'windows'))
+
+    def test_local_legacy_evidence_rebinds_only_identical_inputs(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        tested_head = w.head(task)
+        proof = {'schema': 1, 'scope': 'windows', 'status': 'passed',
+                 'head': tested_head, 'snapshot': w.snapshot(task),
+                 'base': w.fetch_main(task), 'host': 'win32',
+                 'legacy_completed_check': True}
+        file = self.root / 'observed.json'
+        file.write_text(json.dumps(proof))
+        (self.other / 'README.md').write_text('unrelated documentation')
+        self.commit(self.other, 'docs')
+        w.git(self.other, 'push', 'origin', 'main')
+        w.sync_task(task, 'task')
+        with patch.object(w, 'local_checks') as checks:
+            result = w.check_task(task, 'task', [file])
+        self.assertIn('windows', checks.call_args.args[4])
+        self.assertEqual(result['checked']['scope_evidence']['windows']['tested']['head'], tested_head)
+        (task / 'windows/app.cs').write_text('changed native input')
+        self.commit(task, 'native changed')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'scope inputs changed'):
+                w.check_task(task, 'task', [file])
+        checks.assert_not_called()
+
+    def test_check_invalidates_when_source_changes_during_checks(self):
+        task = self.start()
+        with patch.object(w, 'local_checks', side_effect=lambda *_: (task / 'new.txt').write_text('new')):
+            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
+                w.check_task(task, 'task')
+
+    def test_final_check_requires_matching_evidence_for_every_affected_host(self):
+        task = self.start()
+        asset = task / 'assets/v1/example.txt'
+        asset.parent.mkdir(parents=True)
+        asset.write_text('asset change\n')
+        self.commit(task, 'asset change')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'Missing final-head scope evidence'):
+                w.check_task(task, 'task')
+        checks.assert_not_called()
+
+        current_head = w.head(task)
+        current_snapshot = w.snapshot(task)
+        base = w.fetch_main(task)
+        paths = []
+        for scope, host in [('macos', 'darwin'), ('windows', 'win32'), ('web', 'win32')]:
+            file = self.root / f'{scope}.json'
+            file.write_text(json.dumps({
+                'schema': 1, 'scope': scope, 'status': 'passed',
+                'head': current_head, 'snapshot': current_snapshot,
+                'base': base, 'host': host,
+            }), encoding='utf-8')
+            paths.append(file)
+        with patch.object(w, 'local_checks'):
+            checked = w.check_task(task, 'task', paths)['checked']
+        self.assertEqual(checked['scopes'], ['macos', 'shared', 'web', 'windows'])
+        self.assertEqual(set(checked['scope_evidence']), {'macos', 'windows', 'web'})
+
+        (task / '.editorconfig').write_text('later shared build input\n')
+        self.commit(task, 'later change')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'Stale or invalid scope evidence'):
+                w.check_task(task, 'task', paths)
+        checks.assert_not_called()
+
+    def test_final_check_rejects_uncommitted_implementation(self):
+        task = self.start()
+        (task / 'README.md').write_text('uncommitted change\n')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'clean committed task head'):
+                w.check_task(task, 'task')
+        checks.assert_not_called()
+
+    def test_attestation_rejects_edit_after_check_and_staging(self):
+        task = self.start()
+        (task / 'README.md').write_text('task changes')
+        self.commit(task, 'task changes')
+        with patch.object(w, 'local_checks'):
+            state = w.check_task(task, 'task')
+        w.attest(task, state, state['base'])
+        (task / 'README.md').write_text('later changes')
+        w.git(task, 'add', 'README.md')
+        with self.assertRaises(w.WorkflowError):
+            w.attest(task, state, state['base'])
+
+    def test_sync_refuses_dirty_task_and_other_owner(self):
+        task = self.start()
+        (task / 'README.md').write_text('unfinished')
+        with self.assertRaises(w.WorkflowError):
+            w.main(['--repo', str(task), 'sync', 'task'])
+        with self.assertRaises(w.WorkflowError):
+            w.owned_task(self.primary, 'task')
+
+    def test_offline_fetch_does_not_reuse_previous_check(self):
+        task = self.start()
+        w.git(task, 'remote', 'set-url', 'origin', str(self.root / 'missing.git'))
+        with self.assertRaises(w.WorkflowError):
+            w.check_task(task, 'task')
+
+    def test_primary_main_update_refuses_dirty_state(self):
+        remote = self.advance()
+        w.fetch_main(self.primary)
+        old = w.head(self.primary)
+        (self.primary / 'README.md').write_text('owned by user')
+        with self.assertRaisesRegex(w.WorkflowError, 'completion pending'):
+            w.update_main(self.primary, remote)
+        self.assertEqual(w.head(self.primary), old)
+        self.assertEqual((self.primary / 'README.md').read_text(), 'owned by user')
+
+class WorkflowContractTests(unittest.TestCase):
+    def test_subprocess_output_decodes_utf8_and_legacy_locale(self):
+        self.assertEqual(w.decode_output('기여자'.encode('utf-8')), '기여자')
+        with patch.object(w.locale, 'getencoding', return_value='cp949'):
+            self.assertEqual(w.decode_output('검증'.encode('cp949')), '검증')
+        self.assertEqual(w.decode_output(b'first\r\nsecond\rthird'), 'first\nsecond\nthird')
+
+
+    def test_main_cannot_implement(self):
+        with self.assertRaises(w.WorkflowError):
+            w.validate_paths('main', ['README.md'])
+
+
+    def test_platform_branches_reject_shared_changes(self):
+        for name in ('macos/task', 'windows/task'):
+            with self.assertRaises(w.WorkflowError):
+                w.validate_paths(name, ['docs/architecture.md'])
+
+
+    def test_platform_release_manifests_follow_their_native_branches(self):
+        self.assertEqual(w.platform_for('release/macos.json'), 'macos')
+        self.assertEqual(w.platform_for('release/windows.json'), 'windows')
+        self.assertEqual(
+            w.validate_paths('macos/release', ['release/macos.json']),
+            'macos',
+        )
+        self.assertEqual(
+            w.validate_paths('windows/release', ['release/windows.json']),
+            'windows',
+        )
+
+
+    def test_catalog_runs_public_consumers(self):
+        self.assertEqual(set(w.required_scopes(['assets/v1/commerce-catalog.json'])),
+                         {'shared', 'macos', 'windows', 'web'})
+        self.assertIn('windows', w.required_scopes(['website/src/pages/ko/terms.md']))
+
+
+    def test_contributor_architecture_only_changes_require_repository_validation(self):
+        paths = [
+            'AGENTS.md',
+            'macos/AGENTS.md',
+            'windows/AGENTS.md',
+            'windows/docs/AGENTS.md',
+            'website/AGENTS.md',
+            '.agents/skills/version-audit/SKILL.md',
+            '.agents/skills/write-tests/agents/openai.yaml',
+            'scripts/skills/validate_contributor_architecture.py',
+            'scripts/tests/test_contributor_architecture.py',
+            'scripts/skills/commit/validate_commit_message.py',
+            'scripts/tests/test_validate_commit_message.py',
+            'scripts/skills/commit/prepare_commit_msg.py',
+        ]
+        self.assertEqual(w.required_scopes(paths), ['shared'])
+        self.assertEqual(w.platform_for('macos/AGENTS.md'), 'macos')
+        self.assertEqual(w.platform_for('windows/AGENTS.md'), 'windows')
+        self.assertEqual(w.platform_for('website/AGENTS.md'), 'shared')
+        self.assertEqual(
+            w.validate_paths(
+                'shared/contributor-architecture',
+                [path for path in paths if not path.startswith(('macos/', 'windows/'))],
+            ),
+            'shared',
+        )
+        self.assertEqual(w.validate_paths('macos/contributor-docs', ['macos/AGENTS.md']), 'macos')
+        self.assertEqual(
+            w.validate_paths(
+                'windows/contributor-docs',
+                ['windows/AGENTS.md', 'windows/docs/AGENTS.md'],
+            ),
+            'windows',
+        )
+
+
+    def test_contributor_classification_does_not_hide_product_changes(self):
+        self.assertEqual(
+            w.required_scopes(['AGENTS.md', 'macos/Sources/SIDEY/App.swift']),
+            ['macos', 'shared'],
+        )
+        self.assertEqual(
+            w.required_scopes(['website/AGENTS.md', 'website/src/pages/index.astro']),
+            ['shared', 'web'],
+        )
+
+
+    def test_commit_text_validation_fails_before_repository_mutation(self):
+        w.require_valid_commit_text('Commit message', 'chore(Shared): 기여자 구조 정리')
+        w.require_valid_commit_text(
+            'PR title', 'chore(Shared): 기여자 구조 정리', subject_only=True
+        )
+        with self.assertRaisesRegex(w.WorkflowError, 'commit policy'):
+            w.require_valid_commit_text('Commit message', 'Contributor architecture cleanup')
+        with self.assertRaisesRegex(w.WorkflowError, 'commit policy'):
+            w.require_valid_commit_text('PR title', 'Invalid title', subject_only=True)
+
+
+    def test_release_manifests_run_the_matching_native_checks(self):
+        self.assertEqual(
+            w.required_scopes(['release/version.json']),
+            ['macos', 'shared', 'web', 'windows'],
+        )
+        self.assertEqual(w.required_scopes(['release/macos.json']), ['macos', 'shared'])
+        self.assertEqual(w.required_scopes(['release/windows.json']), ['shared', 'windows'])
+        self.assertEqual(w.required_scopes([
+            'release/version.json', 'release/windows.json', 'windows/Version.props',
+        ]), ['shared', 'web', 'windows'])
+        self.assertEqual(w.required_scopes([
+            'release/version.json', 'release/macos.json',
+            'macos/Config/Version.xcconfig',
+        ]), ['macos', 'shared'])
+
+
+    def test_workflow_scopes_only_run_affected_platforms(self):
+        self.assertEqual(
+            w.required_scopes(
+                ['.github/workflows/macos-build-and-tests.yml']
+            ),
+            ['macos', 'shared'],
+        )
+        self.assertEqual(
+            w.required_scopes(['.github/workflows/windows-release.yml']),
+            ['shared', 'windows'],
+        )
+        self.assertEqual(
+            w.required_scopes(
+                ['.github/workflows/website-deployment.yml']
+            ),
+            ['shared', 'web'],
+        )
+        self.assertEqual(w.required_scopes(['scripts/pages/prepare_release_metadata.py']),
+                         ['shared', 'web'])
+
+
+    def test_platform_workflow_only_changes_do_not_require_app_review(self):
+        self.assertFalse(
+            w.app_review_required(
+                'macos',
+                ['.github/workflows/macos-build-and-tests.yml'],
+            )
+        )
+        self.assertFalse(
+            w.app_review_required(
+                'windows',
+                ['.github/workflows/windows-build-and-tests.yml'],
+            )
+        )
+        self.assertFalse(w.app_review_required('shared', ['scripts/skills/workflow.py']))
+        self.assertFalse(w.app_review_required('windows', ['windows/AGENTS.md']))
+        self.assertFalse(w.app_review_required('macos', ['macos/AGENTS.md']))
+        self.assertFalse(w.app_review_required('windows', ['windows/docs/build.md']))
+
+
+    def test_platform_app_inputs_still_require_app_review(self):
+        self.assertTrue(w.app_review_required('macos', ['macos/Sources/SIDEY/App.swift']))
+        self.assertTrue(w.app_review_required('windows', ['windows/SIDEY/App.xaml.cs']))
+        self.assertTrue(w.app_review_required(
+            'windows', ['.github/workflows/windows-release.yml']))
+        self.assertTrue(w.app_review_required(
+            'macos', [
+                '.github/workflows/macos-build-and-tests.yml',
+                'scripts/macos/archive_app_store.sh',
+            ]))
+        self.assertTrue(w.app_review_required('macos', ['release/macos.json']))
+        self.assertTrue(w.app_review_required('windows', ['release/windows.json']))
+
+
+    def test_ci_workflow_and_scope_logic_run_every_check(self):
+        every_scope = {'shared', 'macos', 'windows', 'web'}
+        self.assertEqual(set(w.required_scopes(['.github/workflows/ci.yml'])),
+                         every_scope)
+        self.assertEqual(
+            w.required_scopes(['scripts/skills/validate_change.py']),
+            ['shared'],
+        )
+        self.assertEqual(
+            set(w.required_scopes(['scripts/skills/validation_scope.py'])),
+            every_scope,
+        )
+
+
+    def test_validation_contract_changes_run_all_checks(self):
+        self.assertEqual(
+            set(w.required_scopes([
+                '.github/workflows/ci.yml',
+                'scripts/skills/validate_change.py',
+            ])),
+            {'shared', 'macos', 'windows', 'web'},
+        )
+
+
+    def test_policy_and_contributor_changes_are_repository_only(self):
+        self.assertEqual(
+            w.required_scopes([
+                'scripts/skills/validate_change.py',
+                'website/AGENTS.md',
+            ]),
+            ['shared'],
+        )
+
+
+    def test_windows_docs_stay_owned_without_running_windows_build(self):
+        paths = ['windows/docs/debugging.md', 'windows/docs/code-style.md']
+        self.assertEqual(w.required_scopes(paths), ['shared'])
+        self.assertTrue(all(w.platform_for(path) == 'windows' for path in paths))
+        self.assertEqual(w.validate_paths('windows/docs-refresh', paths), 'windows')
+
+
+    def test_checkout_attributes_require_native_and_web_verification(self):
+        self.assertEqual(set(w.required_scopes(['.gitattributes'])),
+                         {'shared', 'macos', 'windows', 'web'})
+
+
+
+class WorkflowCommandTests(unittest.TestCase):
+    def setUp(self):
+        self.primary = Path(__file__).resolve().parents[2] / 'workflow-command-fixture'
+
     def test_merge_uses_github_squash_defaults_without_message_overrides(self):
         with patch.object(w, 'run') as run:
             w.merge_task_pr(self.primary, '108', 'checked-head')
@@ -573,6 +1075,68 @@ class WorkflowTests(unittest.TestCase):
         )
         self.assertNotIn('--subject', command)
         self.assertNotIn('--body-file', command)
+
+
+    def test_local_python_checks_are_locale_independent(self):
+        with patch.object(w, 'run') as run:
+            w.local_checks(self.primary, 'shared')
+        python_commands = [
+            call.args[1:]
+            for call in run.call_args_list
+            if call.args[1] == w.sys.executable
+        ]
+        self.assertTrue(python_commands)
+        self.assertTrue(all(command[1:3] == ('-X', 'utf8') for command in python_commands))
+        self.assertIn(
+            (w.sys.executable, '-X', 'utf8', 'scripts/skills/run_common_tests.py'),
+            python_commands,
+        )
+        self.assertIn(
+            (
+                w.sys.executable, '-X', 'utf8', '-m', 'unittest', 'discover', '-s',
+                'scripts/skills/release-notes/tests',
+            ),
+            python_commands,
+        )
+
+
+    def test_platform_checks_use_native_host_routes(self):
+        with patch.object(w, 'run') as execute, patch.object(w.sys, 'platform', 'darwin'):
+            w.local_checks(self.primary, 'macos', ['macos/Sources/SIDEY/App.swift'])
+        self.assertIn(
+            str(self.primary / 'scripts/macos/tests/test_native.sh'),
+            [call.args[1] for call in execute.call_args_list],
+        )
+
+        with patch.object(w, 'run') as execute, patch.object(w.os, 'name', 'nt'):
+            w.local_checks(self.primary, 'windows', ['windows/src/Sidey.App/App.xaml.cs'])
+        commands = [call.args[1:4] for call in execute.call_args_list]
+        self.assertIn(('dotnet', 'restore', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'format', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'build', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'test', 'SIDEY.Windows.slnx'), commands)
+
+
+
+class WorkflowFileTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.primary = Path(temporary.name)
+
+    def write_general_pr_template(self):
+        template = self.primary / '.github/PULL_REQUEST_TEMPLATE/general.md'
+        template.parent.mkdir(parents=True, exist_ok=True)
+        template.write_text(
+            '<!-- SIDEY_GENERAL_PR_TEMPLATE: keep -->\n\n'
+            '## PR 유형\n\n- [ ] macOS 구현\n\n'
+            '## 변경 내용\n\n설명\n\n'
+            '## 검증\n\n검증\n\n'
+            '## 확인 사항\n\n- [ ] 확인\n',
+            encoding='utf-8',
+        )
+        return template
+
 
     def test_publish_preserves_existing_pr_body_without_editing_or_merging(self):
         template = self.write_general_pr_template()
@@ -643,6 +1207,7 @@ class WorkflowTests(unittest.TestCase):
         })
         self.assertEqual(update_task.call_args.args[2]['status'], 'published')
 
+
     def test_publish_creates_pr_with_exact_validated_body_file(self):
         template = self.write_general_pr_template()
         body = template.read_text(encoding='utf-8')
@@ -704,264 +1269,149 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn('Co-authored-by:', body)
         self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
 
-    def advance(self):
-        (self.other / 'advance.md').write_text('remote update\n')
-        self.commit(self.other, 'advance main')
-        w.git(self.other, 'push', 'origin', 'main')
-        return w.head(self.other)
 
-    def test_start_fetches_real_remote_not_stale_tracking_ref(self):
-        old = w.git(self.primary, 'rev-parse', 'origin/main')
-        new = self.advance()
-        self.assertNotEqual(old, new)
-        task = self.start()
-        self.assertEqual(w.head(task), new)
+    @contextlib.contextmanager
+    def publication_fixture(self, *, existing, remote_title, remote_body):
+        task = {
+            'checked': {'base': 'base', 'head': 'checked-head'},
+            'status': 'checked',
+        }
+        current_pr = {
+            'number': 42,
+            'headRefOid': 'checked-head',
+            'isCrossRepository': False,
+        }
+        views = iter((
+            [{'title': 'fix(auth): previous login change', 'body': 'Previous explanation.'}]
+            if existing else []
+        ) + [{'title': remote_title, 'body': remote_body}])
+        commands = []
 
-    def test_start_preserves_another_dirty_worktree(self):
-        (self.primary / 'README.md').write_text('in progress\n')
-        (self.primary / 'untracked.swift').write_text('user source\n')
-        self.start()
-        self.assertEqual((self.primary / 'README.md').read_text(), 'in progress\n')
-        self.assertTrue((self.primary / 'untracked.swift').exists())
+        def response(root, *args, **kwargs):
+            commands.append(args)
+            if args[:3] == ('gh', 'pr', 'view'):
+                return json.dumps(next(views))
+            return ''
 
-    def test_start_refuses_existing_directory_and_duplicate_owner(self):
-        task = self.start()
-        with self.assertRaises(w.WorkflowError):
-            w.main(['--repo', str(self.primary), 'start', 'task', '--platform', 'shared', '--worktree', str(task)])
+        with contextlib.ExitStack() as stack:
+            for name, value in {
+                'owned_task': task,
+                'dirty_paths': [],
+                'source_repository': 'sidey-app/SIDEY-source',
+                'fetch_main': 'base',
+                'changed_paths': ['docs/guide.md'],
+                'publish_head': 'sidey-app:shared/task',
+                'branch': 'shared/task',
+                'head': 'checked-head',
+            }.items():
+                stack.enter_context(patch.object(w, name, return_value=value))
+            for name in ('attest', 'validate_paths'):
+                stack.enter_context(patch.object(w, name))
+            stack.enter_context(patch.object(
+                w, 'open_task_prs',
+                side_effect=([current_pr] if existing else [], [current_pr]),
+            ))
+            stack.enter_context(patch.object(w, 'run', side_effect=response))
+            git = stack.enter_context(patch.object(w, 'git'))
+            update_task = stack.enter_context(patch.object(w, 'update_task'))
+            yield commands, git, update_task, task
 
-    def test_task_state_round_trips_korean_as_utf8(self):
-        task = self.start()
-        state = w.read_state(task)['task']
-        state['merge_intent'] = {'subject': '한글 squash 제목'}
-        w.update_task(task, 'task', state)
-        state_path = w.common_dir(task) / 'sidey-workflow' / 'tasks.json'
-        self.assertIn('한글 squash 제목', state_path.read_bytes().decode('utf-8'))
-        self.assertEqual(w.read_state(task)['task']['merge_intent']['subject'], '한글 squash 제목')
+    def write_publication_body(self, body):
+        body_path = self.primary / 'publication-body.md'
+        body_path.write_bytes(body.encode('utf-8'))
+        return body_path
 
-    def test_legacy_locale_task_state_is_migrated_to_utf8(self):
-        task = self.start()
-        state_path = w.common_dir(task) / 'sidey-workflow' / 'tasks.json'
-        state = w.read_state(task)
-        state['task']['merge_intent'] = {'subject': '예전 한글 제목'}
-        state_path.write_bytes(json.dumps(state, ensure_ascii=False).encode('cp949'))
-        with patch.object(w.locale, 'getencoding', return_value='cp949'):
-            self.assertEqual(w.read_state(task)['task']['merge_intent']['subject'], '예전 한글 제목')
-        self.assertIn('예전 한글 제목', state_path.read_bytes().decode('utf-8'))
+    def test_publish_updates_supplied_existing_pr_fields(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n'
+        body_path = self.write_publication_body(body)
+        for supplied_title, supplied_body in (
+            (title, str(body_path)), (None, str(body_path)), (title, None),
+        ):
+            with self.subTest(title=supplied_title, body_file=supplied_body):
+                expected_title = supplied_title or 'fix(auth): previous login change'
+                expected_body = body if supplied_body else 'Previous explanation.'
+                with self.publication_fixture(
+                    existing=True, remote_title=expected_title, remote_body=expected_body,
+                ) as (commands, git, update_task, task):
+                    result = w.publish(self.primary, w.argparse.Namespace(
+                        task='task', title=supplied_title, body_file=supplied_body,
+                    ))
+                edit = next(c for c in commands if c[:3] == ('gh', 'pr', 'edit'))
+                self.assertEqual(edit[3], '42')
+                self.assertEqual('--title' in edit, supplied_title is not None)
+                self.assertEqual('--body-file' in edit, supplied_body is not None)
+                if supplied_title:
+                    self.assertEqual(edit[edit.index('--title') + 1], title)
+                if supplied_body:
+                    self.assertEqual(Path(edit[edit.index('--body-file') + 1]), body_path.resolve())
+                git.assert_called_once()
+                update_task.assert_called_once()
+                self.assertEqual(result['status'], 'published')
 
-    def test_moved_file_checks_deleted_platform_path(self):
-        (self.primary / 'macos').mkdir()
-        (self.primary / 'macos/source.swift').write_text('native\n')
-        self.commit(self.primary, 'fixture')
-        w.git(self.primary, 'push')
-        task = self.start()
-        w.git(task, 'mv', 'macos/source.swift', 'source.swift')
-        paths = w.changed_paths(task, 'origin/main', dirty=True)
-        self.assertIn('macos/source.swift', paths)
-        with self.assertRaises(w.WorkflowError):
-            w.validate_paths('shared/task', paths)
+    def test_publish_rejects_invalid_supplied_fields_before_push(self):
+        body_path = self.write_publication_body('')
+        for title, body_file in (('invalid title', None), (None, str(body_path))):
+            with self.subTest(title=title, body_file=body_file):
+                with self.publication_fixture(
+                    existing=True, remote_title='fix(auth): previous login change',
+                    remote_body='Previous explanation.',
+                ) as (commands, git, update_task, task):
+                    with self.assertRaises(w.WorkflowError):
+                        w.publish(self.primary, w.argparse.Namespace(
+                            task='task', title=title, body_file=body_file,
+                        ))
+                git.assert_not_called()
+                update_task.assert_not_called()
+                self.assertEqual(task['status'], 'checked')
+                self.assertFalse(any(c[:3] == ('gh', 'pr', 'edit') for c in commands))
 
-    def test_untracked_platform_file_cannot_escape_guard(self):
-        task = self.start()
-        (task / 'windows').mkdir()
-        (task / 'windows/new.cs').write_text('source\n')
-        with self.assertRaises(w.WorkflowError):
-            w.validate_paths('shared/task', w.changed_paths(task, 'origin/main', dirty=True))
+    def test_publish_rejects_remote_content_changes_without_marking_published(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n'
+        body_path = self.write_publication_body(body)
+        for existing in (False, True):
+            for remote_title, remote_body in (
+                (title, '??? ?? ? ?? ????? ? ????.\n'),
+                (title, '계정 삭제 후 로그인에 실패합니다.\n'),
+                ('fix(auth): a different change', body),
+            ):
+                with self.subTest(existing=existing, title=remote_title, body=remote_body):
+                    with self.publication_fixture(
+                        existing=existing, remote_title=remote_title, remote_body=remote_body,
+                    ) as (commands, git, update_task, task):
+                        with self.assertRaises(w.WorkflowError):
+                            w.publish(self.primary, w.argparse.Namespace(
+                                task='task', title=title, body_file=str(body_path),
+                            ))
+                    git.assert_called_once()
+                    update_task.assert_not_called()
+                    self.assertEqual(task['status'], 'checked')
 
-    def test_main_cannot_implement(self):
-        with self.assertRaises(w.WorkflowError):
-            w.validate_paths('main', ['README.md'])
-
-    def test_platform_branches_reject_shared_changes(self):
-        for name in ('macos/task', 'windows/task'):
-            with self.assertRaises(w.WorkflowError):
-                w.validate_paths(name, ['docs/architecture.md'])
-
-    def test_platform_release_manifests_follow_their_native_branches(self):
-        self.assertEqual(w.platform_for('release/macos.json'), 'macos')
-        self.assertEqual(w.platform_for('release/windows.json'), 'windows')
-        self.assertEqual(
-            w.validate_paths('macos/release', ['release/macos.json']),
-            'macos',
-        )
-        self.assertEqual(
-            w.validate_paths('windows/release', ['release/windows.json']),
-            'windows',
-        )
-
-    def test_shared_commits_already_in_main_are_excluded(self):
-        task = self.start(platform='macos')
-        (task / 'macos').mkdir()
-        (task / 'macos/source.swift').write_text('native\n')
-        self.commit(task, 'native')
-        new = self.advance()
-        w.fetch_main(task)
-        w.git(task, 'merge', '--no-edit', new)
-        self.assertEqual(w.changed_paths(task, new), ['macos/source.swift'])
-
-    def test_check_invalidates_when_main_advances_during_checks(self):
-        task = self.start()
-        with patch.object(w, 'local_checks', side_effect=lambda *_: self.advance()):
-            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
-                w.check_task(task, 'task')
-        self.assertNotIn('checked', w.owned_task(task, 'task'))
-
-    def test_check_invalidates_when_source_changes_during_checks(self):
-        task = self.start()
-        with patch.object(w, 'local_checks', side_effect=lambda *_: (task / 'new.txt').write_text('new')):
-            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
-                w.check_task(task, 'task')
-
-    def test_final_check_requires_matching_evidence_for_every_affected_host(self):
-        task = self.start()
-        asset = task / 'assets/v1/example.txt'
-        asset.parent.mkdir(parents=True)
-        asset.write_text('asset change\n')
-        self.commit(task, 'asset change')
-        with patch.object(w, 'local_checks') as checks:
-            with self.assertRaisesRegex(w.WorkflowError, 'Missing final-head scope evidence'):
-                w.check_task(task, 'task')
-        checks.assert_not_called()
-
-        current_head = w.head(task)
-        current_snapshot = w.snapshot(task)
-        base = w.fetch_main(task)
-        paths = []
-        for scope, host in [('macos', 'darwin'), ('windows', 'win32'), ('web', 'win32')]:
-            file = self.root / f'{scope}.json'
-            file.write_text(json.dumps({
-                'schema': 1, 'scope': scope, 'status': 'passed',
-                'head': current_head, 'snapshot': current_snapshot,
-                'base': base, 'host': host,
-            }), encoding='utf-8')
-            paths.append(file)
-        with patch.object(w, 'local_checks'):
-            checked = w.check_task(task, 'task', paths)['checked']
-        self.assertEqual(checked['scopes'], ['macos', 'shared', 'web', 'windows'])
-        self.assertEqual(set(checked['scope_evidence']), {'macos', 'windows', 'web'})
-
-        (task / 'README.md').write_text('later change\n')
-        self.commit(task, 'later change')
-        with patch.object(w, 'local_checks') as checks:
-            with self.assertRaisesRegex(w.WorkflowError, 'Stale or invalid scope evidence'):
-                w.check_task(task, 'task', paths)
-        checks.assert_not_called()
-
-    def test_final_check_rejects_uncommitted_implementation(self):
-        task = self.start()
-        (task / 'README.md').write_text('uncommitted change\n')
-        with patch.object(w, 'local_checks') as checks:
-            with self.assertRaisesRegex(w.WorkflowError, 'clean committed task head'):
-                w.check_task(task, 'task')
-        checks.assert_not_called()
-
-    def test_attestation_rejects_edit_after_check_and_staging(self):
-        task = self.start()
-        (task / 'README.md').write_text('task changes')
-        self.commit(task, 'task changes')
-        with patch.object(w, 'local_checks'):
-            state = w.check_task(task, 'task')
-        w.attest(task, state, state['base'])
-        (task / 'README.md').write_text('later changes')
-        w.git(task, 'add', 'README.md')
-        with self.assertRaises(w.WorkflowError):
-            w.attest(task, state, state['base'])
-
-    def test_sync_refuses_dirty_task_and_other_owner(self):
-        task = self.start()
-        (task / 'README.md').write_text('unfinished')
-        with self.assertRaises(w.WorkflowError):
-            w.main(['--repo', str(task), 'sync', 'task'])
-        with self.assertRaises(w.WorkflowError):
-            w.owned_task(self.primary, 'task')
-
-    def test_offline_fetch_does_not_reuse_previous_check(self):
-        task = self.start()
-        w.git(task, 'remote', 'set-url', 'origin', str(self.root / 'missing.git'))
-        with self.assertRaises(w.WorkflowError):
-            w.check_task(task, 'task')
-
-    def test_primary_main_update_refuses_dirty_state(self):
-        remote = self.advance()
-        w.fetch_main(self.primary)
-        old = w.head(self.primary)
-        (self.primary / 'README.md').write_text('owned by user')
-        with self.assertRaisesRegex(w.WorkflowError, 'completion pending'):
-            w.update_main(self.primary, remote)
-        self.assertEqual(w.head(self.primary), old)
-        self.assertEqual((self.primary / 'README.md').read_text(), 'owned by user')
-
-    def test_catalog_runs_public_consumers(self):
-        self.assertEqual(set(w.required_scopes(['assets/v1/commerce-catalog.json'])),
-                         {'shared', 'macos', 'windows', 'web'})
-        self.assertIn('windows', w.required_scopes(['website/src/pages/ko/terms.md']))
-
-    def test_contributor_architecture_only_changes_require_repository_validation(self):
-        paths = [
-            'AGENTS.md',
-            'macos/AGENTS.md',
-            'windows/AGENTS.md',
-            'windows/docs/AGENTS.md',
-            'website/AGENTS.md',
-            '.agents/skills/version-audit/SKILL.md',
-            '.agents/skills/write-tests/agents/openai.yaml',
-            'scripts/skills/validate_contributor_architecture.py',
-            'scripts/tests/test_contributor_architecture.py',
-            'scripts/skills/commit/validate_commit_message.py',
-            'scripts/tests/test_validate_commit_message.py',
-            'scripts/skills/commit/prepare_commit_msg.py',
-        ]
-        self.assertEqual(w.required_scopes(paths), ['shared'])
-        self.assertEqual(w.platform_for('macos/AGENTS.md'), 'macos')
-        self.assertEqual(w.platform_for('windows/AGENTS.md'), 'windows')
-        self.assertEqual(w.platform_for('website/AGENTS.md'), 'shared')
-        self.assertEqual(
-            w.validate_paths(
-                'shared/contributor-architecture',
-                [path for path in paths if not path.startswith(('macos/', 'windows/'))],
-            ),
-            'shared',
-        )
-        self.assertEqual(w.validate_paths('macos/contributor-docs', ['macos/AGENTS.md']), 'macos')
-        self.assertEqual(
-            w.validate_paths(
-                'windows/contributor-docs',
-                ['windows/AGENTS.md', 'windows/docs/AGENTS.md'],
-            ),
-            'windows',
-        )
-
-    def test_contributor_classification_does_not_hide_product_changes(self):
-        self.assertEqual(
-            w.required_scopes(['AGENTS.md', 'macos/Sources/SIDEY/App.swift']),
-            ['macos', 'shared'],
-        )
-        self.assertEqual(
-            w.required_scopes(['website/AGENTS.md', 'website/src/pages/index.astro']),
-            ['shared', 'web'],
-        )
-
-    def test_commit_text_validation_fails_before_repository_mutation(self):
-        w.require_valid_commit_text('Commit message', 'chore(Shared): 기여자 구조 정리')
-        w.require_valid_commit_text(
-            'PR title', 'chore(Shared): 기여자 구조 정리', subject_only=True
-        )
-        with self.assertRaisesRegex(w.WorkflowError, 'commit policy'):
-            w.require_valid_commit_text('Commit message', 'Contributor architecture cleanup')
-        with self.assertRaisesRegex(w.WorkflowError, 'commit policy'):
-            w.require_valid_commit_text('PR title', 'Invalid title', subject_only=True)
-
-    def write_general_pr_template(self):
-        template = self.primary / '.github/PULL_REQUEST_TEMPLATE/general.md'
-        template.parent.mkdir(parents=True, exist_ok=True)
-        template.write_text(
-            '<!-- SIDEY_GENERAL_PR_TEMPLATE: keep -->\n\n'
-            '## PR 유형\n\n- [ ] macOS 구현\n\n'
-            '## 변경 내용\n\n설명\n\n'
-            '## 검증\n\n검증\n\n'
-            '## 확인 사항\n\n- [ ] 확인\n',
-            encoding='utf-8',
-        )
-        return template
+    def test_publish_readback_allows_only_line_endings_and_leading_bom_differences(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n검증을 완료했습니다.\n'
+        for existing in (False, True):
+            for local_body, remote_body, accepted in (
+                ('\ufeff' + body.replace('\n', '\r\n'), body, True),
+                (body, '\ufeff' + body.replace('\n', '\r\n'), True),
+                (body, body.rstrip('\n'), False),
+                (body, body.replace('다시', '\ufeff다시'), False),
+            ):
+                with self.subTest(existing=existing, local=local_body, remote=remote_body):
+                    body_path = self.write_publication_body(local_body)
+                    with self.publication_fixture(
+                        existing=existing, remote_title=title, remote_body=remote_body,
+                    ) as (commands, git, update_task, task):
+                        args = w.argparse.Namespace(task='task', title=title, body_file=str(body_path))
+                        if accepted:
+                            self.assertEqual(w.publish(self.primary, args)['status'], 'published')
+                            update_task.assert_called_once()
+                        else:
+                            with self.assertRaises(w.WorkflowError):
+                                w.publish(self.primary, args)
+                            update_task.assert_not_called()
+                            self.assertEqual(task['status'], 'checked')
 
     def test_general_pr_body_accepts_filled_template_and_extra_sections(self):
         template = self.write_general_pr_template()
@@ -971,6 +1421,7 @@ class WorkflowTests(unittest.TestCase):
             w.require_pr_body(self.primary, body, ['docs/guide.md']),
             'general',
         )
+
 
     def test_pr_body_is_not_subject_to_commit_line_length(self):
         template = self.write_general_pr_template()
@@ -987,6 +1438,7 @@ class WorkflowTests(unittest.TestCase):
             ),
             'general',
         )
+
 
     def test_custom_pr_body_allows_changed_sections_but_rejects_empty_text(self):
         self.write_general_pr_template()
@@ -1005,6 +1457,7 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(w.WorkflowError, 'description'):
             w.require_pr_body(self.primary, marker, ['docs/guide.md'])
 
+
     def test_general_pr_body_file_requires_existing_utf8_file(self):
         self.write_general_pr_template()
         with self.assertRaisesRegex(w.WorkflowError, 'Cannot read --body-file'):
@@ -1022,146 +1475,6 @@ class WorkflowTests(unittest.TestCase):
                 ['docs/guide.md'],
             )
 
-    def test_local_python_checks_are_locale_independent(self):
-        with patch.object(w, 'run') as run:
-            w.local_checks(self.primary, 'shared')
-        python_commands = [
-            call.args[1:]
-            for call in run.call_args_list
-            if call.args[1] == w.sys.executable
-        ]
-        self.assertTrue(python_commands)
-        self.assertTrue(all(command[1:3] == ('-X', 'utf8') for command in python_commands))
-        self.assertIn(
-            (
-                w.sys.executable, '-X', 'utf8', '-m', 'unittest', 'discover', '-s',
-                'scripts/skills/release-notes/tests',
-            ),
-            python_commands,
-        )
-
-    def test_platform_checks_use_native_host_routes(self):
-        with patch.object(w, 'run') as execute, patch.object(w.sys, 'platform', 'darwin'):
-            w.local_checks(self.primary, 'macos', ['macos/Sources/SIDEY/App.swift'])
-        self.assertIn(
-            str(self.primary / 'scripts/macos/tests/test_native.sh'),
-            [call.args[1] for call in execute.call_args_list],
-        )
-
-        with patch.object(w, 'run') as execute, patch.object(w.os, 'name', 'nt'):
-            w.local_checks(self.primary, 'windows', ['windows/src/Sidey.App/App.xaml.cs'])
-        commands = [call.args[1:4] for call in execute.call_args_list]
-        self.assertIn(('dotnet', 'restore', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'format', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'build', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'test', 'SIDEY.Windows.slnx'), commands)
-
-    def test_release_manifests_run_the_matching_native_checks(self):
-        self.assertEqual(
-            w.required_scopes(['release/version.json']),
-            ['macos', 'shared', 'web', 'windows'],
-        )
-        self.assertEqual(w.required_scopes(['release/macos.json']), ['macos', 'shared'])
-        self.assertEqual(w.required_scopes(['release/windows.json']), ['shared', 'windows'])
-        self.assertEqual(w.required_scopes([
-            'release/version.json', 'release/windows.json', 'windows/Version.props',
-        ]), ['shared', 'web', 'windows'])
-        self.assertEqual(w.required_scopes([
-            'release/version.json', 'release/macos.json',
-            'macos/Config/Version.xcconfig',
-        ]), ['macos', 'shared'])
-
-    def test_workflow_scopes_only_run_affected_platforms(self):
-        self.assertEqual(
-            w.required_scopes(
-                ['.github/workflows/macos-build-and-tests.yml']
-            ),
-            ['macos', 'shared'],
-        )
-        self.assertEqual(
-            w.required_scopes(['.github/workflows/windows-release.yml']),
-            ['shared', 'windows'],
-        )
-        self.assertEqual(
-            w.required_scopes(
-                ['.github/workflows/website-deployment.yml']
-            ),
-            ['shared', 'web'],
-        )
-        self.assertEqual(w.required_scopes(['scripts/pages/prepare_release_metadata.py']),
-                         ['shared', 'web'])
-
-    def test_platform_workflow_only_changes_do_not_require_app_review(self):
-        self.assertFalse(
-            w.app_review_required(
-                'macos',
-                ['.github/workflows/macos-build-and-tests.yml'],
-            )
-        )
-        self.assertFalse(
-            w.app_review_required(
-                'windows',
-                ['.github/workflows/windows-build-and-tests.yml'],
-            )
-        )
-        self.assertFalse(w.app_review_required('shared', ['scripts/skills/workflow.py']))
-        self.assertFalse(w.app_review_required('windows', ['windows/AGENTS.md']))
-        self.assertFalse(w.app_review_required('macos', ['macos/AGENTS.md']))
-        self.assertFalse(w.app_review_required('windows', ['windows/docs/build.md']))
-
-    def test_platform_app_inputs_still_require_app_review(self):
-        self.assertTrue(w.app_review_required('macos', ['macos/Sources/SIDEY/App.swift']))
-        self.assertTrue(w.app_review_required('windows', ['windows/SIDEY/App.xaml.cs']))
-        self.assertTrue(w.app_review_required(
-            'windows', ['.github/workflows/windows-release.yml']))
-        self.assertTrue(w.app_review_required(
-            'macos', [
-                '.github/workflows/macos-build-and-tests.yml',
-                'scripts/macos/archive_app_store.sh',
-            ]))
-        self.assertTrue(w.app_review_required('macos', ['release/macos.json']))
-        self.assertTrue(w.app_review_required('windows', ['release/windows.json']))
-
-    def test_ci_workflow_and_scope_logic_run_every_check(self):
-        every_scope = {'shared', 'macos', 'windows', 'web'}
-        self.assertEqual(set(w.required_scopes(['.github/workflows/ci.yml'])),
-                         every_scope)
-        self.assertEqual(
-            w.required_scopes(['scripts/skills/validate_change.py']),
-            ['shared'],
-        )
-        self.assertEqual(
-            set(w.required_scopes(['scripts/skills/validation_scope.py'])),
-            every_scope,
-        )
-
-    def test_validation_contract_changes_run_all_checks(self):
-        self.assertEqual(
-            set(w.required_scopes([
-                '.github/workflows/ci.yml',
-                'scripts/skills/validate_change.py',
-            ])),
-            {'shared', 'macos', 'windows', 'web'},
-        )
-
-    def test_policy_and_contributor_changes_are_repository_only(self):
-        self.assertEqual(
-            w.required_scopes([
-                'scripts/skills/validate_change.py',
-                'website/AGENTS.md',
-            ]),
-            ['shared'],
-        )
-
-    def test_windows_docs_stay_owned_without_running_windows_build(self):
-        paths = ['windows/docs/debugging.md', 'windows/docs/code-style.md']
-        self.assertEqual(w.required_scopes(paths), ['shared'])
-        self.assertTrue(all(w.platform_for(path) == 'windows' for path in paths))
-        self.assertEqual(w.validate_paths('windows/docs-refresh', paths), 'windows')
-
-    def test_checkout_attributes_require_native_and_web_verification(self):
-        self.assertEqual(set(w.required_scopes(['.gitattributes'])),
-                         {'shared', 'macos', 'windows', 'web'})
 
 
 if __name__ == '__main__':

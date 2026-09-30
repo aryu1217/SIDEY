@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Prietenii tăi de la marginea ecranului",
+      "description": "SIDEY este o aplicație de mesagerie pentru desktop care arată prezența prietenilor apropiați și mesajele scurte prin mici animăluțe pixelate la marginea ecranului.",
+      "ogTitle": "SIDEY — Prieteni mici la marginea ecranului.",
+      "ogDescription": "Vezi când sunt prin preajmă prietenii apropiați și citește mesaje scurte de la mici animăluțe pixelate.",
+      "ogAlt": "Imagine SIDEY pentru rețelele sociale, cu cinci animăluțe pixelate aliniate la marginea ecranului"
+    },
+    "skip": "Treci la conținut",
+    "navigation": {
+      "navigation": "Navigație principală",
+      "home": "Pagina principală SIDEY",
+      "openMenu": "Deschide meniul",
+      "closeMenu": "Închide meniul",
+      "features": "Funcții",
+      "download": "Descarcă",
+      "faq": "Întrebări frecvente",
+      "whatsNew": "Ce este nou",
+      "store": "Magazin",
+      "support": "Asistență",
+      "characters": "Personaje",
+      "throwables": "Jucării de aruncat",
+      "bubbles": "Baloane de mesaje",
+      "useLightTheme": "Activează tema deschisă",
+      "useDarkTheme": "Activează tema întunecată"
+    },
+    "hero": {
+      "title": "Prieteni la marginea ecranului.",
+      "description": "Prietenii tăi devin mici personaje pixelate care se plimbă la marginea ecranului. Aruncă-le o privire în timp ce lucrezi și trimite-le un mesaj scurt când te gândești la ei.",
+      "downloadsLabel": "Opțiuni de descărcare",
+      "appStoreDownload": "Descarcă din App Store",
+      "macDownload": "Descarcă pentru macOS",
+      "windowsDownload": "Descarcă pentru Windows",
+      "choosePlatform": "Alege-ți platforma",
+      "platformMenu": "Alege manual o platformă",
+      "menuToggle": "Alege o altă platformă",
+      "windowsStatus": "Windows 10 1809 (build 17763) sau o versiune ulterioară · x64",
+      "browserTitle": "Sarcinile de azi | Note",
+      "browserNote": "Lista de azi",
+      "message": "Ne întâlnim la șapte?",
+      "typingLabel": "Rosie scrie",
+      "names": {
+        "kong": "Mochi · EU",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rosie"
+      },
+      "caption": "O scenă SIDEY cu prieteni reprezentați de animăluțe pixelate care se plimbă, ațipesc și dorm la baza unei ferestre de browser afișate pe un monitor"
+    },
+    "motion": {
+      "title": "Să stai nemișcat ar fi plictisitor.",
+      "description": "Prietenii se plimbă când sunt online, ațipesc când sunt plecați de la calculator și dorm când sunt offline. Puteți să vă și tachinați puțin.",
+      "label": "Stările și acțiunile personajelor SIDEY",
+      "presence": {
+        "eyebrow": "Prezența de zi cu zi",
+        "title": "Se plimbă, ațipesc, dorm.",
+        "description": "Online, absent sau offline — comportamentul personajului se schimbă în funcție de starea prietenului.",
+        "online": "Online",
+        "away": "Absent",
+        "offline": "Offline"
+      },
+      "throw": {
+        "eyebrow": "Joacă-te cu un prieten",
+        "title": "Uneori, o minge moale spune mai mult decât cuvintele.",
+        "description": "Coco aruncă o minge moale care o atinge ușor pe Rosie.",
+        "source": "Coco",
+        "target": "Rosie"
+      },
+      "pulse": {
+        "eyebrow": "Un salut pe măsură",
+        "title": "Uneori, salutul merită să fie mai mare.",
+        "description": "Dă dublu clic pe Charlie, iar personajul va crește brusc la marginea ecranului.",
+        "name": "Charlie"
+      },
+      "names": {
+        "kong": "Mochi",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Alături de tine în timp ce lucrezi.",
+      "introduction": "SIDEY rămâne la marginea ecranului în timp ce lucrezi. Aruncă o privire să vezi ce fac prietenii tăi și scrie-le când te gândești la ei.",
+      "label": "Cum își găsește SIDEY locul pe ecranul tău",
+      "caption": "SIDEY alături de un spațiu de lucru macOS",
+      "alt": "Un desktop macOS cu o fereastră Note și prieteni pixeli SIDEY de-a lungul marginii de jos a ecranului",
+      "steps": [
+        [
+          "01",
+          "Continuă să faci ceea ce faci",
+          "Poți continua să dai clic și să folosești aplicația din spatele SIDEY ca de obicei."
+        ],
+        [
+          "02",
+          "Vezi ce fac",
+          "Mersul, ațipitul și somnul îți arată dacă prietenii sunt prin preajmă."
+        ],
+        [
+          "03",
+          "Spune ceva când vrei",
+          "Deschide SIDEY pentru a trimite un mesaj scurt sau pentru a vă tachina puțin."
+        ]
+      ]
+    },
+    "download": {
+      "title": "Adu SIDEY pe desktopul tău.",
+      "description": "SIDEY este disponibil pentru macOS și Windows. Alegeți versiunea care se potrivește computerului dvs. și instalați-o.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Descarcă pentru Windows",
+      "releaseNotes": "Note de lansare",
+      "macSystem": "macOS 26 sau o versiune ulterioară · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (build 17763) sau o versiune ulterioară · x64",
+      "copyFailure": "Nu s-a putut copia. Vă rugăm să selectați manual hash-ul.",
+      "hashCopy": "Copiază hash-ul SHA-256",
+      "hashCopied": "Hash-ul SHA-256 a fost copiat."
+    },
+    "faq": {
+      "title": "Răspunsuri la întrebările tale.",
+      "intro": "Câteva lucruri demne de știut înainte de a începe.",
+      "items": [
+        [
+          "Ce este SIDEY?",
+          "SIDEY este o aplicație de mesagerie pentru desktop, accesibilă pe bază de invitație. Prietenii tăi apropiați apar la marginea ecranului ca mici personaje pixelate. Fiecare grup privat poate avea până la 12 persoane."
+        ],
+        [
+          "Ce computere sunt acceptate?",
+          "SIDEY rulează pe Mac-uri Apple silicon cu macOS 26 sau o versiune ulterioară și pe computere x64 cu Windows 10 1809 (build 17763) sau o versiune ulterioară. Mac-urile Intel nu sunt acceptate în prezent."
+        ],
+        [
+          "Cum invit prietenii?",
+          "Creează un grup privat și trimite codul de invitație direct prietenilor tăi. Un grup poate avea până la 12 membri, iar fiecare persoană se poate alătura până la cinci grupuri."
+        ],
+        [
+          "SIDEY urmărește ce fac pe computerul meu?",
+          "Nu. SIDEY nu vă colectează ecranul, deschiderea aplicațiilor, apăsările de taste din alte aplicații, locația indicatorului, fișierele, microfonul sau camera. Starea de tastare este trimisă numai în timp ce tastați în propria casetă de mesaj a SIDEY."
+        ],
+        [
+          "Cât timp se păstrează mesajele?",
+          "Mesajele recente sunt păstrate timp de trei zile, apoi sunt șterse definitiv."
+        ],
+        [
+          "Va apărea SIDEY peste fiecare joc și aplicație pe ecran complet?",
+          "Nu întotdeauna. SIDEY rămâne vizibil în timpul utilizării normale a desktopului, dar este posibil să nu apară pe ecrane securizate, aplicații protejate prin DRM, aplicații cu privilegii ridicate sau unele jocuri în modul exclusiv pe ecran complet."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Ce este nou",
+      "intro": "Vedeți cele mai recente modificări ale SIDEY, grupate după macOS și Windows.",
+      "tabs": {
+        "label": "Ce este nou prin sistemul de operare",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "Ce este nou",
+        "changed": "Ce s-a schimbat",
+        "fixed": "Ce s-a rezolvat"
+      },
+      "versionNotes": "Note pentru această versiune",
+      "empty": "Încă nu există note de lansare.",
+      "viewRelease": "Vezi versiunea GitHub",
+      "openDetails": "Afișați modificările",
+      "closeDetails": "Ascunde modificările",
+      "loadedMore": "Au fost încărcate mai multe actualizări anterioare."
+    }
+  },
+  "storeChrome": {
+    "store": "Magazin SIDEY",
+    "keepsake": "Amintire",
+    "separate": "Se vinde separat",
+    "treeHint": "În aplicația pentru macOS, dă clic dreapta pe copac pentru a-l opri. Dă din nou clic dreapta pentru a-l lăsa să se plimbe.",
+    "sound": "Sunet",
+    "categories": "Categorii în magazin",
+    "characters": "Personaje",
+    "throwables": "Jucării de aruncat",
+    "bubbles": "Baloane de mesaje",
+    "preview": "Deschide previzualizarea",
+    "previewAction": "Previzualizare",
+    "closePreview": "Închide previzualizarea",
+    "bubbleMessage": "Vrei să ieși azi?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Personaje",
+      "title": "Prieteni noi pentru ecranul tău.",
+      "description": "Deschideți o previzualizare pentru a vedea cum se mișcă fiecare personaj în SIDEY.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Pui de hamster",
+          "description": "Însoțitorul original al lui SIDEY, cu urechi mici și obraji roz.",
+          "price": "Inclus",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Pisicuță",
+          "description": "O pisicuță gri tigrată, cu blăniță moale și urechi perfect ascuțite.",
+          "price": "Inclus",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Cățeluș pufos",
+          "description": "Un cățeluș cu urechi caramel, cu o față minunat de pufoasă.",
+          "price": "Inclus",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Iepuraș",
+          "description": "Urechile lungi și o eșarfă violetă fac acest mic prieten ușor de observat.",
+          "price": "Inclus",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Micul pinguin",
+          "description": "Un pinguin bleumarin care se leagănă la mers, cu un fular de culoarea mentei.",
+          "price": "Inclus",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Jucării de aruncat",
+      "title": "De la mingi moi la mini tunuri.",
+      "description": "Previzualizează jucăriile pe care le poți arunca prietenilor tăi, de la bile moi și inimi până la mini tunuri.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Minge moale din petice",
+          "description": "Mingea moale pe care fiecare personaj SIDEY o poate arunca unui prieten.",
+          "price": "Inclus",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Baloane de mesaje",
+      "title": "Personalizează baloanele de mesaje.",
+      "description": "Schimbați culorile și micile decorațiuni de pe mesaje și indicatoare de tastare.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Balon clasic",
+          "description": "Balonul SIDEY clar și ușor de citit, pentru orice desktop.",
+          "price": "Inclus",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Suport · SIDEY",
+    "description": "Raportați o problemă SIDEY pe GitHub sau contactați-ne în privat prin e-mail.",
+    "heading": "Suport SIDEY",
+    "introduction": "Raportați erori reproductibile pe GitHub. Pentru achiziții, conturi sau chestiuni care ar trebui să rămână private, contactați-ne prin e-mail.",
+    "githubTitle": "Raportați o eroare pe GitHub",
+    "githubBody": "Căutați mai întâi problemele existente. Dacă aceeași problemă este deja raportată, adăugați o reacție în sus la acea problemă în loc să creați un duplicat. Este necesar un cont GitHub pentru a trimite o problemă.",
+    "searchIssues": "Căutați problemele existente",
+    "reportIssue": "Deschideți formularul de raportare a erorilor",
+    "emailTitle": "Contactați-ne prin e-mail",
+    "emailBody": "Pentru întrebări legate de achiziții sau conturi și rapoarte care conțin informații private, trimiteți-ne un e-mail. Includeți SIDEY și sistemul dvs. de operare în subiect.",
+    "emailAction": "Trimiteți un e-mail",
+    "include": "Informații solicitate în formularul de raportare a erorilor",
+    "details": [
+      "Sistem de operare și arhitectură (obligatoriu): lipiți rezultatul comenzii de mai jos.",
+      "Versiunea SIDEY (obligatorie): găsiți-o folosind instrucțiunile de mai jos.",
+      "Ce sa întâmplat (obligatoriu): descrieți problema clar; jurnalele igienizate, capturile de ecran sau un videoclip vă pot ajuta.",
+      "Pași de reproducere (obligatori): explicați acțiunile care duc la problema, în ordine.",
+      "Comportament așteptat (opțional): explicați ce ar fi trebuit să se întâmple.",
+      "Informații suplimentare (opționale): includeți orice alt context relevant."
+    ],
+    "diagnostics": "Găsirea versiunii și a jurnalelor de diagnosticare",
+    "operatingSystem": "Informații despre sistemul de operare",
+    "macosLabel": "macOS (Terminal)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: în Finder, faceți clic dreapta pe SIDEY.app și alegeți Obțineți informații (⌘I).",
+    "windowsVersion": "Windows: deschideți Setări → Despre → Actualizări.",
+    "macDiagnostics": "macOS: comanda de mai jos salvează ultimele 30 de minute ale jurnalelor SIDEY într-un fișier de pe desktop.",
+    "windowsDiagnostics": "Windows: Deschideți Setări → Despre → Exportați diagnostice. Fișierele jurnal sunt salvate pe desktop. Pentru o problemă de instalare, includeți datele de diagnostic afișate de instalator.",
+    "protect": "Păstrați informațiile sensibile private",
+    "protectBody": "Problemele GitHub sunt publice. Eliminați codurile de invitație, conținutul mesajelor, jetoanele de conectare sau de autentificare, parolele, numerele complete ale cardurilor de plată și informațiile personale din text, jurnale, capturi de ecran și videoclipuri. Nu trimite aceste secrete nici prin e-mail; vom cere detalii specifice nesensibile dacă este necesar.",
+    "response": "Timpul de răspuns poate varia în funcție de limbă; nu este garantat un timp de răspuns specific limbii."
+  },
+  "footer": {
+    "terms": "Termeni de utilizare",
+    "privacy": "Politica de confidențialitate",
+    "refund": "Politica de rambursare",
+    "language": "Alegeți limba"
+  },
+  "legalNotice": "Prin utilizarea serviciului oficial SIDEY, sunteți de acord cu {terms} și {privacy}.",
+  "policies": {
+    "terms": {
+      "title": "Condiții de utilizare · SIDEY",
+      "description": "Termenii care reglementează serviciul desktop SIDEY și articolele de personalizare digitală.",
+      "heading": "SIDEY Termeni de utilizare",
+      "introduction": "Acești Termeni stabilesc drepturile și responsabilitățile care se aplică atunci când utilizați serviciul desktop SIDEY și elementele de personalizare digitală.",
+      "translationNotice": "Această pagină este o traducere a documentului coreean original.",
+      "originalLabel": "Vizualizați documentul original",
+      "body": "## 1. Scopul și domeniul de aplicare\n\nAcești Termeni guvernează aplicația SIDEY, site-ul web și serviciile conexe (în mod colectiv, „Serviciul”) furnizate de operatorul SIDEY („Operatorul”). Prin utilizarea Serviciului oficial, sunteți de acord cu acești Termeni și cu toate politicile de operare dezvăluite separat. Dacă legea aplicabilă vă oferă o protecție mai mare decât acești Termeni, se va aplica legea respectivă.\n\n## 2. Termeni cheie\n\nUn „Cont” este identificatorul folosit pentru a distinge un utilizator și pentru a conecta grupuri, mesaje și drepturi digitale. Un „Grup” este un spațiu privat disponibil numai prietenilor care primesc un cod de invitație. Un „Dirept digital” este dreptul de a utiliza un personaj sau un alt articol de personalizare prin intermediul Contului de achiziție; nu transferă proprietatea sau dreptul de autor asupra articolului în sine.\n\n## 3. Publicare și modificări\n\nOperatorul pune la dispoziție acești Termeni pe site. Dacă o modificare este necesară din cauza legii sau a Serviciului, Operatorul va dezvălui data intrării în vigoare a acesteia și motivul modificării. Modificările materiale care dezavantajează utilizatorii vor fi anunțate în prealabil pentru perioada și prin metoda cerute de legea aplicabilă. Cu excepția cazului în care este cerut de lege sau convenit de către părți, un contract de cumpărare încheiat înainte de modificare rămâne guvernat de termenii în vigoare la momentul în care a fost format.\n\n## 4. Serviciul\n\nSIDEY este un mesager suprapus pe desktop care reprezintă prietenii adevărați ca personaje pixeli. Caracteristicile sale specifice, mediile acceptate, domeniul de utilizare și limitările sunt descrise în aplicație sau pe site și pot varia în funcție de canalul de lansare sau versiune.\n\n## 5. Conturi și grupuri\n\nMetodele de conectare disponibile pot varia în funcție de canalul de lansare. Conturile, grupurile și înregistrările de achiziții de pe canale diferite nu pot fi îmbinate sau transferate automat; vor fi furnizate îndrumări suplimentare acolo unde este necesar. Sunteți responsabil pentru păstrarea dispozitivului și a metodei de conectare în siguranță. Nu postați coduri de invitație în mod public și nu utilizați contul altei persoane fără permisiune.\n\n## 6. Mesaje și utilizare acceptabilă\n\nNu trebuie să transmiteți materiale ilegale; să încalce reputația, confidențialitatea sau drepturile de autor ale altei persoane; hărțuiește pe alții; accesați Serviciul sau serverele acestuia în mod anormal; ocolirea verificării achiziției; distribuie cod rău intenționat; sau să interfereze cu utilizarea normală a Serviciului de către alt utilizator.\n\n## 7. Modificări, suspendare și întrerupere\n\nOperatorul poate modifica sau suspenda temporar o parte a Serviciului pentru actualizări de securitate, modificări ale sistemului de operare, întreținere, erori de comunicare sau îmbunătățiri ale serviciilor. Modificările materiale care pot fi anticipate vor fi anunțate în avans prin intermediul site-ului web sau al aplicației. Răspunsurile urgente de securitate sau incidente pot fi anunțate ulterior. Dacă Serviciul este întrerupt, se va da o notificare rezonabilă și drepturile plătite neutilizate vor fi gestionate în conformitate cu legea aplicabilă și Politica de rambursare.\n\n## 8. Achiziții și plată\n\nUn contract de cumpărare se formează atunci când examinați numele produsului, prețul și condițiile de livrare și finalizați plata. Plata poate fi procesată printr-o piață de aplicații sau printr-un serviciu de plată identificat de Operator. Operatorul acordă Dreptul Digital după confirmarea plății. Comenzile care conțin informații false, cereri duplicate sau articole care nu pot fi furnizate din punct de vedere tehnic pot fi respinse sau anulate.\n\n## 9. Livrare digitală și anulare\n\nMomentul livrării digitale și condițiile de anulare sau rambursare sunt guvernate de legea aplicabilă și de [Politica de rambursare](https://sidey-app.github.io/SIDEY/ro/refund/). Operatorul va pune la dispoziție condițiile materiale de livrare și orice limite de anulare înainte de cumpărare. Nimic din acești Termeni nu limitează drepturile garantate de legea aplicabilă.\n\n## 10. Minori\n\nUn minor care are nevoie de consimțământul unui reprezentant legal trebuie să obțină acel consimțământ înainte de a face o achiziție. Un minor sau un reprezentant legal poate solicita anularea acolo unde legea aplicabilă o permite, inclusiv anumite achiziții efectuate fără acordul necesar.\n\n## 11. Licență software și proprietate intelectuală\n\nCodul sursă actual al SIDEY este software proprietar cu sursă privată. Doar dreptul de a instala și utiliza aplicația oficială este oferit în cadrul canalului său de distribuție și a acestor Termeni. Fiecare revizuire publicată sub AGPL-3.0-only înainte de tranziția licenței rămâne guvernată de licența menționată în acea revizuire. Nici acești Termeni și nici privatizarea depozitului sursă nu retrag sau adaugă restricții la drepturile deja acordate de a rula, copia, modifica sau distribui acele revizuiri. Depozitul public `sidey-app/SIDEY` distribuie site-ul web, politicile, versiunile și programele de instalare; nu este depozitul curent sursă de produs. Consultați [ghidul de licențiere](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md) pentru limitele detaliate. Componentele terților rămân supuse licențelor și notificărilor respective.\n\nArticolele de personalizare plătite acordă doar dreptul de a le utiliza prin intermediul Contului de achiziție și nu transferă dreptul de proprietate sau dreptul de autor asupra fișierelor, personajelor sau desenelor lor. O licență de software nu acordă drepturi de marcă comercială în numele sau logo-ul SIDEY sau drepturi asupra personajelor și elementelor de personalizare furnizate în condiții separate. Nu puteți copia, vinde, închiria, redistribui, sublicența sau elimina notificările privind drepturile de pe acele active fără permisiunea deținătorului drepturilor. Nu trebuie să ocoliți achiziția, dreptul sau controalele de securitate ale Serviciului oficial. Aceste restricții nu trebuie interpretate ca limitând drepturile acordate de o licență open-source aplicabilă unei revizuiri publice istorice sau de o licență terță parte.\n\n## 12. Restricții de acces și ștergerea contului\n\nDacă se confirmă o încălcare semnificativă a legii sau a acestor Termeni sau a unui comportament care amenință siguranța Serviciului, Operatorul poate restricționa sau întrerupe accesul la Serviciul oficial după notificare și o oportunitate rezonabilă de vindecare. Un risc urgent de securitate sau un risc de vătămare a altora poate fi restricționat mai întâi și explicat ulterior. Restricționarea accesului la serviciu sau ștergerea unui Cont nu modifică condițiile de încetare a unei licențe aplicabile separat unei revizuiri publice istorice sau unui software terță parte.\n\nUn cont poate fi șters prin procesul furnizat în aplicație. Ștergerea contului este separată de o solicitare de rambursare și dacă o achiziție poate fi restabilită depinde de canalul de lansare aplicabil și de furnizorul de plată. Prevederile care, prin natura lor, ar trebui să supraviețuiască rezilierii — inclusiv prevederile privind proprietatea intelectuală, răspunderea și litigiile — rămân în vigoare.\n\n## 13. Notificări și servicii de la terți\n\nOperatorul poate trimite notificări de service prin aplicația, site-ul web sau detaliile de contact pe care le furnizați. Serviciile legate sau integrate sunt guvernate de termenii și politicile furnizorului aplicabil. Operatorul nu garantează funcționarea independentă a unui serviciu pe care nu îl furnizează în mod direct.\n\n## 14. Limitări de serviciu și răspundere\n\nUnele funcții pot fi limitate sau se pot comporta diferit în funcție de dispozitiv, sistem de operare, setări de securitate, alt software sau mediul de rețea. Limitările tehnice specifice sunt descrise în aplicație sau pe site. SIDEY nu este conceput pentru utilizări critice pentru siguranță, medicale, de urgență sau alte utilizări care necesită livrare imediată și neîntreruptă. Nimic din acești Termeni nu exclude răspunderea care nu poate fi exclusă în temeiul legii privind răspunderea pentru produse sau protecția consumatorilor, sau răspunderea cauzată de conduita greșită intenționată sau neglijența gravă a Operatorului.\n\n## 15. Legea aplicabilă și litigiile\n\nAcești Termeni sunt guvernați de legile Republicii Coreea. Părțile vor încerca mai întâi să rezolve un litigiu cu bună-credință. Dacă rămâne nerezolvată, va fi audiată de o instanță care are jurisdicție în temeiul Legii coreene de procedură civilă și a altor legi aplicabile. Utilizatorii pot utiliza, de asemenea, procedurile de soluționare a litigiilor privind consumatorii disponibile din punct de vedere legal, inclusiv cele oferite de Agenția pentru Consumatori din Coreea.\n\n## 16. Data intrării în vigoare și revizuirea propusă\n\nCondițiile inițiale au intrat în vigoare la 4 septembrie 2026. Această revizuire propusă a fost pregătită la 20 septembrie 2026 pentru a distinge sursa privată actuală, drepturile AGPLv3 în revizuirile publice istorice și termenii care guvernează serviciul oficial și activele plătite. Data intrării în vigoare a acesteia va fi anunțată separat odată cu notificarea de modificare din secțiunea 3. Pregătirea acestei propuneri nu modifică în sine condițiile existente și nu aplică modificări retroactiv achizițiilor anterioare sau licențelor revizuirilor publice istorice."
+    },
+    "privacy": {
+      "title": "Politica de confidențialitate · SIDEY",
+      "description": "Cum SIDEY gestionează informațiile personale, păstrarea, prelucrarea externă și drepturile utilizatorului.",
+      "heading": "SIDEY Politica de confidențialitate",
+      "introduction": "SIDEY respectă legea privind confidențialitatea aplicabilă și gestionează numai informațiile necesare pentru a oferi grupuri de prieteni și mesaje. Această Politică explică ce este tratat, de ce este necesar, când este ștearsă și cum vă puteți exercita drepturile.",
+      "translationNotice": "Această pagină este o traducere a documentului coreean original.",
+      "originalLabel": "Vizualizați documentul original",
+      "body": "## 1. De ce sunt gestionate informațiile personale\n\nOperatorul manipulează informațiile personale numai în măsura în care este necesar pentru scopurile de mai jos. Dacă un scop se schimbă, Operatorul va obține consimțământul separat sau va face un alt pas cerut în conformitate cu articolul 18 din Legea privind protecția datelor cu caracter personal din Coreea și alte legi aplicabile.\n\n### Furnizarea Serviciului și executarea contractelor\n\nInformațiile sunt folosite pentru autentificarea conturilor și restaurarea sesiunilor; creați și alăturați-vă grupurilor numai pe invitație; arătați prezența unui prieten; trimite mesaje; furnizați personaje și elemente de personalizare; și verificați, restaurați sau rambursați achizițiile.\n\n### Gestionarea utilizatorilor și a Serviciului\n\nInformațiile sunt folosite pentru a identifica utilizatorii, pentru a impune capacitatea Grupului și a limitelor de utilizare, pentru a preveni utilizarea necorespunzătoare, pentru a menține securitatea, pentru a răspunde erorilor, întrebărilor și litigiilor și pentru a furniza notificări privind serviciile.\n\nSIDEY nu gestionează informațiile personale pentru publicitate bazată pe interese, recomandări personalizate sau mesaje promoționale.\n\n## 2. Informații tratate\n\n- **Profil:** porecla și caracterul selectat\n- **Conexiune la contul Google:** identificatorul contului Google și adresa de e-mail\n- **Conectați-vă cu Apple:** identificatorul contului Apple și, atunci când Apple îl furnizează, o adresă de e-mail\n- **Cont și sesiune:** utilizator anonim UUID, furnizor de conectare și identificatori de sesiune\n- **Grupuri:** numele grupului, identificatorii de grup și de membru, statutul proprietarului și timpul de alăturare\n- **Mesaje și stare în timp real:** textul mesajului, ora creării, identificatorii expeditorului și grupului, prezența și semnalele de tastare generate numai în câmpul mesajului SIDEY\n- **Achiziții:** identificatori de comenzi și tranzacții, produs, sumă, plată, stare de anulare și rambursare, precum și timpul și conținutul consimțământului politicii\n- **Suport:** adresa de e-mail de răspuns, întrebare și informații atașate voluntar de utilizator\n- **Informații de conectare:** adresa IP, timpul de acces și informațiile solicitate pe care furnizorii de servicii le pot crea pentru securitate și răspuns la incident\n\nTimpul scurs de la ultima intrare de sistem și starea de blocare a ecranului sunt verificate local pentru a afișa starea. SIDEY nu colectează conținutul intrărilor sau un istoric al utilizării aplicației din aceste semnale.\n\n## 3. Cum sunt colectate informațiile\n\nInformațiile sunt colectate atunci când creați un profil sau un grup, trimiteți un mesaj, conectați un cont Google, utilizați Conectați-vă cu Apple, solicitați plată, restaurare sau o rambursare sau contactați asistența. Semnalele de prezență și de tastare sunt procesate în timp real în timp ce sunt conectate la Serviciu.\n\nSIDEY nu colectează conținutul ecranului, listele de aplicații active, tastele apăsate în alte aplicații, coordonatele globale ale indicatorului, conținutul fișierelor, sunetul microfonului sau videoclipul camerei. Nu inspectează ceea ce tastați în afara câmpului de mesaj SIDEY.\n\n## 4. Retenție\n\n- **Mesaje:** la trei zile de la creare\n- **Semnale de prezență și de tastare:** procesate numai când afișarea în timp real este activă și nu este reținută în mod persistent\n- **Cont, profil, grup și calitate de membru:** până la ștergerea Contului sau la încetarea Serviciului; un link de membru este șters când părăsiți un grup\n- **Cont anonim incomplet fără profil sau grup:** poate fi eliminat după șapte zile\n- **Sesiune de conectare stocată pe un dispozitiv:** până la deconectare, ștergerea contului sau ștergerea datelor aplicației\n\nÎnregistrările care trebuie păstrate prin lege sunt folosite numai în acest scop. Înregistrările de afișare și publicitate pot fi păstrate timp de șase luni; înregistrările contractelor sau anulării și înregistrările plăților sau livrărilor digitale timp de cinci ani; și înregistrările privind reclamațiile sau litigiile consumatorilor timp de trei ani.\n\n## 5. Partajare și dezvăluire terță parte\n\nOperatorul nu dezvăluie informații personale unei terțe părți decât dacă sunteți de acord sau dacă legea aplicabilă oferă o bază specifică.\n\n### Membrii aceluiași grup\n\nPentru a oferi grupuri numai pe invitație, porecla, caracterul, prezența și starea de tastare și mesajele sunt afișate membrilor aceluiași grup la care v-ați alăturat. Mesajele sunt păstrate timp de trei zile; semnalele de stare în timp real sunt gestionate numai când afișarea lor este activă.\n\n### Autoritățile care acționează în condițiile legii\n\nInformațiile pot fi dezvăluite în sfera și perioada permise de lege atunci când o autoritate de investigație sau altă autoritate autorizată face o solicitare printr-un proces legal, cum ar fi un mandat.\n\n## 6. Furnizorii de servicii și manipularea în străinătate\n\nOperatorul folosește următorii furnizori numai în măsura în care este necesar pentru a furniza Serviciul. Modificările aduse furnizorului sau scopului vor fi dezvăluite prin această Politică.\n\n- **Supabase Inc.:** gestionează UUID-urile contului, profilurile, grupurile, mesajele, starea achiziției și informațiile de conectare pentru autentificare, baze de date și comunicare în timp real. Datele sunt păstrate până la ștergerea Contului, încetarea Serviciului sau încheierea contractului de servicii; mesajele sunt șterse după trei zile.\n- **Google LLC:** gestionează identificatorul contului, adresa de e-mail și rezultatul autentificării pentru conectarea contului Google până la deconectare, ștergerea contului sau finalizarea scopului.\n- **Apple Inc.:** se ocupă de identificatorii de cont și de tranzacție și autentificarea și starea plății pentru Conectarea cu Apple, plata în App Store și restaurarea achiziției până la ștergerea contului sau pentru perioada cerută de lege și politicile Apple.\n- **Korea PortOne Co., Ltd. și furnizorii de servicii de plată conectați:** gestionează identificatorii comenzii și plății, suma și rezultatul plății pentru plată, anulare și rambursare într-o versiune de distribuție directă, păstrându-le pentru perioada cerută de legea comerțului electronic.\n- **GitHub, Inc.:** poate genera adrese IP și informații de conectare în timp ce găzduiește site-ul web public și le poate păstra în conformitate cu practicile de confidențialitate ale GitHub și legea aplicabilă.\n\nSupabase, Google, Apple și GitHub au sediul în Statele Unite, iar informațiile pot fi transmise prin rețelele de comunicații atunci când serviciile lor sunt utilizate. În cazul în care legea impune o notificare separată sau consimțământ pentru manipularea în străinătate, destinatarul, țara, articolele, scopul, metoda și perioada de păstrare vor fi dezvăluite înainte ca funcția relevantă să fie utilizată. Puteți alege să nu vă conectați la Google, dar refuzul manipulării în străinătate esențială pentru autentificare sau stocare a datelor poate limita sau împiedica utilizarea unei părți sau a întregului SIDEY.\n\n## 7. Informații de plată și servicii externe\n\nApple procesează plățile din Mac App Store. Pentru o plată oferită într-o versiune de distribuție directă, un furnizor de servicii de plată deschis prin PortOne gestionează numărul complet al cardului, parola de plată și informațiile de autentificare a contului bancar. SIDEY nu primește sau păstrează acreditările complete de plată; se ocupă numai de identificatorii și rezultatele necesare pentru a verifica, anula sau rambursa o comandă.\n\nCând utilizați o pagină de conectare exterioară, o fereastră de plată sau un site web conectat, termenii și politica de confidențialitate ale furnizorului se aplică informațiilor pe care le colectează în mod independent.\n\n## 8. Drepturile dumneavoastră și modul de exercitare a acestora\n\nPuteți solicita accesul la, corectarea sau ștergerea, suspendarea prelucrării sau retragerea consimțământului pentru informațiile dumneavoastră personale. Un utilizator de Conectare cu Apple poate șterge un cont din setările aplicației după reautentificare. Alte solicitări de conturi sau date pot fi trimise prin e-mail responsabilului de confidențialitate de mai jos.\n\nVă puteți exercita drepturile prin intermediul unui reprezentant legal sau al unei alte persoane autorizate. Operatorul poate solicita formularul de autorizare și informațiile minime necesare pentru a confirma identitatea utilizatorului și a reprezentantului, așa cum este permis de lege. În termen de 10 zile de la primirea unei cereri de acces, Operatorul va explica modul în care va fi asigurat accesul sau, acolo unde legea permite restricții, întârzieri sau refuz, va explica motivul și cum să se opună.\n\nȘtergerea poate fi limitată în timp ce o altă lege impune păstrarea unei înregistrări. SIDEY nu ia decizii automate care produc efecte juridice sau similare semnificative asupra utilizatorilor.\n\n## 9. Ștergere\n\nInformațiile cu caracter personal sunt șterse fără întârzieri nejustificate atunci când perioada lor de păstrare se încheie sau când scopul lor este atins. Înregistrările electronice sunt șterse folosind metode menite să prevină recuperarea. Înregistrările tranzacțiilor care fac obiectul unor obligații separate de păstrare sunt separate de datele de servicii generale, utilizate numai în scopul solicitat și șterse la sfârșitul perioadei respective.\n\nȘtergerea unui cont elimină profilul, conexiunile de grup și legăturile de drepturi active SIDEY. Înregistrările minime ale tranzacțiilor pot fi păstrate separat în scopuri legale și de decontare, cu legăturile cu utilizatorii minimizate. Ștergerea contului nu șterge automat înregistrările tranzacțiilor deținute de Apple sau de un furnizor de servicii de plată și nu reprezintă o cerere de rambursare.\n\n## 10. Măsuri de securitate\n\nOperatorul limitează accesul la informațiile personale la ceea ce este necesar pentru muncă și separă privilegiile operaționale și secretele. SIDEY utilizează controale de acces la nivel de rând la baza de date, verificări ale capacității grupului și ale membrilor la nivel de server, transport criptat și stocare securizată a sistemului de operare. Codurile de invitație nu sunt stocate în text simplu pe server, iar cheile secrete de plată și privilegiile administrative nu sunt incluse în aplicație sau site-ul web public.\n\nSIDEY nu este reprezentat ca un serviciu cu criptare end-to-end implementată și verificată.\n\n## 11. Cookie-uri și tehnologii similare\n\nSite-ul web public SIDEY nu instalează cookie-uri pentru publicitate personalizată, analiză a comportamentului vizitatorilor sau recomandări individuale. Un browser sau un furnizor de găzduire poate procesa informații de conexiune sau poate folosi stocarea tehnică pentru a servi fișiere statice și a proteja serviciul.\n\nUn furnizor extern poate folosi module cookie pentru funcționalitate și securitate atunci când vizitați o pagină de conectare Google sau Apple sau o pagină de plată. Consultați setările de confidențialitate ale furnizorului respectiv pentru controalele disponibile.\n\n## 12. Ofițer de confidențialitate\n\n- **Ofițer de confidențialitate:** Taehyun Ryu\n- **E-mail:** <ryu200112@gmail.com>\n\nÎntrebările, plângerile, remediile și solicitările de exercitare a drepturilor de confidențialitate pot fi trimise la adresa de e-mail de mai sus. Operatorul va analiza și va răspunde fără întârzieri nejustificate.\n\n## 13. Remedii pentru încălcarea vieții private\n\nDacă aveți nevoie de sfaturi sau doriți să raportați o încălcare a confidențialității în Coreea, puteți contacta:\n\n- [Comitetul de mediere a litigiilor privind informațiile personale](https://www.kopico.go.kr/) · 1833-6972\n- [Centrul de raportare a încălcării confidențialității KISA](https://privacy.kisa.or.kr/) · 118\n- [Parchetul Suprem](https://www.spo.go.kr/) · 1301\n- [Sistemul de raportare a criminalității cibernetice Agenția Națională a Poliției din Coreea](https://ecrm.police.go.kr/) · 182\n\n## 14. Servicii externe în afara acestei Politici\n\nSite-ul web și aplicația SIDEY pot face legătura cu servicii operate de alți furnizori. Această Politică nu guvernează informațiile gestionate de un serviciu extern pe care Operatorul nu îl controlează. Consultați politica de confidențialitate a serviciului pe care îl vizitați.\n\n## 15. Modificări ale acestei politici\n\nDacă această Politică se modifică din cauza legii, a Serviciului sau a unor relații de prelucrare din exterior, data intrării în vigoare și modificările materiale vor fi anunțate prin intermediul site-ului web sau al aplicației. O modificare cu impact semnificativ asupra drepturilor utilizatorului va fi anunțată în prealabil pentru perioada impusă de lege.\n\n## 16. Data intrării în vigoare\n\nAceastă politică de confidențialitate intră în vigoare la 4 septembrie 2026."
+    },
+    "refund": {
+      "title": "Politica de rambursare · SIDEY",
+      "description": "Condiții de anulare și rambursare pentru drepturile de personalizare digitală SIDEY.",
+      "heading": "Politica de anulare și rambursare",
+      "introduction": "Articolele de personalizare SIDEY plătite sunt drepturi digitale livrate în Contul dvs. după confirmarea plății.",
+      "translationNotice": "Această pagină este o traducere a documentului coreean original.",
+      "originalLabel": "Vizualizați documentul original",
+      "body": "## Rambursări răzgândite după începerea livrării\n\nLivrarea unui drept de personalizare digitală începe imediat ce plata este confirmată. Odată ce livrarea a început, anularea sau rambursarea pentru o simplă schimbare de părere nu este disponibilă.\n\n## Când este disponibilă o rambursare completă\n\nO rambursare completă va fi emisă atunci când este confirmat un motiv recunoscut legal, inclusiv:\n\n- plata a fost aprobată, dar dreptul digital nu a fost livrat;\n- articolul livrat nu corespunde descrierii acestuia sau contractului de cumpărare;\n- aceeași comandă sau articol a fost taxat de mai multe ori;\n- plata nu a fost autorizata de catre Titularul Contului;\n- un minor a făcut o achiziție fără acordul cerut de la un reprezentant legal; sau\n- în caz contrar legea aplicabilă solicită o rambursare integrală.\n\n## Cum sunt gestionate cererile\n\n1. Pentru o achiziție din Mac App Store, solicitați o rambursare prin procesul Apple Report a Problem. Dacă plata este oferită prin PortOne într-o versiune de distribuție directă, trimiteți asistență numai contul de achiziție, timpul de plată și informațiile necesare pentru a localiza comanda. Nu trimiteți un număr complet al cardului de plată sau o parolă.\n2. După ce Apple sau furnizorul de servicii de plată confirmă rambursarea, dreptul acordat de acea sursă de plată va fi revocat.\n3. Dacă nicio altă subvenție validă nu acoperă obiectul revocat și acesta este echipat în prezent, acea categorie revine la elementul implicit: hamsterul implicit, balonul implicit sau jucăria implicită care poate fi aruncată.\n\n## Ștergerea contului și rambursări\n\nȘtergerea unui cont SIDEY nu este o solicitare de rambursare a achiziției. O achiziție Apple în aplicație validă poate fi încă restaurată într-un nou cont SIDEY folosind același cont de achiziție Apple.\n\n## Înregistrări și drepturi statutare\n\nSolicitările de rambursare și rezultatele sunt păstrate în siguranță pentru perioada necesară soluționării litigiilor și îndeplinirii obligațiilor legale. Această politică nu limitează drepturile de anulare, reziliere sau remediere garantate de legea aplicabilă.\n\n## Suport\n\n- **Vânzător:** 싸이디(SIDEY)\n- **E-mail:** <ryu200112@gmail.com>\n- **Număr de înregistrare a companiei:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Personaje noi și elemente care pot fi aruncate, cu îmbunătățiri ale mesajelor recente, setărilor și conexiunilor dintre prieteni."
+        ],
+        "new": [
+          "S-au adăugat cinci personaje — Shiba Inu, rață, caca, tteokbokki și quokka — și patru obiecte care pot fi aruncate: o minge de tenis, o minge de șervețel, o frigărui de prăjitură de pește și o frunză, în magazinul Windows și suprapunere.",
+          "Puteți fixa fereastra cu mesaje recente deasupra altor ferestre."
+        ],
+        "changed": [
+          "Compatibilitate extinsă a limbii aplicației în 23 de limbi.",
+          "Mesajele recente își păstrează acum poziția de citire atunci când răsfoiți mesaje mai vechi.",
+          "Setările comenzilor rapide arată mai precis combinațiile de taste utilizate în prezent.",
+          "Actualizarea de la o versiune mai veche mută instalarea în siguranță, păstrând în același timp setările."
+        ],
+        "fixed": [
+          "S-a remediat introducerea mesajului care a apărut pentru scurt timp când faceți dublu clic pe un caracter.",
+          "S-au remediat poreclele personajelor care apar la un unghi lângă marginea ecranului.",
+          "Livrare îmbunătățită a mesajelor și reacții de aruncare între utilizatori pe diferite versiuni.",
+          "S-au remediat perioadele de expirare când conexiunile la mai multe camere se recuperează după o deconectare."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Conectarea la contul Google și gestionarea contului îmbunătățite, împreună cu chat, comenzi rapide și suprapunere."
+        ],
+        "new": [
+          "Vă puteți deconecta sau șterge contul din setări.",
+          "Trimiteți mesaje direct din mesajele recente și păstrați poziția trasă a ferestrei de introducere între lansări.",
+          "Înregistrați-vă propriile comenzi rapide pentru suprapunere, modul silențios, introducerea mesajelor și mesajele recente și schimbați combinațiile de taste duplicate.",
+          "Verificați prețurile produselor și articolele deținute în aplicație, apoi deschideți checkout-ul web."
+        ],
+        "changed": [
+          "Conectarea la Google face parte acum din configurarea necesară; butonul de conectare rămâne dezactivat în timp ce starea de conectare salvată este verificată pentru a preveni autentificarea duplicată.",
+          "Deconectarea contului dvs. șterge conexiunile live și statul local înainte de a reveni la conectare.",
+          "Modul silențios ascunde indicatorii de tastare, iar animația de închidere a suprapunerii este redată fără probleme.",
+          "S-a îmbunătățit revenirea la aplicație după autentificare și răspunsuri de tastare în timp real.",
+          "Programul de instalare include runtimele necesare Windows App SDK și .NET, cu o recuperare și îndrumări mai bune dacă o actualizare, reparare sau dezinstalare eșuează.",
+          "Erorile de conectare explică cauza lor, în timp ce erorile inutile generate în timpul reconectarii sunt ascunse.",
+          "Starea de mers a copacului tău este împărtășită celorlalți din același grup.",
+          "Notificările de stare în aplicație sunt mai ușor de citit atât în temele deschise, cât și în cele întunecate."
+        ],
+        "fixed": [
+          "S-au corectat clicurile de caractere, astfel încât introducerea mesajului să se deschidă doar la un singur clic.",
+          "Deschiderea unei aplicații care rulează deja vă aduce înapoi la fereastra existentă."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Elemente noi și comenzi rapide de la tastatură, cu mesaje direct din mesajele recente."
+        ],
+        "new": [
+          "S-au adăugat nouă produse: cinci personaje și patru obiecte care pot fi aruncate.",
+          "S-au adăugat comenzi rapide globale pentru a afișa sau a ascunde suprapunerea, a comuta în modul silențios, a deschide introducerea mesajelor și a deschide mesajele recente.",
+          "Personalizați combinația de taste a fiecărei comenzi rapide globale în setări.",
+          "Scrieți și trimiteți mesaje direct din fereastra de mesaje recente.",
+          "S-a adăugat suport pentru coreeană, engleză, japoneză și chineză tradițională."
+        ],
+        "changed": [
+          "Baloanele vocale își păstrează orientarea obișnuită chiar și atunci când caracterele sunt plasate pe marginea stângă sau dreaptă a ecranului."
+        ],
+        "fixed": [
+          "S-a remediat caracterele care nu deveneau uluite după ce au fost lovite în mod repetat de obiecte care puteau fi aruncate."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

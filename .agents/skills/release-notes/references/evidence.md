@@ -41,14 +41,10 @@ For every collected integration:
 
 Normally exclude release-note-only, version bookkeeping, CI-only and internal refactoring changes unless they produce a user-visible result for the artifact. A pull request may justify multiple bullets when it contains distinct user outcomes. Several pull requests may share one bullet when they implement one coherent outcome.
 
-## Attribution
+## Private attribution ledger
 
-Use the pull-request opener returned by GitHub for a PR bullet. In the public body, write `PR 108` without `#` so GitHub does not link it to an unrelated public issue or pull request. Do not link the private source repository, and do not credit the merging account or `Co-authored-by: codex` as the PR author.
+Use the pull-request opener returned by GitHub, not the merging account or Codex coauthor. For a direct commit without a pull request, record its full commit ID and GitHub commit-author login. Missing PR association or author resolution is ACTION REQUIRED; do not invent values.
 
-For a direct commit with no associated pull request, use its seven-character commit ID and GitHub commit-author login:
+Keep every integration in the private included/excluded ledger with source evidence, author, outcome or exclusion reason, and the corresponding public category/bullet or localized archive entry. Public notes contain no PR numbers, commit IDs or authors. The format validator verifies exact collector endpoint references when evidence is supplied; it cannot map unattributed public prose to source records. Review that mapping manually and report the attribution review separately from format validation.
 
-```text
-- 변경 사항을 설명해요. ( commit 3a25b84, @author )
-```
-
-If GitHub cannot resolve the direct commit to an account, return `ACTION REQUIRED`; do not invent a username. Keep the direct commit in the included or excluded ledger even when no bullet is ultimately needed.
+For faithful copying or translation of macOS website notes, record the official App Store product/lookup version, publication date and exact published text. This is sufficient provenance for translation of those outcomes, without inferring source or build identities. For original notes researched from diffs, verify the published App Store version and build with App Store Connect evidence and resolve the exact submitted and prior published source endpoints. A listing's marketing version alone does not establish the build or source. Do not substitute historical Direct GitHub releases. Both website archives retain version 2.0 and later; earlier Windows releases remain on GitHub with archive links that have no version anchor.

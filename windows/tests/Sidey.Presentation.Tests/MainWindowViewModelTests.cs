@@ -1825,7 +1825,7 @@ public sealed class MainWindowViewModelTests
             InstallerReady = cachedPayload,
             IsAutomaticUpdateConnectionAllowed = connectionAllowed,
         };
-        var preferences = new UpdatePreferences(autoInstall, false, false);
+        UpdatePreferences preferences = new(autoInstall, false);
         updates.SavePreferences(preferences);
         var viewModel = new MainWindowViewModel(
             coordinator, new FakeMainWindowDialogService(), updates);
@@ -2154,9 +2154,8 @@ public sealed class MainWindowViewModelTests
 
         viewModel.AutoInstallUpdates = true;
         viewModel.NotifyWhenUpdateAvailable = false;
-        viewModel.ShowReleaseNotesAfterUpdate = false;
 
-        Assert.Equal(new UpdatePreferences(true, false, false), updates.Preferences);
+        Assert.Equal(new UpdatePreferences(true, false), updates.Preferences);
     }
 
     [Fact]
@@ -2170,6 +2169,10 @@ public sealed class MainWindowViewModelTests
 
         Assert.NotNull(preferences);
         Assert.True(preferences.AutoInstall);
+        Assert.False(preferences.NotifyWhenAvailable);
+        Assert.Equal(new UpdatePreferences(true, false),
+            JsonSerializer.Deserialize<UpdatePreferences>(JsonSerializer.Serialize(preferences)));
+        Assert.DoesNotContain("ShowReleaseNotesAfterUpdate", JsonSerializer.Serialize(preferences));
     }
 
     [Fact]
@@ -2183,6 +2186,10 @@ public sealed class MainWindowViewModelTests
 
         Assert.NotNull(preferences);
         Assert.False(preferences.AutoInstall);
+        Assert.False(preferences.NotifyWhenAvailable);
+        Assert.Equal(new UpdatePreferences(false, false),
+            JsonSerializer.Deserialize<UpdatePreferences>(JsonSerializer.Serialize(preferences)));
+        Assert.DoesNotContain("ShowReleaseNotesAfterUpdate", JsonSerializer.Serialize(preferences));
     }
 
     [Fact]

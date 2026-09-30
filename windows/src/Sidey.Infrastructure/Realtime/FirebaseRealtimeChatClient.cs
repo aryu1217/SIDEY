@@ -138,7 +138,7 @@ internal sealed class FirebaseRealtimeChatClient : IFirebaseRealtimeChatClient
         }
 
         FirebaseRealtimeCredential credential =
-            await _credentials.GetCredentialAsync(cancellationToken).ConfigureAwait(false);
+            await _credentials.GetUsableCredentialAsync(cancellationToken).ConfigureAwait(false);
         credential.LifetimeToken.ThrowIfCancellationRequested();
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
@@ -178,8 +178,22 @@ internal sealed class FirebaseRealtimeChatClient : IFirebaseRealtimeChatClient
         {
             throw;
         }
-        catch (FirebaseRealtimeChatException)
+        catch (FirebaseRealtimeChatException exception)
         {
+            if (exception.Code == "unauthenticated"
+                && exception.Classification == FirebaseRealtimeChatFailureClassification.KnownNonCommit)
+            {
+                // Recover authentication for future user sends, without replaying this message.
+                try
+                {
+                    await _credentials.RecoverRejectedCredentialAsync(credential, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // Preserve the server's known non-commit result even if recovery is unavailable.
+                }
+            }
             throw;
         }
         catch

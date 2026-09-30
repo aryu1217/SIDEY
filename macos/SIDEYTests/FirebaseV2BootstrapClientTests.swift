@@ -142,6 +142,43 @@ final class FirebaseV2BootstrapClientTests: XCTestCase {
         }
     }
 
+    func testRateLimitDeadlineBlocksAnotherRequestForSameSession() async throws {
+        let transport = FirebaseV2HTTPTransportStub(response: try response(
+            status: 429,
+            body: #"{"error":"realtime_bootstrap_rate_limited"}"#,
+            headers: ["Retry-After": "60"]
+        ))
+        let gate = FirebaseV2BootstrapRetryGate()
+        let client = FirebaseV2BootstrapClient(
+            transport: transport,
+            retryGate: gate,
+            nowMilliseconds: { 1_800_000_000_000 }
+        )
+        let identity = RealtimeCredentialIdentity(accountID: UUID(), sessionID: UUID())
+        do {
+            _ = try await client.bootstrap(accessToken: "token", identity: identity)
+            XCTFail("First request must be rate limited")
+        } catch let error as FirebaseV2BootstrapClientError {
+            XCTAssertEqual(error, .server(.rateLimited))
+        }
+
+        let repeated = Task {
+            try await client.bootstrap(accessToken: "token", identity: identity)
+        }
+        // The server's 60-second minimum makes a 20-ms observation enough to
+        // distinguish a blocked retry from an immediate second POST.
+        try await Task.sleep(for: .milliseconds(20))
+        let callCount = await transport.callCount
+        XCTAssertEqual(callCount, 1)
+        repeated.cancel()
+        do {
+            _ = try await repeated.value
+            XCTFail("Cancelled waiting request must not send")
+        } catch is CancellationError {
+            // Expected.
+        }
+    }
+
     func testBootstrapAnchorsLeaseToServerDateWhenLocalClockIsSkewed() async throws {
         let serverNowMilliseconds: Int64 = 1_800_000_000_000
         let localNowMilliseconds: Int64 = serverNowMilliseconds - 3_600_000
@@ -224,6 +261,7 @@ final class FirebaseV2BootstrapClientTests: XCTestCase {
 
 private actor FirebaseV2HTTPTransportStub: FirebaseV2HTTPTransport {
     private(set) var lastRequest: URLRequest?
+    private(set) var callCount = 0
     private let response: FirebaseV2HTTPResponse
 
     init(response: FirebaseV2HTTPResponse) {
@@ -232,6 +270,7 @@ private actor FirebaseV2HTTPTransportStub: FirebaseV2HTTPTransport {
 
     func data(for request: URLRequest) async throws -> FirebaseV2HTTPResponse {
         lastRequest = request
+        callCount += 1
         return response
     }
 }

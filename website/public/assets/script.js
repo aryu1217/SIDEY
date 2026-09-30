@@ -121,6 +121,7 @@
     const logo = selector.querySelector("[data-download-logo]");
     if (!primary || !toggle || !menu || !label || !logo) return;
     let menuTimer;
+    let manualSelection = false;
 
     const setMenu = (open) => {
       window.clearTimeout(menuTimer);
@@ -141,23 +142,50 @@
         delete menu.dataset.state;
       }, reducedMotion.matches ? 0 : 160);
     };
-    const setPlatform = (platform) => {
-      const supported = platform === "macos" || platform === "windows";
+    const setPlatform = (platform, architecture) => {
       const key = platform === "windows" ? "windows" : "macos";
-      primary.href = supported ? primary.dataset[`${key}Url`] : "#";
-      label.textContent = supported ? primary.dataset[`${key}Label`] : primary.dataset.chooseLabel;
+      const url = platform === "windows"
+        ? architecture === "arm64" ? primary.dataset.windowsArm64Url : architecture === "x64" ? primary.dataset.windowsUrl : undefined
+        : platform === "macos" ? primary.dataset.macosUrl : undefined;
+      const supported = Boolean(url);
+      primary.href = supported ? url : "#download";
+      label.textContent = supported
+        ? primary.dataset[architecture === "arm64" ? "windowsArm64Label" : `${key}Label`]
+        : primary.dataset.chooseLabel;
       logo.src = logo.dataset[`${key}Logo`];
       logo.classList.toggle("download-platform-logo-windows", platform === "windows");
       logo.classList.toggle("download-platform-logo-macos", platform !== "windows");
       logo.hidden = !supported;
       primary.dataset.detectedPlatform = supported ? platform : "unsupported";
+      if (architecture) primary.dataset.detectedArchitecture = architecture;
+      else delete primary.dataset.detectedArchitecture;
     };
 
     const platformSource = navigator.userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
-    if (/win/i.test(platformSource)) setPlatform("windows");
+    if (/win/i.test(platformSource)) {
+      // Reduced user agents and browser process architecture cannot identify the Windows CPU.
+      // Keep manual selection available while hints are unavailable, denied, or pending.
+      setPlatform("windows");
+      if (navigator.userAgentData?.getHighEntropyValues) {
+        Promise.resolve().then(() => navigator.userAgentData.getHighEntropyValues(["architecture", "bitness"]))
+          .then((hints) => {
+            if (manualSelection) return;
+            const architecture = hints.bitness === "64"
+              ? hints.architecture === "arm" ? "arm64" : hints.architecture === "x86" ? "x64" : undefined
+              : undefined;
+            setPlatform("windows", architecture);
+          })
+          .catch(() => { if (!manualSelection) setPlatform("windows"); });
+      }
+    }
     else if (/mac/i.test(platformSource)) setPlatform("macos");
     else setPlatform("unsupported");
 
+    menu.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
+      manualSelection = true;
+      setPlatform(link.dataset.windowsArchitecture ? "windows" : "macos", link.dataset.windowsArchitecture);
+      setMenu(false);
+    }));
     toggle.addEventListener("click", () => setMenu(toggle.getAttribute("aria-expanded") !== "true"));
     primary.addEventListener("click", (event) => {
       if (primary.dataset.detectedPlatform === "unsupported") {

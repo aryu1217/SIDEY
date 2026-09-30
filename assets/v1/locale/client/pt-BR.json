@@ -1497,9 +1497,6 @@
           },
           "notify": {
             "title": "Notificar sobre novas atualizações"
-          },
-          "show_after": {
-            "title": "Mostrar detalhes após a atualização"
           }
         }
       },

@@ -52,15 +52,4 @@ public sealed class WindowsUpdateCompletionTracker
             return false;
         }
     }
-
-    public bool TryConsumeCompletedUpdate(
-        string currentVersion,
-        bool showReleaseNotes,
-        out bool shouldOpenReleaseNotes)
-    {
-        string? completedVersion = PendingNotificationVersion(currentVersion);
-        bool consumed = TryMarkLaunched(currentVersion);
-        shouldOpenReleaseNotes = consumed && completedVersion is not null && showReleaseNotes;
-        return consumed;
-    }
 }

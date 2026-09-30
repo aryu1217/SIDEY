@@ -9,6 +9,39 @@ namespace Sidey.Presentation.Tests;
 public sealed class HistoryWindowViewModelTests
 {
     [Fact]
+    public void HistoryComposerKeepsDraftWhileRoomConnectionRecovers()
+    {
+        Guid roomId;
+        roomId = Guid.NewGuid();
+        Guid userId;
+        userId = Guid.NewGuid();
+        CoordinatorState state = StateWithRooms(roomId, null, userId) with
+        {
+            GoogleAuthentication = GoogleAuthenticationState.Verified,
+            Preferences = AppPreferences.Default with { OnboardingCompleted = true },
+        };
+        FakeSideyCoordinator coordinator = new() { State = state };
+        using HistoryWindowViewModel history = new(coordinator);
+        history.Composer.Draft = "Waiting to send";
+
+        Assert.True(history.Composer.CanCompose);
+        Assert.True(history.Composer.IsConnectionRecovering);
+        Assert.False(history.Composer.SendCommand.CanExecute(null));
+        history.ApplyState(state with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(true, false, true),
+        });
+        Assert.False(history.Composer.SendCommand.CanExecute(null));
+        history.ApplyState(state with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(true, true, true),
+        });
+        Assert.True(history.Composer.SendCommand.CanExecute(null));
+        Assert.False(history.Composer.IsConnectionRecovering);
+        Assert.Equal("Waiting to send", history.Composer.Draft);
+    }
+
+    [Fact]
     public async Task ActivationLoadsOldestFirstAndFormatsSystemLocalTime()
     {
         var roomId = Guid.NewGuid();

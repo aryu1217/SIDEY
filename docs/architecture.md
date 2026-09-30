@@ -21,7 +21,10 @@
   Corresponding Source archive를 제공한다. 현재 제품 source의 원본이 아니다.
 - Private source와 backend의 GitHub Actions는 비활성화한다. 기존 workflow YAML은
   실행되지 않는 참고 자료로 보존하며 검사 결과는 해당 소스와 실제 기기에서 확인한다.
-  공개 `SIDEY` 저장소의 사이트와 다운로드 주소는 유지한다.
+  공개 `SIDEY` 저장소의 사이트와 다운로드 주소는 유지한다. 웹사이트 게시만 공개 저장소의
+  수동 GitHub Actions에서 수행한다. 읽기 전용 SSH Deploy key로 private source의 `main`을
+  가져와 사이트를 검증하고, 공개된 Windows 업데이트 정보를 보존한 정적 결과만 GitHub Pages에
+  배포한다. Private source와 backend의 Actions는 계속 비활성화한다.
 - Supabase schema·migration·RLS·Edge Functions, App Store 거래 검증, 서버 운영 도구는
   비공개 [`sidey-app/sidey-backend`](https://github.com/sidey-app/sidey-backend)가
   소유한다. 공개/비공개 저장소의 작업 경계와 catalog handoff는

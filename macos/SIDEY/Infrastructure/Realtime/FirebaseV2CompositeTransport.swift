@@ -68,7 +68,8 @@ final class FirebaseV2CompositeCredentialEstablisher: @unchecked Sendable,
                 )
                 let bootstrap = try await bootstrapClient.bootstrap(
                     accessToken: session.accessToken,
-                    minimumAccessRevision: minimumAccessRevision
+                    minimumAccessRevision: minimumAccessRevision,
+                    identity: session.identity
                 )
                 let authenticatedIdentity = try await authAdapter.signIn(
                     customToken: bootstrap.customToken,
@@ -192,6 +193,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private let databaseValues: any FirebaseV2DatabaseValueStreaming
     private let databaseWrites: any FirebaseV2DatabaseWriteTransport
     private let chatClient: FirebaseV2ChatClient
+    private let refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)?
     private let throwableCatalogIDByWireCode: [FirebaseV2WireCode: String]
     private let throwableWireCodeByCatalogID: [String: FirebaseV2WireCode]
     private let nowMilliseconds: @Sendable () -> Int64
@@ -217,6 +219,9 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private var typingExpiryTask: Task<Void, Never>?
     private var credentialInvalidationTask: Task<Void, Never>?
     private var rolloutLeaseExpiryTask: Task<Void, Never>?
+    private var chatAuthenticationRecoveryTask: Task<Void, Never>?
+    private var chatAuthenticationRecoveryGeneration: UInt64?
+    private var chatAuthenticationRecoveryPending = false
     private var retirementTask: Task<Void, Never>?
     private var rolloutLeaseRefreshDeadline: ContinuousClock.Instant?
     private var rolloutLeaseExpiryDeadline: ContinuousClock.Instant?
@@ -238,6 +243,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         databaseValues: any FirebaseV2DatabaseValueStreaming,
         databaseWrites: any FirebaseV2DatabaseWriteTransport,
         chatClient: FirebaseV2ChatClient,
+        refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)? = nil,
         throwableCatalogIDByWireCode: [FirebaseV2WireCode: String],
         serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil,
         liveReadinessTimeout: Duration = .seconds(10),
@@ -255,6 +261,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         self.databaseValues = databaseValues
         self.databaseWrites = databaseWrites
         self.chatClient = chatClient
+        self.refreshPolicy = refreshPolicy
         self.throwableCatalogIDByWireCode = throwableCatalogIDByWireCode
         self.throwableWireCodeByCatalogID = Dictionary(
             uniqueKeysWithValues: throwableCatalogIDByWireCode.map { ($0.value, $0.key) }
@@ -358,7 +365,83 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         } catch {
             return .definitelyRejected(message: error.localizedDescription)
         }
-        return await chatClient.send(roomID: roomID, body: body, messageID: id)
+        let credentialGeneration = rolloutLeaseGeneration
+        return await chatClient.send(
+            roomID: roomID,
+            body: body,
+            messageID: id,
+            onUnauthenticated: { [weak self] in
+                await self?.beginChatAuthenticationRecovery(
+                    expectedGeneration: credentialGeneration
+                )
+            }
+        )
+    }
+
+    private func beginChatAuthenticationRecovery(expectedGeneration: UInt64) {
+        guard !isShutDown,
+              expectedGeneration == rolloutLeaseGeneration,
+              !chatAuthenticationRecoveryPending,
+              refreshPolicy != nil else { return }
+        chatAuthenticationRecoveryPending = true
+        chatAuthenticationRecoveryGeneration = expectedGeneration
+        eventContinuation.yield(.connection(BackendConnectionStatus(
+            transportConnected: false,
+            recoveryReconciled: false,
+            activeRoomTransportConnected: false
+        )))
+        chatAuthenticationRecoveryTask = Task { [weak self] in
+            await self?.recoverChatAuthentication(expectedGeneration: expectedGeneration)
+        }
+    }
+
+    private func recoverChatAuthentication(expectedGeneration: UInt64) async {
+        defer {
+            if chatAuthenticationRecoveryGeneration == expectedGeneration {
+                chatAuthenticationRecoveryTask = nil
+                chatAuthenticationRecoveryGeneration = nil
+                chatAuthenticationRecoveryPending = false
+            }
+        }
+        guard let refreshPolicy else { return }
+        var failures = 0
+        while !Task.isCancelled, !isShutDown,
+              expectedGeneration == rolloutLeaseGeneration {
+            do {
+                let decision = try await refreshPolicy()
+                guard decision.state == .firebaseV2 else {
+                    await failClosedForRolloutLease()
+                    return
+                }
+                try await credentialReplacementGate.perform { [self] in
+                    try await replaceCredentialSession(
+                        trigger: .explicitRecovery,
+                        minimumAccessRevision: nil,
+                        requireExtendedLease: false
+                    )
+                }
+                return
+            } catch {
+                if error is CancellationError || Task.isCancelled || isShutDown { return }
+                if let bootstrapError = error as? FirebaseV2BootstrapClientError,
+                   !FirebaseV2BootstrapRecoveryPolicy.isTransient(bootstrapError) {
+                    await failClosedForRolloutLease()
+                    return
+                }
+                failures = min(failures + 1, 17)
+                let delay = FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                    failureCount: failures,
+                    rateLimited: false,
+                    retryAfterSeconds: nil,
+                    jitter: Double.random(in: 0...1)
+                )
+                do {
+                    try await Task.sleep(for: .seconds(delay))
+                } catch {
+                    return
+                }
+            }
+        }
     }
 
     func shutdown() async {
@@ -384,6 +467,10 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         roomTransitionGeneration &+= 1
         inboxTask?.cancel()
         serverClockTask?.cancel()
+        chatAuthenticationRecoveryTask?.cancel()
+        chatAuthenticationRecoveryTask = nil
+        chatAuthenticationRecoveryGeneration = nil
+        chatAuthenticationRecoveryPending = false
         serverClockTask = nil
         cancelAllLiveListeners()
         supabaseEventTask?.cancel()
@@ -587,13 +674,18 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         rolloutLeaseExpiryTask?.cancel()
         let schedule = session.bootstrap.rolloutLeaseSchedule
         let referenceMilliseconds = schedule.referenceMilliseconds ?? nowMilliseconds()
-        let refreshDelayMilliseconds = max(
+        let serverRefreshDelayMilliseconds = max(
             0,
             schedule.refreshAfterMilliseconds - referenceMilliseconds
         )
         let expiryDelayMilliseconds = max(
             0,
             schedule.expiresAtMilliseconds - referenceMilliseconds
+        )
+        let refreshDelayMilliseconds = RealtimeRolloutTiming.earlyRefreshDelayMilliseconds(
+            serverDelay: serverRefreshDelayMilliseconds,
+            expiresIn: expiryDelayMilliseconds,
+            lead: Int64.random(in: 60_000...90_000)
         )
         let installedAt = clock.now
         rolloutLeaseRefreshDeadline = installedAt.advanced(
@@ -826,6 +918,10 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             pruneLiveListeners(authorizedRoomIDs: Set(currentRooms.map(\.id)))
             if let session { startWarmLiveListeners(session: session) }
             eventContinuation.yield(event)
+        case .connection where chatAuthenticationRecoveryPending:
+            // Presence remains on Supabase, but a healthy Supabase socket must
+            // not reopen Firebase sends while this credential is being checked.
+            break
         default:
             eventContinuation.yield(event)
         }
@@ -1086,6 +1182,15 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
                 forceListenerRestart: true
             )
             startWarmLiveListeners(session: recovered)
+            if chatAuthenticationRecoveryPending {
+                chatAuthenticationRecoveryPending = false
+                eventContinuation.yield(.connection(BackendConnectionStatus(
+                    transportConnected: true,
+                    recoveryReconciled: true,
+                    activeRoomTransportConnected:
+                        activeRoomState.committedRealtimeActiveRoomID != nil
+                )))
+            }
         } catch {
             // Once a new custom-token sign-in succeeds, continuing with the old
             // grant/listeners would mix credential generations. There is no
@@ -1187,7 +1292,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
 
     private func requireReady(roomID: UUID? = nil) throws {
         try requireRunning()
-        guard session != nil, grantBarrier.isOpen else {
+        guard session != nil, grantBarrier.isOpen,
+              !chatAuthenticationRecoveryPending else {
             throw FirebaseV2CompositeTransportError.accessGrantClosed
         }
         if let roomID,

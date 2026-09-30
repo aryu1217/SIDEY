@@ -4434,25 +4434,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your sign-in expired. Sign in again."
+            "value": "Chat authentication could not be verified. Please try again shortly."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ログインの有効期限が切れました。もう一度ログインしてください。"
+            "value": "チャットの認証を確認できませんでした。しばらくしてからもう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인이 만료되었습니다. 다시 로그인해 주세요."
+            "value": "채팅 인증을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "登入狀態已失效，請重新登入。"
+            "value": "無法確認聊天驗證狀態，請稍後再試。"
           }
         }
       }

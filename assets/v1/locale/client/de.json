@@ -1444,9 +1444,6 @@
           },
           "notify": {
             "title": "Über neue Updates benachrichtigen"
-          },
-          "show_after": {
-            "title": "Updatedetails nach dem Update anzeigen"
           }
         }
       },

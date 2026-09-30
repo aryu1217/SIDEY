@@ -1124,6 +1124,12 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             throw new InvalidOperationException(I18n.Get("composer.group.required"));
         }
 
+        if (!_state.RealtimeConnection.IsReady || !_state.RealtimeConnection.ActiveRoomTransportConnected)
+        {
+            StartupDiagnostics.Stage("chat-send-rejected reason=not-ready");
+            throw new ChatNotReadyException();
+        }
+
         string normalized = MessageValidator.Normalize(body);
         if (!MessageValidator.IsValid(normalized))
         {
@@ -1132,7 +1138,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         }
 
         _typingActivity.Stop();
-        var id = Guid.NewGuid();
+        Guid id;
+        id = Guid.NewGuid();
         _messages.Stage(id, roomId, profile.Id, normalized, bubbleStyleId: profile.EquippedBubbleStyleId);
         _bubbles.Show(profile.Id, id, normalized, bubbleStyleId: profile.EquippedBubbleStyleId);
         PublishState();
@@ -1148,6 +1155,16 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             _messages.Confirm(confirmed);
             PublishState();
             StartupDiagnostics.Stage("chat-send-confirmed");
+        }
+        catch (ChatNotReadyException)
+        {
+            // The terminal transport check rejected before any HTTP write.
+            _messages.Remove(roomId, id);
+            _bubbles.Remove(id);
+            PublishState();
+            ApplyWorldSnapshot();
+            StartupDiagnostics.Stage("chat-send-rejected reason=not-ready-race");
+            throw;
         }
         catch (ChatCommitAmbiguousException)
         {
@@ -1768,13 +1785,16 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                             $"realtime-message-received active={isActiveRoom.ToString().ToLowerInvariant()}");
                         _messages.Confirm(message.Message);
                         StartupDiagnostics.Stage("message-ledger-confirmed");
-                        _bubbles.Show(
-                            message.Message.SenderId,
-                            message.Message.Id,
-                            message.Message.Body,
-                            bubbleStyleId: message.Message.BubbleStyleId);
-                        StartupDiagnostics.Stage(
-                            $"message-bubble-enqueued active={isActiveRoom.ToString().ToLowerInvariant()} quiet={_state.Preferences.QuietMode.ToString().ToLowerInvariant()}");
+                        if (isActiveRoom)
+                        {
+                            _bubbles.Show(
+                                message.Message.SenderId,
+                                message.Message.Id,
+                                message.Message.Body,
+                                bubbleStyleId: message.Message.BubbleStyleId);
+                            StartupDiagnostics.Stage(
+                                $"message-bubble-enqueued active=true quiet={_state.Preferences.QuietMode.ToString().ToLowerInvariant()}");
+                        }
                         if (message.Message.SenderId != _state.Profile?.Id
                             && (!isActiveRoom || _state.Preferences.QuietMode))
                         {

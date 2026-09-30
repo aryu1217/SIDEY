@@ -346,9 +346,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public partial bool NotifyWhenUpdateAvailable { get; set; }
 
     [ObservableProperty]
-    public partial bool ShowReleaseNotesAfterUpdate { get; set; }
-
-    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(DownloadUpdateCommand))]
     [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
     public partial bool IsUpdateReady { get; set; }
@@ -369,7 +366,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnAutoInstallUpdatesChanged(bool value) => SaveUpdatePreferences();
     partial void OnNotifyWhenUpdateAvailableChanged(bool value) => SaveUpdatePreferences();
-    partial void OnShowReleaseNotesAfterUpdateChanged(bool value) => SaveUpdatePreferences();
 
     private void SaveUpdatePreferences()
     {
@@ -379,8 +375,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             _updates.SavePreferences(new UpdatePreferences(
                 AutoInstallUpdates,
-                NotifyWhenUpdateAvailable,
-                ShowReleaseNotesAfterUpdate));
+                NotifyWhenUpdateAvailable));
         }
         catch (Exception exception)
         {
@@ -396,7 +391,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             AutoInstallUpdates = preferences.AutoInstall;
             NotifyWhenUpdateAvailable = preferences.NotifyWhenAvailable;
-            ShowReleaseNotesAfterUpdate = preferences.ShowReleaseNotesAfterUpdate;
         }
         finally { _isApplyingUpdatePreferences = false; }
     }

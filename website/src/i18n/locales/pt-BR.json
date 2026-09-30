@@ -1,0 +1,406 @@
+{
+  "landing": {
+    "meta": {
+      "title": "SIDEY — Seus amigos na borda da tela",
+      "description": "SIDEY é um aplicativo de mensagens para o computador que mostra seus amigos mais próximos e suas mensagens curtas como pequenos animais em pixels na borda da tela.",
+      "ogTitle": "SIDEY — Pequenos amigos na borda da tela.",
+      "ogDescription": "Veja a presença e mensagens curtas dos seus amigos mais próximos como pequenos animais pixelados.",
+      "ogAlt": "Imagem de compartilhamento do SIDEY com cinco animais em pixels alinhados na borda de uma tela"
+    },
+    "skip": "Pular para o conteúdo",
+    "navigation": {
+      "navigation": "Navegação principal",
+      "home": "Página inicial do SIDEY",
+      "openMenu": "Abrir menu",
+      "closeMenu": "Fechar menu",
+      "features": "Recursos",
+      "download": "Baixar",
+      "faq": "Perguntas frequentes",
+      "whatsNew": "Novidades",
+      "store": "Loja",
+      "support": "Suporte",
+      "characters": "Personagens",
+      "throwables": "Brinquedos para jogar",
+      "bubbles": "Balões de conversa",
+      "useLightTheme": "Mudar para o modo claro",
+      "useDarkTheme": "Mudar para o modo escuro"
+    },
+    "hero": {
+      "title": "Amigos na borda da tela.",
+      "description": "Seus amigos viram pequenos personagens em pixels que passeiam pela borda da tela. Dê uma olhada enquanto trabalha e mande uma mensagem rápida quando lembrar deles.",
+      "downloadsLabel": "Opções de download",
+      "appStoreDownload": "Baixar na App Store",
+      "macDownload": "Baixar para macOS",
+      "windowsDownload": "Baixar para Windows",
+      "choosePlatform": "Escolha sua plataforma",
+      "platformMenu": "Escolha uma plataforma manualmente",
+      "menuToggle": "Escolha outra plataforma",
+      "windowsStatus": "Windows 10 1809 (compilação 17763) ou posterior · x64",
+      "browserTitle": "As tarefas de hoje | Notas",
+      "browserNote": "Lista de hoje",
+      "message": "Encontro às sete?",
+      "typingLabel": "Rosie está digitando",
+      "names": {
+        "kong": "Mochi · EU",
+        "bori": "Milo",
+        "mongsil": "Luna",
+        "tori": "Rosie"
+      },
+      "caption": "Uma cena SIDEY com amigos animais pixelados andando, cochilando e dormindo na parte inferior de um navegador dentro de um monitor"
+    },
+    "motion": {
+      "title": "Ficar parado seria chato.",
+      "description": "Os amigos andam quando estão online, cochilam quando estão fora e dormem quando estão offline. Vocês também podem mexer um pouco um com o outro.",
+      "label": "Estados e ações do personagem SIDEY",
+      "presence": {
+        "eyebrow": "Presença diária",
+        "title": "Caminhando, cochilando, dormindo.",
+        "description": "Online, ausente ou offline: o personagem acompanha o estado do seu amigo.",
+        "online": "On-line",
+        "away": "Ausente",
+        "offline": "Off-line"
+      },
+      "throw": {
+        "eyebrow": "Jogue com um amigo",
+        "title": "Às vezes, uma bolinha macia diz tudo.",
+        "description": "Coco joga uma bolinha macia, que dá uma pequena batida em Rosie.",
+        "source": "Coco",
+        "target": "Rosie"
+      },
+      "pulse": {
+        "eyebrow": "Grande olá",
+        "title": "Às vezes, o olá precisa ser maior.",
+        "description": "Clique duas vezes em Charlie e o personagem dele fica maior de repente na borda da tela.",
+        "name": "Charlie"
+      },
+      "names": {
+        "kong": "Mochi",
+        "bori": "Milo",
+        "cloud": "Luna"
+      }
+    },
+    "showcase": {
+      "title": "Lá enquanto você trabalha.",
+      "introduction": "SIDEY permanece na borda da tela enquanto você trabalha. Dê uma olhada para ver o que seus amigos estão fazendo e diga algo quando eles passarem pela sua cabeça.",
+      "label": "Como SIDEY se ajusta à sua tela",
+      "caption": "SIDEY junto com um espaço de trabalho macOS",
+      "alt": "Uma área de trabalho macOS com uma janela de Notas e amigos de pixel SIDEY ao longo da borda inferior da tela",
+      "steps": [
+        [
+          "01",
+          "Continue fazendo o que você está fazendo",
+          "Você pode continuar clicando e usando o aplicativo por trás do SIDEY como faria normalmente."
+        ],
+        [
+          "02",
+          "Veja o que eles estão fazendo",
+          "Andar, cochilar e dormir mostram se seus amigos estão por perto."
+        ],
+        [
+          "03",
+          "Diga algo quando quiser",
+          "Abra SIDEY para enviar uma mensagem curta ou trocar uma pequena travessura."
+        ]
+      ]
+    },
+    "download": {
+      "title": "Leve SIDEY para sua área de trabalho.",
+      "description": "SIDEY está disponível para macOS e Windows. Escolha a versão que corresponde ao seu computador e instale-a.",
+      "macButton": "Mac App Store",
+      "windowsButton": "Baixar para Windows",
+      "releaseNotes": "Notas de lançamento",
+      "macSystem": "macOS 26 ou posterior · Apple Silicon (arm64)",
+      "windowsSystem": "Windows 10 1809 (compilação 17763) ou posterior · x64",
+      "copyFailure": "Não foi possível copiar. Selecione o hash manualmente.",
+      "hashCopy": "Copiar hash SHA-256",
+      "hashCopied": "Hash SHA-256 copiado."
+    },
+    "faq": {
+      "title": "Perguntas que você possa ter.",
+      "intro": "Algumas coisas que vale a pena saber antes de começar.",
+      "items": [
+        [
+          "O que é SIDEY?",
+          "SIDEY é um aplicativo de mensagens para o computador, acessível por convite, onde seus amigos mais próximos aparecem na borda da tela como pequenos personagens em pixels. Cada grupo privado pode ter até 12 pessoas."
+        ],
+        [
+          "Quais computadores são suportados?",
+          "SIDEY funciona em Macs com Apple Silicon e macOS 26 ou posterior, e em PCs x64 com Windows 10 1809 (compilação 17763) ou posterior. Macs Intel não são compatíveis no momento."
+        ],
+        [
+          "Como faço para convidar amigos?",
+          "Crie um grupo privado e envie o código de convite diretamente para seus amigos. Um grupo pode ter até 12 membros e cada pessoa pode ingressar em até cinco grupos."
+        ],
+        [
+          "O SIDEY monitora o que eu faço no meu computador?",
+          "Não. SIDEY não coleta o conteúdo da tela, a lista de aplicativos abertos, as teclas pressionadas em outros aplicativos, a posição do ponteiro, arquivos, áudio do microfone ou vídeo da câmera. O status de digitação só é enviado enquanto você escreve no campo de mensagens do SIDEY."
+        ],
+        [
+          "Por quanto tempo as mensagens são mantidas?",
+          "As mensagens recentes são mantidas por três dias e depois excluídas permanentemente."
+        ],
+        [
+          "O SIDEY será exibido em todos os jogos e aplicativos em tela cheia?",
+          "Nem sempre. SIDEY permanece visível durante o uso normal do computador, mas pode não aparecer sobre telas de segurança, aplicativos protegidos por DRM, aplicativos com privilégios elevados ou alguns jogos em tela cheia exclusiva."
+        ]
+      ]
+    },
+    "whatsNew": {
+      "title": "Novidades",
+      "intro": "Veja as últimas alterações em SIDEY, agrupadas por macOS e Windows.",
+      "tabs": {
+        "label": "O que há de novo por sistema operacional",
+        "macos": "macOS",
+        "windows": "Windows"
+      },
+      "categories": {
+        "new": "O que há de novo",
+        "changed": "O que mudou",
+        "fixed": "O que foi corrigido"
+      },
+      "versionNotes": "Notas para esta versão",
+      "empty": "Ainda não há notas de lançamento.",
+      "viewRelease": "Veja a versão GitHub",
+      "openDetails": "Mostrar alterações",
+      "closeDetails": "Ocultar alterações",
+      "loadedMore": "Mais atualizações anteriores carregadas."
+    }
+  },
+  "storeChrome": {
+    "store": "Loja SIDEY",
+    "keepsake": "Lembrança",
+    "separate": "Vendido separadamente",
+    "treeHint": "No aplicativo para macOS, clique com o botão direito na árvore para fazê-la parar. Clique novamente com o botão direito para deixá-la passear.",
+    "sound": "Som",
+    "categories": "Categorias da loja",
+    "characters": "Personagens",
+    "throwables": "Brinquedos para jogar",
+    "bubbles": "Balões de conversa",
+    "preview": "Abrir visualização",
+    "previewAction": "Visualizar",
+    "closePreview": "Fechar visualização",
+    "bubbleMessage": "Vamos passar um tempo juntos hoje?"
+  },
+  "store": {
+    "characters": {
+      "eyebrow": "Personagens",
+      "title": "Novos amigos para sua tela.",
+      "description": "Abra uma prévia para ver como cada personagem se move em SIDEY.",
+      "products": [
+        {
+          "id": "pixel_hamster",
+          "name": "Hamster bebê",
+          "description": "Companheiro original de SIDEY, com orelhas minúsculas e bochechas rosadas.",
+          "price": "Incluído",
+          "asset": "assets/characters/pixel_hamster.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_cat",
+          "name": "Bebê gato",
+          "description": "Um gato malhado cinza claro com um par de orelhas perfeitamente pontudas.",
+          "price": "Incluído",
+          "asset": "assets/characters/pixel_cat.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_puppy",
+          "name": "Filhote de cachorro fofo",
+          "description": "Um cachorrinho com orelhas caramelo e um rosto maravilhosamente fofo.",
+          "price": "Incluído",
+          "asset": "assets/characters/pixel_puppy.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_rabbit",
+          "name": "Coelho bebê",
+          "description": "Orelhas compridas e um lenço violeta tornam este amiguinho fácil de localizar.",
+          "price": "Incluído",
+          "asset": "assets/characters/pixel_rabbit.png",
+          "mode": "character"
+        },
+        {
+          "id": "pixel_penguin",
+          "name": "Pequeno Pinguim",
+          "description": "Um pinguim azul-marinho que anda com um lenço menta.",
+          "price": "Incluído",
+          "asset": "assets/characters/pixel_penguin.png",
+          "mode": "character"
+        }
+      ]
+    },
+    "throwables": {
+      "eyebrow": "Brinquedos para jogar",
+      "title": "De bolinhas macias a minicanhões.",
+      "description": "Visualize brinquedos que você pode jogar para seus amigos, desde bolas macias e corações até mini-canhões.",
+      "products": [
+        {
+          "id": "patch_soft_ball",
+          "name": "Bola macia de retalhos",
+          "description": "A bolinha macia que todo personagem SIDEY pode jogar em um amigo.",
+          "price": "Incluído",
+          "asset": "assets/previewer/patch_soft_ball.png",
+          "sound": "assets/store/impact-patch_soft_ball.wav",
+          "mode": "throwable"
+        }
+      ]
+    },
+    "bubbles": {
+      "eyebrow": "Balões de conversa",
+      "title": "Dê seu toque aos balões.",
+      "description": "Altere as cores e pequenas decorações nas mensagens e nos indicadores de digitação.",
+      "products": [
+        {
+          "id": "bubble_default",
+          "name": "Balão clássico",
+          "description": "O balão nítido e fácil de ler do SIDEY para todos os desktops.",
+          "price": "Incluído",
+          "mode": "bubble",
+          "bubbleTheme": "default"
+        }
+      ]
+    }
+  },
+  "support": {
+    "title": "Suporte · SIDEY",
+    "description": "Relate um problema de SIDEY em GitHub ou entre em contato conosco em particular por e-mail.",
+    "heading": "Suporte SIDEY",
+    "introduction": "Relate bugs reproduzíveis em GitHub. Para compras, contas ou assuntos que devem permanecer privados, entre em contato conosco por e-mail.",
+    "githubTitle": "Relatar um bug em GitHub",
+    "githubBody": "Procure primeiro nos problemas já relatados. Se o mesmo problema já existir, adicione uma reação de polegar para cima em vez de criar um duplicado. Você precisa de uma conta GitHub para relatar um problema.",
+    "searchIssues": "Pesquise problemas existentes",
+    "reportIssue": "Abra o formulário de relatório de bug",
+    "emailTitle": "Contate-nos por e-mail",
+    "emailBody": "Para perguntas sobre compras ou contas e relatórios contendo informações privadas, envie-nos um e-mail. Inclua SIDEY e seu sistema operacional no assunto.",
+    "emailAction": "Envie um e-mail",
+    "include": "Informações solicitadas no formulário de relatório de bug",
+    "details": [
+      "Sistema operacional e arquitetura (obrigatório): cole a saída do comando abaixo.",
+      "Versão SIDEY (obrigatória): encontre-a usando as instruções abaixo.",
+      "O que aconteceu (obrigatório): descreva o problema claramente; logs sem dados sensíveis, capturas de tela ou um vídeo podem ajudar.",
+      "Passos para reproduzir (obrigatório): explique as ações que levam ao problema, em ordem.",
+      "Comportamento esperado (opcional): explique o que deveria ter acontecido.",
+      "Informações adicionais (opcional): inclua qualquer outro contexto relevante."
+    ],
+    "diagnostics": "Encontrando sua versão e logs de diagnóstico",
+    "operatingSystem": "Informações do sistema operacional",
+    "macosLabel": "macOS (Terminal)",
+    "windowsLabel": "Windows (PowerShell)",
+    "macVersion": "macOS: No Finder, clique com o botão direito em SIDEY.app e escolha Obter informações (⌘I).",
+    "windowsVersion": "Windows: Abra Configurações → Sobre → Atualizações.",
+    "macDiagnostics": "macOS: O comando abaixo salva os últimos 30 minutos dos logs SIDEY em um arquivo em sua área de trabalho.",
+    "windowsDiagnostics": "Windows: Abra Configurações → Sobre → Exportar diagnóstico. Os arquivos de log são salvos em sua área de trabalho. Para um problema de instalação, inclua os dados de diagnóstico mostrados pelo instalador.",
+    "protect": "Mantenha as informações confidenciais privadas",
+    "protectBody": "Os problemas do GitHub são públicos. Remova códigos de convite, conteúdo de mensagens, tokens de login ou autenticação, senhas, números completos de cartões de pagamento e informações pessoais de textos, registros, capturas de tela e vídeos. Também não envie esses segredos por e-mail; solicitaremos detalhes específicos não confidenciais, se necessário.",
+    "response": "Os tempos de resposta podem variar de acordo com o idioma; nenhum tempo de resposta específico do idioma é garantido."
+  },
+  "footer": {
+    "terms": "Termos de Uso",
+    "privacy": "Política de Privacidade",
+    "refund": "Política de Reembolso",
+    "language": "Escolha o idioma"
+  },
+  "legalNotice": "Ao usar o serviço oficial SIDEY, você concorda com {terms} e {privacy}.",
+  "policies": {
+    "terms": {
+      "title": "Termos de Uso · SIDEY",
+      "description": "Termos que regem o serviço de desktop SIDEY e itens de personalização digital.",
+      "heading": "Termos de uso do SIDEY",
+      "introduction": "Estes Termos estabelecem os direitos e responsabilidades aplicáveis ​​quando você usa o serviço de desktop SIDEY e itens de personalização digital.",
+      "translationNotice": "Esta página é uma tradução do documento original em coreano.",
+      "originalLabel": "Veja o documento original",
+      "body": "## 1. Objetivo e escopo\n\nEstes Termos regem o aplicativo SIDEY, site e serviços relacionados (coletivamente, o “Serviço”) fornecidos pelo operador do SIDEY (o “Operador”). Ao usar o Serviço oficial, você concorda com estes Termos e com quaisquer políticas operacionais divulgadas separadamente. Se a lei aplicável lhe der maior proteção do que estes Termos, essa lei será aplicada.\n\n## 2. Termos-chave\n\nUma “Conta” é o identificador usado para distinguir um usuário e conectar grupos, mensagens e direitos digitais. Um “Grupo” é um espaço privado disponível apenas para amigos que recebem um código de convite. Um “Direito Digital” é o direito de usar um personagem ou outro item de personalização através da Conta de compra; não transfere propriedade ou direitos autorais do item em si.\n\n## 3. Publicação e alterações\n\nO Operador disponibiliza estes Termos no site. Se uma alteração for necessária por lei ou pelo Serviço, o Operador divulgará a data de vigência e o motivo da alteração. Alterações materiais que prejudiquem os usuários serão anunciadas com antecedência pelo período e pela forma exigida pela legislação aplicável. A menos que exigido por lei ou acordado entre as partes, um contrato de compra celebrado antes de uma alteração permanece regido pelos termos em vigor quando foi celebrado.\n\n## 4. O serviço\n\nSIDEY é um mensageiro de sobreposição de desktop que representa amigos reais como personagens de pixel. Seus recursos específicos, ambientes suportados, escopo de uso e limitações estão descritos no aplicativo ou no site e podem variar de acordo com o canal de lançamento ou versão.\n\n## 5. Contas e grupos\n\nOs métodos de login disponíveis podem variar de acordo com o canal de lançamento. Contas, grupos e registros de compras de diferentes canais não podem ser mesclados ou transferidos automaticamente; orientações adicionais serão fornecidas quando necessário. Você é responsável por manter seu dispositivo e método de login seguros. Não publique códigos de convite publicamente nem use a conta de outra pessoa sem permissão.\n\n## 6. Mensagens e uso aceitável\n\nVocê não deve transmitir material ilegal; infringir a reputação, privacidade ou direitos autorais de outra pessoa; assediar outras pessoas; acessar o Serviço ou seus servidores de forma anormal; ignorar a verificação de compra; distribuir código malicioso; ou interferir no uso normal do Serviço por outro usuário.\n\n## 7. Alterações, suspensão e descontinuação\n\nO Operador poderá alterar ou suspender temporariamente parte do Serviço para atualizações de segurança, alterações no sistema operacional, manutenção, falhas de comunicação ou melhorias no serviço. Mudanças materiais que possam ser antecipadas serão anunciadas com antecedência através do site ou aplicativo. Respostas urgentes de segurança ou incidentes podem ser anunciadas posteriormente. Se o Serviço for descontinuado, será dado um aviso razoável e os direitos pagos não utilizados serão tratados de acordo com a lei aplicável e a Política de Reembolso.\n\n## 8. Compras e pagamento\n\nUm contrato de compra é formado quando você analisa o nome do produto, preço e condições de entrega e conclui o pagamento. O pagamento poderá ser processado através de um mercado de aplicativos ou de um serviço de pagamento identificado pelo Operador. O Operador concede o Direito Digital após a confirmação do pagamento. Pedidos contendo informações falsas, solicitações duplicadas ou itens que não podem ser fornecidos tecnicamente poderão ser rejeitados ou cancelados.\n\n## 9. Entrega e cancelamento digital\n\nO momento da entrega digital e as condições de cancelamento ou reembolso são regidos pela lei aplicável e pela [Política de Reembolso](https://sidey-app.github.io/SIDEY/pt-br/refund/). O Operador disponibilizará as condições de entrega dos materiais e quaisquer limites de cancelamento antes da compra. Nada nestes Termos limita os direitos garantidos pela lei aplicável.\n\n## 10. Menores\n\nUm menor que precise do consentimento de um representante legal deve obter esse consentimento antes de fazer uma compra. Um menor ou representante legal pode solicitar o cancelamento quando a lei aplicável permitir, incluindo certas compras feitas sem o consentimento necessário.\n\n## 11. Licença de software e propriedade intelectual\n\nO código-fonte atual do SIDEY é software proprietário privado. O canal de distribuição e estes Termos concedem apenas o direito de instalar e usar o aplicativo oficial. Cada revisão publicada sob AGPL-3.0-only antes da mudança de licença continua sujeita à licença indicada naquela revisão. Nem estes Termos nem tornar privado o repositório de código-fonte retiram ou restringem direitos já concedidos para executar, copiar, modificar ou distribuir essas revisões. O repositório público `sidey-app/SIDEY` distribui o site, as políticas, as versões e os instaladores; não é o repositório do código-fonte atual do produto. Consulte o [guia de licenciamento](https://github.com/sidey-app/SIDEY/blob/main/LICENSING.md) para conhecer essas distinções em detalhe. Os componentes de terceiros continuam sujeitos às suas respectivas licenças e avisos.\n\nOs itens de personalização pagos concedem apenas o direito de usá-los pela Conta que fez a compra, sem transferir a propriedade ou os direitos autorais dos arquivos, personagens ou desenhos. A licença de software não concede direitos sobre as marcas SIDEY, o nome ou o logotipo, nem direitos sobre personagens e recursos de personalização fornecidos sob condições separadas. Sem a autorização do titular dos direitos, você não pode copiar, vender, alugar, redistribuir, sublicenciar ou remover avisos de direitos desses recursos. Você não pode contornar os controles de compra, de direitos de uso ou de segurança do Serviço oficial. Essas restrições não limitam os direitos concedidos pela licença de código aberto de uma revisão pública histórica nem por uma licença de terceiros.\n\n## 12. Restrições de acesso e exclusão de conta\n\nSe uma violação material da lei ou destes Termos, ou conduta que ameace a segurança do Serviço, for confirmada, o Operador poderá restringir ou encerrar o acesso ao Serviço oficial após aviso e uma oportunidade razoável para remediar. Um risco de segurança urgente ou risco de danos a terceiros pode ser restringido primeiro e explicado depois. Restringir o acesso ao serviço ou excluir uma Conta não altera as condições de rescisão de uma licença aplicável separadamente a uma revisão pública histórica ou software de terceiros.\n\nUma conta pode ser excluída através do processo fornecido no aplicativo. A exclusão da conta é separada de uma solicitação de reembolso, e a possibilidade de restauração de uma compra depende do canal de liberação aplicável e do provedor de pagamento. As disposições que, por sua natureza, deveriam sobreviver à rescisão - incluindo disposições sobre propriedade intelectual, responsabilidade e disputas - permanecem em vigor.\n\n## 13. Avisos e serviços de terceiros\n\nO Operador poderá enviar avisos de serviço por meio do aplicativo, site ou dos dados de contato que você fornecer. Os serviços vinculados ou integrados são regidos pelos próprios termos e políticas do fornecedor aplicável. O Operador não garante a operação independente de um serviço que não presta diretamente.\n\n## 14. Limitações e responsabilidade do serviço\n\nAlguns recursos podem ser limitados ou comportar-se de maneira diferente dependendo do dispositivo, sistema operacional, configurações de segurança, outro software ou ambiente de rede. Limitações técnicas específicas estão descritas no aplicativo ou no site. SIDEY não foi projetado para usos críticos de segurança, médicos, de emergência ou outros que exijam entrega imediata e ininterrupta. Nada nestes Termos exclui responsabilidade que não possa ser excluída sob a lei de responsabilidade pelo produto ou de proteção ao consumidor, ou responsabilidade causada por má conduta intencional ou negligência grave do Operador.\n\n## 15. Lei aplicável e disputas\n\nEstes Termos são regidos pelas leis da República da Coreia. As partes tentarão primeiro resolver uma disputa de boa fé. Se continuar sem solução, será ouvido por um tribunal com jurisdição ao abrigo da Lei de Processo Civil da Coreia e outras leis aplicáveis. Os usuários também podem usar procedimentos de resolução de disputas de consumo legalmente disponíveis, incluindo aqueles oferecidos pela Agência do Consumidor da Coreia.\n\n## 16. Data efetiva e revisão proposta\n\nOs Termos originais entraram em vigor em 4 de setembro de 2026. Esta revisão proposta foi preparada em 20 de setembro de 2026 para distinguir a código-fonte proprietário privado atual, os direitos AGPLv3 em revisões públicas históricas e os termos que regem o Serviço oficial e os ativos pagos. Sua data de vigência será anunciada separadamente com o aviso de alteração na Seção 3. A preparação desta proposta não altera os Termos existentes nem aplica alterações retroativamente a compras anteriores ou às licenças de revisões públicas históricas."
+    },
+    "privacy": {
+      "title": "Política de Privacidade · SIDEY",
+      "description": "Como SIDEY lida com informações pessoais, retenção, processamento externo e direitos do usuário.",
+      "heading": "Política de Privacidade SIDEY",
+      "introduction": "SIDEY segue a lei de privacidade aplicável e lida apenas com as informações necessárias para fornecer grupos de amigos e mensagens. Esta Política explica o que é tratado, por que é necessário, quando é excluído e como você pode exercer seus direitos.",
+      "translationNotice": "Esta página é uma tradução do documento original em coreano.",
+      "originalLabel": "Veja o documento original",
+      "body": "## 1. Por que as informações pessoais são tratadas\n\nO Operador trata informações pessoais apenas conforme necessário para os fins abaixo. Se a finalidade mudar, o Operador obterá consentimento separado ou tomará outra medida exigida pelo Artigo 18 da Lei de Proteção de Informações Pessoais da Coreia e outras leis aplicáveis.\n\n### Prestação do Serviço e execução de contratos\n\nAs informações são usadas para autenticar Contas e restaurar sessões; criar e entrar em Grupos acessíveis por convite; mostrar a presença de um amigo; enviar mensagens; fornecer personagens e itens de personalização; e verificar, restaurar ou reembolsar compras.\n\n### Gestão de usuários e do Serviço\n\nAs informações são usadas para identificar usuários, aplicar os limites de capacidade dos Grupos e de uso, impedir abusos, manter a segurança, responder a erros, perguntas e disputas, e transmitir avisos sobre o serviço.\n\nSIDEY não trata informações pessoais para publicidade baseada em interesses, recomendações personalizadas ou mensagens promocionais.\n\n## 2. Informações tratadas\n\n- **Perfil:** apelido e personagem selecionado\n- **Conexão da conta Google:** Identificador da conta Google e endereço de e-mail\n- **Faça login com Apple:** Identificador de conta Apple e, quando Apple o fornecer, um endereço de e-mail\n- **Conta e sessão:** usuário anônimo UUID, provedor de login e identificadores de sessão\n- **Grupos:** nome do grupo, identificadores de grupo e associação, status do proprietário e horário de ingresso\n- **Mensagens e estado em tempo real:** texto da mensagem, hora de criação, identificadores de remetente e grupo, presença e sinais de digitação gerados apenas no campo de mensagem SIDEY\n- **Compras:** identificadores de pedidos e transações, produto, valor, pagamento, status de cancelamento e reembolso, além do horário e conteúdo do consentimento da política\n- **Suporte:** endereço de e-mail de resposta, consulta e informações anexadas voluntariamente pelo usuário\n- **Informações de conexão:** endereço IP, tempo de acesso e informações de solicitação que os provedores de serviços podem criar para segurança e resposta a incidentes\n\nO tempo decorrido desde a última entrada do sistema e o estado de bloqueio de tela são verificados localmente para mostrar o status ausente. SIDEY não coleta o conteúdo da entrada ou um histórico de uso do aplicativo desses sinais.\n\n## 3. Como as informações são coletadas\n\nAs informações são coletadas quando você cria um perfil ou grupo, envia uma mensagem, conecta uma conta Google, usa Entrar com Apple, solicita pagamento, restauração ou reembolso ou entra em contato com o suporte. Os sinais de presença e digitação são processados ​​em tempo real enquanto conectado ao Serviço.\n\nSIDEY não coleta conteúdo da tela, listas de aplicativos ativos, teclas pressionadas em outros aplicativos, coordenadas globais do ponteiro, conteúdo de arquivos, áudio do microfone ou vídeo da câmera. Ele não inspeciona o que você digita fora do campo de mensagem SIDEY.\n\n## 4. Retenção\n\n- **Mensagens:** três dias após a criação\n- **Sinais de presença e digitação:** processados apenas enquanto a exibição em tempo real está ativa e não retidos de forma persistente\n- **Conta, perfil, Grupo e associação:** até exclusão da Conta ou encerramento do Serviço; um link de adesão é excluído quando você sai de um grupo\n- **Conta anônima incompleta sem perfil ou grupo:** pode ser removida após sete dias\n- **Sessão de login armazenada em um dispositivo:** até sair, exclusão da conta ou exclusão de dados do aplicativo\n\nOs registros que devem ser retidos por lei são usados ​​apenas para esse fim. Os registros de exibição e publicidade podem ser mantidos por seis meses; registros de contrato ou cancelamento e registros de pagamento ou entrega digital por cinco anos; e registros de reclamações ou disputas do consumidor por três anos.\n\n## 5. Compartilhamento e divulgação de terceiros\n\nO Operador não divulga informações pessoais a terceiros, a menos que você consinta ou que a lei aplicável forneça uma base específica.\n\n### Membros do mesmo grupo\n\nPara fornecer grupos somente para convidados, seu apelido, personagem, presença e estado de digitação e mensagens são mostrados aos membros do mesmo grupo do qual você ingressou. As mensagens são retidas por três dias; os sinais de estado em tempo real são tratados apenas enquanto sua exibição está ativa.\n\n### Autoridades agindo de acordo com a lei\n\nAs informações podem ser divulgadas dentro do escopo e período permitidos por lei quando uma autoridade investigativa ou outra autoridade autorizada faz uma solicitação por meio de um processo legal, como um mandado.\n\n## 6. Prestadores de serviços e manuseio no exterior\n\nO Operador utiliza os seguintes provedores apenas conforme necessário para fornecer o Serviço. Alterações no fornecedor ou finalidade serão divulgadas através desta Política.\n\n- **Supabase Inc.:** lida com contas UUIDs, perfis, grupos, mensagens, status de compra e informações de conexão para autenticação, banco de dados e comunicação em tempo real. Os dados são retidos até a exclusão da Conta, rescisão do Serviço ou término do contrato de serviço; as mensagens são excluídas após três dias.\n- **Google LLC:** lida com o identificador da conta, endereço de e-mail e resultado de autenticação para conexão da conta Google até a desconexão, exclusão da conta ou conclusão do propósito.\n- **Apple Inc.:** lida com identificadores de conta e transação e autenticação e status de pagamento para login com Apple, pagamento App Store e restauração de compra até a exclusão da conta ou pelo período exigido por lei e pelas políticas de Apple.\n- **Korea PortOne Co., Ltd. e provedores de serviços de pagamento conectados:** gerenciam identificadores de pedidos e pagamentos, valores e resultados de pagamentos para pagamento, cancelamento e reembolso em uma compilação de distribuição direta, retendo-os pelo período exigido pela lei de comércio eletrônico.\n- **GitHub, Inc.:** pode gerar endereços IP e informações de conexão enquanto hospeda o site público e pode retê-los de acordo com as práticas de privacidade e a lei aplicável de GitHub.\n\nSupabase, Google, Apple e GitHub estão sediados nos Estados Unidos e as informações podem ser transmitidas por redes de comunicação quando seus serviços são usados. Quando a lei exigir notificação ou consentimento separado para manuseio no exterior, o destinatário, o país, os itens, a finalidade, o método e o período de retenção serão divulgados antes que o recurso relevante seja usado. Você pode optar por não conectar o Google, mas recusar o manuseio no exterior essencial para autenticação ou armazenamento de dados pode limitar ou impedir o uso de parte ou de todo o SIDEY.\n\n## 7. Informações de pagamento e serviços externos\n\nApple processa pagamentos Mac App Store. Para um pagamento oferecido em uma versão de distribuição direta, um provedor de serviços de pagamento aberto por meio de PortOne lida com o número completo do cartão, a senha de pagamento e as informações de autenticação da conta bancária. SIDEY não recebe ou retém credenciais de pagamento completas; ele lida apenas com os identificadores e resultados necessários para verificar, cancelar ou reembolsar um pedido.\n\nQuando você usa uma página de login externa, janela de pagamento ou site vinculado, os próprios termos e política de privacidade do provedor se aplicam às informações que ele coleta de forma independente.\n\n## 8. Seus direitos e como exercê-los\n\nVocê pode solicitar acesso, correção ou exclusão, suspensão do processamento ou retirada do consentimento para suas informações pessoais. Um usuário do Sign in with Apple pode excluir uma conta nas configurações do aplicativo após a reautenticação. Outras solicitações de contas ou dados podem ser enviadas por e-mail para o Diretor de Privacidade abaixo.\n\nVocê poderá exercer direitos através de um representante legal ou outra pessoa autorizada. O Operador poderá solicitar o formulário de autorização e as informações mínimas necessárias para confirmar a identidade do usuário e representante conforme permitido por lei. No prazo de 10 dias após receber uma solicitação de acesso, o Operador explicará como o acesso será fornecido ou, quando a lei permitir restrição, atraso ou recusa, explicará o motivo e como se opor.\n\nA exclusão pode ser limitada, enquanto outra lei exige que um registro seja retido. SIDEY não toma decisões automatizadas que produzam efeitos legais ou igualmente significativos sobre os usuários.\n\n## 9. Exclusão\n\nAs informações pessoais são eliminadas sem demora injustificada quando o seu período de retenção termina ou a sua finalidade é alcançada. Os registros eletrônicos são excluídos usando métodos destinados a impedir a recuperação. Os registros de transações sujeitos a deveres de retenção separados são separados dos dados de serviços gerais, usados ​​apenas para a finalidade exigida e excluídos quando esse período termina.\n\nA exclusão de uma conta remove o perfil, as conexões de grupo e os links de direitos SIDEY ativos. Os registros mínimos de transações podem ser retidos separadamente para fins legais e de liquidação, com a vinculação do usuário minimizada. A exclusão da conta não exclui automaticamente os registros de transações mantidos por Apple ou por um provedor de serviços de pagamento e não é uma solicitação de reembolso.\n\n## 10. Medidas de segurança\n\nO Operador limita o acesso às informações pessoais ao necessário para o trabalho e separa privilégios e segredos operacionais. SIDEY usa controles de acesso em nível de linha do banco de dados, capacidade de grupo do lado do servidor e verificações de associação, transporte criptografado e armazenamento seguro do sistema operacional. Os códigos de convite não são armazenados em texto simples no servidor, e as chaves secretas de pagamento e os privilégios administrativos não estão incluídos no aplicativo ou site público.\n\nSIDEY não é representado como um serviço com criptografia ponta a ponta implementada e verificada.\n\n## 11. Cookies e tecnologias semelhantes\n\nO site público SIDEY não instala cookies para publicidade personalizada, análise do comportamento do visitante ou recomendações individuais. Um navegador ou provedor de hospedagem pode processar informações de conexão ou usar armazenamento técnico para fornecer arquivos estáticos e proteger o serviço.\n\nUm provedor externo pode usar cookies para funcionalidade e segurança quando você visita uma página de login Google ou Apple ou uma página de pagamento. Consulte as configurações de privacidade desse provedor para conhecer os controles disponíveis.\n\n## 12. Diretor de privacidade\n\n- **Oficial de Privacidade:** Taehyun Ryu\n- **E-mail:** <ryu200112@gmail.com>\n\nPerguntas, reclamações, soluções e solicitações para exercer direitos de privacidade podem ser enviadas para o e-mail acima. O Operador analisará e responderá sem demora injustificada.\n\n## 13. Remédios para violação de privacidade\n\nSe precisar de aconselhamento ou desejar denunciar uma violação de privacidade na Coreia, você pode entrar em contato com:\n\n- [Comitê de Mediação de Disputas de Informações Pessoais](https://www.kopico.go.kr/) · 1833-6972\n- [Centro de denúncias de violação de privacidade KISA](https://privacy.kisa.or.kr/) · 118\n- [Ministério Público Supremo](https://www.spo.go.kr/) · 1301\n- [Sistema de denúncia de crimes cibernéticos da Agência Nacional de Polícia Coreana](https://ecrm.police.go.kr/) · 182\n\n## 14. Serviços externos fora desta Política\n\nO site e o aplicativo SIDEY podem conter links para serviços operados por outros provedores. Esta Política não rege informações tratadas por um serviço externo que o Operador não controla. Revise a política de privacidade do serviço que você visita.\n\n## 15. Mudanças nesta Política\n\nSe esta Política for alterada devido a lei, ao Serviço ou a relações de processamento externas, a data de vigência e as alterações materiais serão anunciadas através do site ou aplicativo. Uma alteração com impacto significativo nos direitos dos utilizadores será anunciada antecipadamente pelo período exigido por lei.\n\n## 16. Data de vigência\n\nEsta Política de Privacidade entra em vigor em 4 de setembro de 2026."
+    },
+    "refund": {
+      "title": "Política de Reembolso · SIDEY",
+      "description": "Termos de cancelamento e reembolso para direitos de personalização digital SIDEY.",
+      "heading": "Política de Cancelamento e Reembolso",
+      "introduction": "Os itens de personalização SIDEY pagos são direitos digitais entregues em sua conta após a confirmação do pagamento.",
+      "translationNotice": "Esta página é uma tradução do documento original em coreano.",
+      "originalLabel": "Veja o documento original",
+      "body": "## Reembolsos por mudança de ideia após o início da entrega\n\nA entrega do direito de utilização de um item de personalização digital começa assim que o pagamento é confirmado. Depois de a entrega começar, não é possível cancelar ou pedir um reembolso por uma simples mudança de ideia.\n\n## Quando é possível obter um reembolso total\n\nSerá emitido um reembolso total quando se confirmar um motivo legalmente reconhecido, incluindo:\n\n- o pagamento foi aprovado, mas o Direito Digital não foi entregue;\n- o item entregue não corresponde à descrição ou ao contrato de compra;\n- a mesma pedido ou item foi cobrado mais de uma vez;\n- o titular da Conta não autorizou o pagamento;\n- um menor fez uma compra sem o consentimento necessário do representante legal; ou\n- a lei aplicável exige, por outro motivo, um reembolso total.\n\n## Como são tratados os pedidos\n\n1. Para compras na Mac App Store, solicite o reembolso através do procedimento “Relatar um problema” da Apple. Se uma versão de distribuição direta disponibilizar pagamentos através da PortOne, envie ao suporte apenas a Conta que fez a compra, a hora do pagamento e os dados necessários para encontrar a pedido. Não envie o número completo do cartão de pagamento nem a senha.\n2. Depois de a Apple ou o prestador de serviços de pagamento confirmar o reembolso, será revogado o direito concedido por essa fonte de pagamento.\n3. Se não houver outra concessão válida para o item revogado e este estiver em uso, essa categoria volta ao item padrão: o hamster, o balão de conversa ou o brinquedo para jogar padrão.\n\n## Exclusão da Conta e reembolsos\n\nExcluir uma Conta SIDEY não constitui um pedido de reembolso. Uma compra válida na aplicação através da Apple pode ser restaurada numa nova Conta SIDEY usando a mesma conta Apple que fez a compra.\n\n## Registros e direitos legais\n\nOs pedidos de reembolso e os respectivos resultados são guardados em segurança durante o período necessário para resolver disputas e cumprir obrigações legais. Esta Política não limita os direitos de cancelamento, rescisão ou reparação garantidos pela lei aplicável.\n\n## Suporte\n\n- **Vendedor:** 싸이디(SIDEY)\n- **E-mail:** <ryu200112@gmail.com>\n- **Número de registro comercial:** 388-53-01259"
+    }
+  },
+  "releases": {
+    "windows": {
+      "2.1.0": {
+        "introduction": [
+          "Novas personagens e brinquedos para jogar, com melhorias nas mensagens recentes, nas configurações e nas conexões entre amigos."
+        ],
+        "new": [
+          "Adicionamos cinco personagens — shiba inu, pato, cocô, tteokbokki e quokka — e quatro brinquedos para jogar — bola de tênis, bola de lenço de papel, espeto de pasta de peixe e folha — à loja e à sobreposição do Windows.",
+          "Pode fixar a janela de mensagens recentes acima das outras janelas."
+        ],
+        "changed": [
+          "A aplicativo passa a suportar 23 idiomas.",
+          "Ao consultar mensagens mais antigas, a janela de mensagens recentes mantém a posição de leitura.",
+          "As configurações de atalhos mostram com maior precisão as combinações de teclas em uso.",
+          "A atualização de uma versão anterior transfere a instalação em segurança e preserva as suas configurações."
+        ],
+        "fixed": [
+          "Corrigimos a abertura momentânea do campo de mensagens ao clicar duas vezes numa personagem.",
+          "Corrigimos a inclinação das apelidos das personagens junto à margem do tela.",
+          "Melhoramos a entrega de mensagens e das reações aos brinquedos entre usuários de versões diferentes.",
+          "Corrigimos os tempos limite ao restabelecer conexões a várias salas após uma interrupção."
+        ],
+        "notes": []
+      },
+      "2.0.0": {
+        "introduction": [
+          "Melhoramos o início de login com a conta Google e a gestão da conta, bem como as conversas, os atalhos e a sobreposição."
+        ],
+        "new": [
+          "Pode sair ou excluir a conta nas configurações.",
+          "Envie mensagens diretamente da janela de mensagens recentes. A posição para onde arrastou o campo de mensagens é guardada entre aberturas da aplicativo.",
+          "Defina atalhos para a sobreposição, o modo silencioso, o campo de mensagens e as mensagens recentes, e troque combinações de teclas repetidas.",
+          "Consulte os preços dos produtos e os itens que possui na aplicativo e abra a página de pagamento na web."
+        ],
+        "changed": [
+          "O início de login Google passa a fazer parte da configuração obrigatória. O botão permanece desativado enquanto se verifica a login guardada, para evitar autenticações duplicadas.",
+          "Ao desligar a conta, as conexões em tempo real e o estado local são limpos antes de voltar ao início de login.",
+          "O modo silencioso oculta os indicadores de escrita e a animação de fecho da sobreposição decorre sem interrupções.",
+          "Melhoramos o regresso à aplicativo após a autenticação e a atualização em tempo real dos indicadores de escrita.",
+          "O instalador inclui os componentes de execução necessários do Windows App SDK e do .NET, com melhor recuperação e instruções caso uma atualização, reparação ou desinstalação falhe.",
+          "Os erros de ligação explicam a sua causa. Os erros desnecessários durante a reconexão são ocultados.",
+          "O movimento da sua árvore é partilhado com os outros membros do grupo.",
+          "As notificações de estado na aplicativo são mais fáceis de ler nos temas claro e escuro."
+        ],
+        "fixed": [
+          "Corrigimos os cliques nas personagens para que o campo de mensagens abra apenas com um clique simples.",
+          "Abrir a aplicativo quando já está em execução leva você em segurança à janela existente."
+        ],
+        "notes": []
+      }
+    },
+    "macos": {
+      "2.0.0": {
+        "introduction": [
+          "Novos itens e atalhos de teclado, com envio de mensagens diretamente da janela de mensagens recentes."
+        ],
+        "new": [
+          "Adicionamos nove produtos: cinco personagens e quatro brinquedos para jogar.",
+          "Adicionamos atalhos globais para mostrar ou ocultar a sobreposição, alternar o modo silencioso, abrir o campo de mensagens e abrir as mensagens recentes.",
+          "Personalize a combinação de teclas de cada atalho global nas configurações.",
+          "Escreva e envie mensagens diretamente da janela de mensagens recentes.",
+          "Adicionamos suporte para coreano, inglês, japonês e chinês tradicional."
+        ],
+        "changed": [
+          "Os balões de conversa mantêm a orientação habitual quando as personagens estão na margem esquerda ou direita do tela."
+        ],
+        "fixed": [
+          "Corrigimos as personagens que não ficavam atordoadas após serem atingidas várias vezes por brinquedos."
+        ],
+        "notes": []
+      }
+    }
+  }
+}

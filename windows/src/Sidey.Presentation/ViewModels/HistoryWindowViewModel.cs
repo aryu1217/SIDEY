@@ -12,14 +12,19 @@ namespace Sidey.Presentation.ViewModels;
 public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposable
 {
     private const int PageSize = 50;
+    private const int MaximumCachedRooms = 5;
+    private static readonly TimeSpan s_cacheFreshness = TimeSpan.FromMinutes(5);
 
     private readonly IHistoryCoordinator _coordinator;
+    private readonly TimeProvider _timeProvider;
+    private readonly Dictionary<Guid, CachedHistoryPage> _cachedPages = [];
     private readonly Dictionary<Guid, ChatMessage> _pagedMessages = [];
     private CoordinatorState _state;
     private Guid? _loadedRoomId;
     private MessageHistoryCursor? _nextCursor;
     private CancellationTokenSource? _requestCancellation;
     private long _requestGeneration;
+    private HistoryScope? _requestScope;
     private bool _hasMore;
     private bool _isActive;
     private bool _disposed;
@@ -57,9 +62,13 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
     [ObservableProperty]
     public partial bool IsExhaustedVisible { get; set; }
 
-    public HistoryWindowViewModel(IHistoryCoordinator coordinator, ComposerViewModel? composer = null)
+    public HistoryWindowViewModel(
+        IHistoryCoordinator coordinator,
+        ComposerViewModel? composer = null,
+        TimeProvider? timeProvider = null)
     {
         _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _state = coordinator.State;
         _ownsComposer = composer is null;
         Composer = composer ?? new ComposerViewModel(autoCloseAfterSend: false);
@@ -69,7 +78,8 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
     public ComposerViewModel Composer { get; }
 
     private void ApplyComposerState() => Composer.ApplyRoom(_state.ActiveRoomId,
-        _state.ActiveRoomId is not null && !_state.NeedsOnboarding && _state.GroupOperation == GroupOperation.Idle);
+        _state.ActiveRoomId is not null && !_state.NeedsOnboarding && _state.GroupOperation == GroupOperation.Idle,
+        _state.RealtimeConnection.IsReady && _state.RealtimeConnection.ActiveRoomTransportConnected);
 
     public ObservableCollection<HistoryEntryViewModel> Items { get; } = [];
 
@@ -81,15 +91,44 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
     public void ApplyState(CoordinatorState state)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        bool roomChanged = state.ActiveRoomId != _state.ActiveRoomId;
+        bool scopeChanged = HistoryScopeFor(_state, _state.ActiveRoomId)
+            != HistoryScopeFor(state, state.ActiveRoomId);
+        bool historyInvalidated = state.RealtimeConnection.IsReady != _state.RealtimeConnection.IsReady;
+        if (state.Profile?.Id != _state.Profile?.Id
+            || historyInvalidated)
+        {
+            _cachedPages.Clear();
+        }
+        HashSet<Guid> confirmedIds = [.. state.Messages
+            .Where(entry => entry.State == MessageDeliveryState.Confirmed)
+            .Select(entry => entry.Id)];
+        foreach (MessageLedgerEntry removed in _state.Messages.Where(entry =>
+            entry.State == MessageDeliveryState.Confirmed && !confirmedIds.Contains(entry.Id)))
+        {
+            if (WasPrunedFromRecentWindow(removed, state.Messages))
+            {
+                continue;
+            }
+            _cachedPages.Remove(removed.RoomId);
+            _pagedMessages.Remove(removed.Id);
+            historyInvalidated |= removed.RoomId == _loadedRoomId;
+        }
+        bool restartRequest = historyInvalidated && _requestCancellation is not null;
         _state = state;
+        RemoveInvalidCachedPages();
+        RefreshCachedMessages();
+        if (scopeChanged || restartRequest)
+        {
+            CancelRequest();
+            ResetLoadedHistory(roomId: null);
+        }
         ApplyComposerState();
         if (!_isActive)
         {
             return;
         }
 
-        if (roomChanged)
+        if (scopeChanged || restartRequest)
         {
             _ = ReloadAsync();
         }
@@ -142,13 +181,32 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         }
 
         Guid? roomId = _state.ActiveRoomId;
+        HistoryScope? scope = HistoryScopeFor(_state, roomId);
         CancelRequest();
-        ResetLoadedHistory(roomId);
+        ResetLoadedHistory(scope?.RoomId);
         Title = I18n.Get("history.recent.title");
-        if (roomId is null)
+        if (scope is not { } currentScope)
         {
             UpdateEmptyState();
             return;
+        }
+
+        if (_cachedPages.TryGetValue(currentScope.RoomId, out CachedHistoryPage? cached)
+            && cached.Scope == currentScope)
+        {
+            MergePage(cached.Page.Messages, currentScope.RoomId);
+            _nextCursor = cached.Page.NextCursor;
+            _hasMore = _nextCursor is not null;
+            RebuildEntries();
+            IsExhaustedVisible = !_hasMore && Items.Count > 0;
+            if (_timeProvider.GetElapsedTime(cached.FetchedAt) < s_cacheFreshness)
+            {
+                return;
+            }
+        }
+        else
+        {
+            RebuildEntries();
         }
 
         IsInitialLoading = true;
@@ -156,16 +214,18 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         try
         {
             MessageHistoryPage page = await _coordinator.FetchMessagePageAsync(
-                roomId.Value,
+                currentScope.RoomId,
                 before: null,
                 PageSize,
                 cancellationToken);
-            if (!IsCurrentRequest(roomId.Value, generation))
+            if (!IsCurrentRequest(currentScope.RoomId, generation))
             {
                 return;
             }
 
-            MergePage(page.Messages, roomId.Value);
+            _pagedMessages.Clear();
+            MergePage(page.Messages, currentScope.RoomId);
+            CacheFirstPage(currentScope, page);
             _nextCursor = page.NextCursor;
             _hasMore = page.NextCursor is not null;
             RebuildEntries();
@@ -176,7 +236,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         }
         catch (Exception exception)
         {
-            if (IsCurrentRequest(roomId.Value, generation))
+            if (IsCurrentRequest(currentScope.RoomId, generation))
             {
                 InitialErrorMessage = exception.Message;
                 IsInitialFailureVisible = true;
@@ -184,7 +244,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         }
         finally
         {
-            if (IsCurrentRequest(roomId.Value, generation))
+            if (IsCurrentRequest(currentScope.RoomId, generation))
             {
                 IsInitialLoading = false;
                 CompleteRequest();
@@ -282,6 +342,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
             Composer.Dispose();
         _isActive = false;
         CancelRequest();
+        _cachedPages.Clear();
         _pagedMessages.Clear();
         Items.Clear();
     }
@@ -404,6 +465,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
     private (long Generation, CancellationToken CancellationToken) StartRequest()
     {
         _requestCancellation = new CancellationTokenSource();
+        _requestScope = HistoryScopeFor(_state, _loadedRoomId);
         long generation = ++_requestGeneration;
         return (generation, _requestCancellation.Token);
     }
@@ -412,6 +474,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
     {
         _requestCancellation?.Dispose();
         _requestCancellation = null;
+        _requestScope = null;
     }
 
     private void CancelRequest()
@@ -420,6 +483,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         _requestCancellation?.Cancel();
         _requestCancellation?.Dispose();
         _requestCancellation = null;
+        _requestScope = null;
         IsInitialLoading = false;
         IsLoadingMore = false;
     }
@@ -428,7 +492,94 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         _isActive
         && !_disposed
         && _loadedRoomId == roomId
+        && _requestScope is { } scope
+        && scope == HistoryScopeFor(_state, roomId)
         && _requestGeneration == generation;
+
+    private static HistoryScope? HistoryScopeFor(CoordinatorState state, Guid? roomId)
+    {
+        if (state.Profile is not { } profile || roomId is not { } id)
+        {
+            return null;
+        }
+        Room? room = state.Rooms.FirstOrDefault(candidate => candidate.Id == id);
+        return room is not null && room.Members.Any(member => member.UserId == profile.Id)
+            ? new HistoryScope(profile.Id, id, room.RealtimeEpoch)
+            : null;
+    }
+
+    private void RemoveInvalidCachedPages()
+    {
+        foreach (Guid roomId in _cachedPages.Keys.ToArray())
+        {
+            if (_cachedPages[roomId].Scope != HistoryScopeFor(_state, roomId))
+            {
+                _cachedPages.Remove(roomId);
+            }
+        }
+    }
+
+    private void CacheFirstPage(HistoryScope scope, MessageHistoryPage page)
+    {
+        RemoveInvalidCachedPages();
+        if (!_cachedPages.ContainsKey(scope.RoomId) && _cachedPages.Count >= MaximumCachedRooms)
+        {
+            Guid oldestRoomId = _cachedPages.MinBy(entry => entry.Value.FetchedAt).Key;
+            _cachedPages.Remove(oldestRoomId);
+        }
+        MessageHistoryPage boundedPage = new(
+            [.. page.Messages.Where(message => message.RoomId == scope.RoomId).Take(PageSize)],
+            page.NextCursor);
+        _cachedPages[scope.RoomId] = new CachedHistoryPage(scope, boundedPage, _timeProvider.GetTimestamp());
+        RefreshCachedMessages();
+    }
+
+    private static bool WasPrunedFromRecentWindow(
+        MessageLedgerEntry removed,
+        IReadOnlyList<MessageLedgerEntry> messages)
+    {
+        MessageLedgerEntry[] confirmed = [.. messages.Where(entry =>
+            entry.RoomId == removed.RoomId && entry.State == MessageDeliveryState.Confirmed)];
+        if (confirmed.Length < MessageLedger.MaximumConfirmedPerRoom)
+        {
+            return false;
+        }
+        MessageLedgerEntry oldest = confirmed
+            .OrderBy(entry => entry.CreatedAt)
+            .ThenBy(entry => entry.Id.ToString("D"), StringComparer.Ordinal)
+            .First();
+        return removed.CreatedAt < oldest.CreatedAt
+            || (removed.CreatedAt == oldest.CreatedAt
+                && StringComparer.Ordinal.Compare(removed.Id.ToString("D"), oldest.Id.ToString("D")) < 0);
+    }
+
+    private void RefreshCachedMessages()
+    {
+        foreach (Guid roomId in _cachedPages.Keys.ToArray())
+        {
+            CachedHistoryPage cached = _cachedPages[roomId];
+            Dictionary<Guid, ChatMessage> messages = new(cached.Page.Messages.Select(message =>
+                new KeyValuePair<Guid, ChatMessage>(message.Id, message)));
+            foreach (MessageLedgerEntry entry in _state.Messages.Where(entry =>
+                entry.RoomId == roomId && entry.State == MessageDeliveryState.Confirmed))
+            {
+                messages.TryAdd(entry.Id, new ChatMessage(
+                    entry.Id, entry.RoomId, entry.SenderId, entry.Body, entry.CreatedAt, entry.BubbleStyleId));
+            }
+            ChatMessage[] latest = [.. messages.Values
+                .Where(message => message.CreatedAt >= DateTimeOffset.UtcNow - MessageLedger.ConfirmedRetention)
+                .OrderByDescending(message => message.CreatedAt)
+                .ThenByDescending(message => message.Id.ToString("D"), StringComparer.Ordinal)
+                .Take(PageSize)];
+            MessageHistoryCursor? cursor = messages.Count > PageSize && latest.LastOrDefault() is { } oldest
+                ? new MessageHistoryCursor(oldest.CreatedAt, oldest.Id)
+                : cached.Page.NextCursor;
+            _cachedPages[roomId] = cached with { Page = new MessageHistoryPage(latest, cursor) };
+        }
+    }
+
+    private readonly record struct HistoryScope(Guid AccountId, Guid RoomId, long RoomEpoch);
+    private sealed record CachedHistoryPage(HistoryScope Scope, MessageHistoryPage Page, long FetchedAt);
 
     private void ResetLoadedHistory(Guid? roomId)
     {

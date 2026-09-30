@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Sidey.Core.Abstractions;
 using Sidey.Core.Domain;
 using Sidey.Core.Localization;
 using Sidey.Presentation.Services;
@@ -16,8 +17,10 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
     private readonly bool _autoCloseAfterSend;
     private readonly Dictionary<Guid, string> _drafts = [];
     private readonly Dictionary<Guid, string> _errors = [];
+    private readonly HashSet<Guid> _notReadyErrors = [];
     private Guid? _roomId;
     private bool _canCompose = true;
+    private bool _isConnectionReady = true;
     private long _interactionGeneration;
 
     public ComposerViewModel(Func<Guid, string, Task>? send = null, bool autoCloseAfterSend = true)
@@ -36,7 +39,12 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
-    public void ApplyRoom(Guid? roomId, bool canCompose)
+    public bool IsConnectionRecovering => CanCompose && !_isConnectionReady;
+
+    public string ConnectionMessage => IsConnectionRecovering
+        ? I18n.Get("connection.notice.reconnecting") : string.Empty;
+
+    public void ApplyRoom(Guid? roomId, bool canCompose, bool isConnectionReady = true)
     {
         if (_disposed)
             return;
@@ -52,7 +60,15 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
         if (_canCompose && !canCompose)
             OnHidden();
         _canCompose = canCompose;
+        _isConnectionReady = isConnectionReady;
+        if (isConnectionReady && roomId is { } readyRoom && _notReadyErrors.Remove(readyRoom))
+        {
+            _errors.Remove(readyRoom);
+            ErrorMessage = string.Empty;
+        }
         OnPropertyChanged(nameof(CanCompose));
+        OnPropertyChanged(nameof(IsConnectionRecovering));
+        OnPropertyChanged(nameof(ConnectionMessage));
         SendCommand.NotifyCanExecuteChanged();
     }
 
@@ -114,7 +130,7 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
     private async Task SendAsync()
     {
         string body = MessageValidator.Normalize(Draft);
-        if (!MessageValidator.IsValid(body))
+        if (!CanSend())
         {
             SendCommand.NotifyCanExecuteChanged();
             return;
@@ -124,7 +140,10 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
         RestoreDraft(string.Empty);
         ErrorMessage = string.Empty;
         if (roomId is { } clearedRoom)
+        {
             _errors.Remove(clearedRoom);
+            _notReadyErrors.Remove(clearedRoom);
+        }
         TypingChanged?.Invoke(false);
         long generation = _interactionGeneration;
         try
@@ -141,9 +160,16 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
         {
             if (_disposed)
                 return;
-            string error = I18n.Format("message.send.failed", exception.Message);
+            string error = exception is ChatNotReadyException
+                ? exception.Message : I18n.Format("message.send.failed", exception.Message);
             if (roomId is { } failedRoom)
+            {
                 _errors[failedRoom] = error;
+                if (exception is ChatNotReadyException)
+                    _notReadyErrors.Add(failedRoom);
+                else
+                    _notReadyErrors.Remove(failedRoom);
+            }
             if (_roomId == roomId)
             {
                 if (Draft.Length == 0)
@@ -162,7 +188,7 @@ public sealed partial class ComposerViewModel : ObservableObject, IDisposable
         CloseRequested?.Invoke();
     }
 
-    private bool CanSend() => CanCompose && (_send is null || _roomId is not null)
+    private bool CanSend() => CanCompose && _isConnectionReady && (_send is null || _roomId is not null)
         && MessageValidator.IsValid(MessageValidator.Normalize(Draft));
 
     private void ScheduleAutoClose()

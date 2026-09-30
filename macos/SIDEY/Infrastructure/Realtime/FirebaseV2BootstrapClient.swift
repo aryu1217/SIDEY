@@ -74,11 +74,13 @@ struct FirebaseV2BootstrapClient: Sendable {
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let nowMilliseconds: @Sendable () -> Int64
+    private let retryGate: FirebaseV2BootstrapRetryGate
 
     init(
         transport: any FirebaseV2HTTPTransport = FirebaseV2URLSessionTransport(),
         encoder: JSONEncoder = JSONEncoder(),
         decoder: JSONDecoder = JSONDecoder(),
+        retryGate: FirebaseV2BootstrapRetryGate = .shared,
         nowMilliseconds: @escaping @Sendable () -> Int64 = {
             Int64(Date().timeIntervalSince1970 * 1_000)
         }
@@ -86,16 +88,19 @@ struct FirebaseV2BootstrapClient: Sendable {
         self.transport = transport
         self.encoder = encoder
         self.decoder = decoder
+        self.retryGate = retryGate
         self.nowMilliseconds = nowMilliseconds
     }
 
     func bootstrap(
         accessToken: String,
-        minimumAccessRevision: RealtimeRevision? = nil
+        minimumAccessRevision: RealtimeRevision? = nil,
+        identity: RealtimeCredentialIdentity? = nil
     ) async throws -> FirebaseV2BootstrapSuccess {
         guard !accessToken.isEmpty else {
             throw FirebaseV2BootstrapClientError.missingAccessToken
         }
+        if let identity { try await retryGate.wait(for: identity) }
 
         var request = URLRequest(url: FirebaseV2Endpoint.bootstrap)
         request.httpMethod = "POST"
@@ -108,18 +113,53 @@ struct FirebaseV2BootstrapClient: Sendable {
             FirebaseV2BootstrapRequest(minimumAccessRevision: minimumAccessRevision)
         )
 
-        let result = try await transport.data(for: request)
+        let result: FirebaseV2HTTPResponse
+        do {
+            result = try await transport.data(for: request)
+        } catch {
+            if let identity, !Task.isCancelled,
+               !(error is CancellationError),
+               (error as? URLError)?.code != .cancelled {
+                await retryGate.failed(
+                    for: identity,
+                    rateLimited: false,
+                    retryAfterSeconds: nil
+                )
+            }
+            throw error
+        }
         guard result.response.statusCode == 200 else {
             let errorCode = (try? decoder.decode(
                 FirebaseV2BootstrapErrorResponse.self,
                 from: result.data
             ))?.error
-            throw FirebaseV2BootstrapClientError.server(
-                FirebaseV2BootstrapFailure(
-                    statusCode: result.response.statusCode,
-                    errorCode: errorCode
-                )
+            let failure = FirebaseV2BootstrapFailure(
+                statusCode: result.response.statusCode,
+                errorCode: errorCode
             )
+            if let identity {
+                switch failure {
+                case .rateLimited, .unavailable, .grantNotConverged:
+                    await retryGate.failed(
+                        for: identity,
+                        rateLimited: failure == .rateLimited,
+                        retryAfterSeconds: FirebaseV2BootstrapRetryPolicy.retryAfterSeconds(
+                            from: result.response
+                        )
+                    )
+                case .unexpectedStatus(let status) where (500...599).contains(status):
+                    await retryGate.failed(
+                        for: identity,
+                        rateLimited: false,
+                        retryAfterSeconds: FirebaseV2BootstrapRetryPolicy.retryAfterSeconds(
+                            from: result.response
+                        )
+                    )
+                default:
+                    break
+                }
+            }
+            throw FirebaseV2BootstrapClientError.server(failure)
         }
 
         var success: FirebaseV2BootstrapSuccess
@@ -147,6 +187,7 @@ struct FirebaseV2BootstrapClient: Sendable {
               !success.firebaseApiKey.isEmpty else {
             throw FirebaseV2BootstrapClientError.unexpectedContract
         }
+        if let identity { await retryGate.succeeded(for: identity) }
         return success
     }
 }

@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "更新內容"
       },
-      "show_after": {
-        "title": "更新後顯示更新詳情"
-      },
       "title": "更新"
     },
     "window": {

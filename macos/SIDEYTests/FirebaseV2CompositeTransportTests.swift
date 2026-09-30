@@ -1,3 +1,4 @@
+import FirebaseFunctions
 import XCTest
 @testable import SIDEY
 
@@ -719,6 +720,86 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertTrue(diagnostics.grantOpen)
     }
 
+    func testChatAuthenticationRejectRefreshesSelectorAndCredentialWithoutResending() async throws {
+        let selector = CompositeRolloutRefreshRecorder()
+        let fixture = try Fixture(refreshPolicy: {
+            await selector.refresh()
+        })
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room], activeRoomID: fixture.room.id
+        )
+        await fixture.chatCaller.failNextUnauthenticated()
+
+        let outcome = await fixture.transport.sendChat(
+            roomID: fixture.room.id, body: "hello", id: UUID()
+        )
+        guard case .definitelyRejected = outcome else {
+            return XCTFail("Authentication reject must not be retried as a message")
+        }
+        try await eventually {
+            await fixture.credentials.establishCount == 2
+                && fixture.values.paths.filter {
+                    $0 == FirebaseV2Path.inbox(userID: fixture.ownID)
+                }.count == 2
+        }
+        let selectorCalls = await selector.refreshCount
+        let chatCalls = await fixture.chatCaller.callCount
+        XCTAssertEqual(selectorCalls, 1)
+        XCTAssertEqual(chatCalls, 1)
+
+        let retry = await fixture.transport.sendChat(
+            roomID: fixture.room.id, body: "next", id: UUID()
+        )
+        guard case .confirmed = retry else {
+            return XCTFail("Fresh credential must restore chat")
+        }
+    }
+
+    func testSupabaseReconnectDoesNotReopenChatDuringAuthenticationRecovery() async throws {
+        let selector = CompositeRolloutRefreshRecorder()
+        await selector.blockNextRefresh()
+        let fixture = try Fixture(refreshPolicy: {
+            await selector.refresh()
+        })
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room], activeRoomID: fixture.room.id
+        )
+        var events = fixture.transport.events.makeAsyncIterator()
+        await fixture.chatCaller.failNextUnauthenticated()
+
+        _ = await fixture.transport.sendChat(
+            roomID: fixture.room.id, body: "hello", id: UUID()
+        )
+        guard case .connection(let disconnected) = await events.next() else {
+            return XCTFail("Authentication failure must close chat connection")
+        }
+        XCTAssertFalse(disconnected.transportConnected)
+        try await eventually { await selector.refreshCount == 1 }
+
+        await fixture.supabase.emit(.connection(BackendConnectionStatus(
+            transportConnected: true,
+            recoveryReconciled: true,
+            activeRoomTransportConnected: true
+        )))
+        await fixture.supabase.emit(.presence(
+            roomID: fixture.room.id,
+            userID: fixture.friendID,
+            state: .online
+        ))
+        guard case .presence = await events.next() else {
+            return XCTFail("Supabase must not reopen chat while auth recovery is pending")
+        }
+
+        let blockedSend = await fixture.transport.sendChat(
+            roomID: fixture.room.id, body: "blocked", id: UUID()
+        )
+        guard case .definitelyRejected = blockedSend else {
+            return XCTFail("Chat sends must remain closed during auth recovery")
+        }
+        await selector.resumeRefresh()
+        try await eventually { await fixture.credentials.establishCount == 2 }
+    }
+
     func testNonAdvancingRolloutLeaseFailsClosed() async throws {
         let fixture = try Fixture(leaseRefreshExpiresAt: 1_800_000_300_000)
         _ = try await fixture.transport.synchronize(
@@ -811,7 +892,8 @@ private struct Fixture {
         liveReadinessTimeout: Duration = .seconds(1),
         initialLeaseExpiresAt: Int64 = 1_800_000_300_000,
         leaseRefreshExpiresAt: Int64? = nil,
-        serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil
+        serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil,
+        refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)? = nil
     ) throws {
         values = CompositeValueStreamStub(
             automaticallyYieldBaseline: automaticallyYieldLiveBaseline
@@ -901,6 +983,7 @@ private struct Fixture {
             databaseValues: values,
             databaseWrites: values,
             chatClient: chatClient,
+            refreshPolicy: refreshPolicy,
             throwableCatalogIDByWireCode: [
                 FirebaseV2WireCode(rawValue: "0")!: "patch_soft_ball",
                 throwWireCode: "throwable_leaf",
@@ -1195,13 +1278,25 @@ private final class CompositeValueStreamStub: @unchecked Sendable,
 private actor CompositeChatCallerStub: FirebaseV2ChatCalling {
     private let senderID: UUID
     private(set) var callCount = 0
+    private var remainingUnauthenticatedFailures = 0
 
     init(senderID: UUID) {
         self.senderID = senderID
     }
 
+    func failNextUnauthenticated() {
+        remainingUnauthenticatedFailures += 1
+    }
+
     func call(_ request: FirebaseV2ChatRequest) async throws -> FirebaseV2ChatResponse {
         callCount += 1
+        if remainingUnauthenticatedFailures > 0 {
+            remainingUnauthenticatedFailures -= 1
+            throw NSError(
+                domain: FunctionsErrorDomain,
+                code: FunctionsErrorCode.unauthenticated.rawValue
+            )
+        }
         return FirebaseV2ChatResponse(
             body: request.body,
             messageID: request.messageID,
@@ -1209,6 +1304,32 @@ private actor CompositeChatCallerStub: FirebaseV2ChatCalling {
             sequence: Int64(callCount),
             timestamp: FirebaseV2Timestamp(rawValue: 1_800_000_000_000 + Int64(callCount))!
         )
+    }
+}
+
+private actor CompositeRolloutRefreshRecorder {
+    private(set) var refreshCount = 0
+    private var shouldBlockNextRefresh = false
+    private var blockedRefresh: CheckedContinuation<Void, Never>?
+
+    func blockNextRefresh() {
+        shouldBlockNextRefresh = true
+    }
+
+    func refresh() async -> RealtimeRolloutPolicyDecision {
+        refreshCount += 1
+        if shouldBlockNextRefresh {
+            shouldBlockNextRefresh = false
+            await withCheckedContinuation { continuation in
+                blockedRefresh = continuation
+            }
+        }
+        return RealtimeRolloutPolicyDecision(state: .firebaseV2, cacheTTLSeconds: 300)
+    }
+
+    func resumeRefresh() {
+        blockedRefresh?.resume()
+        blockedRefresh = nil
     }
 }
 

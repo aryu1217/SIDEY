@@ -1,0 +1,13 @@
+---
+import SupportPage from "../../../components/SupportPage.astro";
+import { supportedLocales, localePathSegment, type Locale } from "../../../i18n/landing";
+
+export function getStaticPaths() {
+  return supportedLocales.filter((locale) => !["ko", "en", "ja", "zh-Hant"].includes(locale))
+    .map((locale) => ({ params: { locale: localePathSegment(locale) }, props: { locale } }));
+}
+
+const { locale } = Astro.props as { locale: Locale };
+---
+
+<SupportPage locale={locale} />

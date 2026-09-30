@@ -12,11 +12,11 @@ These instructions apply to `website/**`. The site is public product, store, che
 - Do not claim that a download, store listing, purchase path, feature, signing state or compatibility guarantee is available without current evidence. Treat localized equivalents of “coming soon” or “in preparation” as evidence-backed status, not durable filler, and update them when the confirmed state changes.
 - Keep internal environment, migration, rollout, channel, server-topology and test terminology out of merchandising copy. Do not expose secrets, checkout tokens or unpublished operational instructions.
 - Never claim E2EE or universal overlay compatibility. Preserve verified platform restrictions and the privacy boundary: SIDEY does not collect screen contents, active-app lists, other applications' keystrokes, mouse coordinates, files, microphone audio or camera video.
-- Preserve the user-facing price, purchase, refund, terms, privacy, seller and platform contracts across localized pages. Do not silently remove a limitation while simplifying technical wording.
+- Preserve the user-facing price, purchase, refund, terms, privacy, seller and platform contracts across localized pages. Do not silently remove a limitation while simplifying technical wording. The footer commerce and seller-information sections appear only on Korean pages; translated policy pages remain available for every supported locale.
 
 ## Structure and presentation
 
-- Keep localized public routes symmetric under `/ko/`, `/en/` and `/ja/` where the site already provides localized counterparts. Locale-neutral routes remain language gates; tool-only routes remain unprefixed where specified by the product documents.
+- Keep localized public routes symmetric for the Windows consumer locales in `assets/v1/ui-localizations.json`, using lowercase route segments and canonical BCP 47 language tags. Locale-neutral routes remain language gates; tool-only routes remain unprefixed where specified by the product documents.
 - Use semantic HTML and the existing Astro/Sass structure. Keep visible label/value groups explicitly laid out; do not rely on browser-default definition-list spacing.
 - Verify desktop and narrow mobile layouts, keyboard focus, readable hierarchy and overflow. Long addresses, email links and translated copy must wrap without horizontal scrolling. Prefer copy and usable-width adjustments before forced line breaks.
 - Keep page-specific typography scoped so store or policy changes do not resize the landing page. Do not introduce a client framework or new JavaScript for a copy-only layout change.

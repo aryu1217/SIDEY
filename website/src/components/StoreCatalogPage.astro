@@ -3,7 +3,7 @@ import StoreLayout from "../layouts/StoreLayout.astro";
 import PageTabs from "./PageTabs.astro";
 import type { StoreCategory, StoreProduct } from "../data/store";
 import { getStoreCategories } from "../data/store";
-import { localePathSegment, type Locale } from "../i18n/landing";
+import { getWebsiteCopy, localePathSegment, type Locale } from "../i18n/landing";
 
 interface Props { category: StoreCategory; locale?: Locale; canonicalPath?: string; }
 const { category, locale = "ko", canonicalPath } = Astro.props;
@@ -12,84 +12,7 @@ const detailProducts = [...content.products, ...content.products.flatMap((produc
 const base = import.meta.env.BASE_URL;
 const localePrefix = `${localePathSegment(locale)}/`;
 const storeBase = `${base}${localePrefix}store/`;
-const chromeByLocale: Record<Locale, {
-  store: string;
-  categories: string;
-  characters: string;
-  throwables: string;
-  bubbles: string;
-  preview: string;
-  previewAction: string;
-  closePreview: string;
-  bubbleMessage: string;
-  keepsake: string;
-  separate: string;
-  priceBasis: string;
-  treeHint: string;
-  sound: string;
-}> = {
-  en: {
-    store: "SIDEY Store",
-    keepsake: "Keepsake", separate: "Sold separately",
-    priceBasis: "Prices shown are reference prices in KRW. Check supported items and final prices in your app.",
-    treeHint: "In the macOS app, right-click the tree to stop it. Right-click again to let it walk.",
-    sound: "Sound",
-    categories: "Store categories",
-    characters: "Characters",
-    throwables: "Tossable toys",
-    bubbles: "Bubbles",
-    preview: "Open preview",
-    previewAction: "Preview",
-    closePreview: "Close preview",
-    bubbleMessage: "Want to hang out today?",
-  },
-  ko: {
-    store: "꾸미기·상점",
-    keepsake: "애착 물건", separate: "별도 판매",
-    priceBasis: "표시 가격은 KRW 참고 가격이에요. 지원 상품과 최종 가격은 사용 중인 앱에서 확인해 주세요.",
-    treeHint: "macOS 앱에서 나무를 오른쪽 클릭하면 멈추고, 다시 오른쪽 클릭하면 걸어요.",
-    sound: "소리",
-    categories: "상점 상품 종류",
-    characters: "캐릭터",
-    throwables: "던지기 장난감",
-    bubbles: "말풍선",
-    preview: "미리보기",
-    previewAction: "눌러서 미리보기",
-    closePreview: "미리보기 닫기",
-    bubbleMessage: "오늘도 같이 있자!",
-  },
-  ja: {
-    store: "SIDEY ストア",
-    keepsake: "お気に入りの品", separate: "別売り",
-    priceBasis: "表示価格は韓国ウォン建ての参考価格です。対応商品と最終価格は、お使いのアプリでご確認ください。",
-    treeHint: "macOSアプリで木を右クリックすると止まり、もう一度右クリックすると歩きます。",
-    sound: "サウンド",
-    categories: "ストアカテゴリー",
-    characters: "キャラクター",
-    throwables: "投げて遊ぶおもちゃ",
-    bubbles: "吹き出し",
-    preview: "プレビューを開く",
-    previewAction: "プレビュー",
-    closePreview: "プレビューを閉じる",
-    bubbleMessage: "今日も一緒にいよう！",
-  },
-  "zh-Hant": {
-    store: "SIDEY 商店",
-    keepsake: "珍藏小物", separate: "另售",
-    priceBasis: "顯示價格為韓元參考價。請在你使用的 App 內確認支援的商品與最終價格。",
-    treeHint: "在 macOS App 中，以滑鼠右鍵按一下樹木可讓它停下；再按一次即可繼續走動。",
-    sound: "音效",
-    categories: "商店分類",
-    characters: "角色",
-    throwables: "投擲玩具",
-    bubbles: "對話框",
-    preview: "開啟預覽",
-    previewAction: "預覽",
-    closePreview: "關閉預覽",
-    bubbleMessage: "今天也一起待著吧！",
-  },
-};
-const chrome = chromeByLocale[locale];
+const chrome = getWebsiteCopy(locale).storeChrome;
 const previewAttributes = (product: StoreProduct) => ({
   "data-store-preview": true,
   "data-product-id": product.commerceID ?? product.id,
@@ -120,7 +43,6 @@ const tabs = [
     <h1 id="store-title">{content.title}</h1>
     <p class="store-description">{content.description}</p>
     <PageTabs label={chrome.categories} items={tabs} />
-    <p class="store-price-basis">{chrome.priceBasis}</p>
 
     <div class="store-product-grid">
       {content.products.map((product) => (

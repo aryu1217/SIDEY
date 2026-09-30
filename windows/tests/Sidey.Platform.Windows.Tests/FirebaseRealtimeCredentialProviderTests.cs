@@ -110,12 +110,12 @@ public sealed class FirebaseRealtimeCredentialProviderTests
             new FixedSessionAccessor(session), store, client, time);
         FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
 
-        time.Advance(TimeSpan.FromSeconds(269));
+        time.Advance(initial.RefreshAfter - TimeSpan.FromSeconds(1));
         FirebaseRealtimeCredential beforeDeadline = await provider.GetCredentialAsync();
         Assert.Equal(initial.IdToken, beforeDeadline.IdToken);
 
         Assert.Equal(TimeSpan.FromSeconds(1), beforeDeadline.RefreshAfter);
-        Assert.Equal(TimeSpan.FromSeconds(31), beforeDeadline.ExpiresAfter);
+        Assert.InRange(beforeDeadline.ExpiresAfter.TotalSeconds, 61, 91);
 
         time.Advance(TimeSpan.FromSeconds(1));
         time.SetUtcNow(s_initialTime.AddSeconds(270));
@@ -186,7 +186,7 @@ public sealed class FirebaseRealtimeCredentialProviderTests
         Assert.Equal(sessionId, credential.SessionId);
         Assert.Equal(["bootstrap", "exchange"], [.. handler.RequestKinds]);
 
-        time.Advance(TimeSpan.FromMilliseconds(270_499));
+        time.Advance(credential.RefreshAfter - TimeSpan.FromMilliseconds(1));
         _ = await provider.GetCredentialAsync();
         Assert.Equal(["bootstrap", "exchange"], [.. handler.RequestKinds]);
 
@@ -430,13 +430,233 @@ public sealed class FirebaseRealtimeCredentialProviderTests
             client,
             new ManualTimeProvider());
 
-        HttpRequestException exception = await Assert.ThrowsAsync<HttpRequestException>(
+        FirebaseRealtimeRetryException exception = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
             () => provider.GetCredentialAsync().AsTask());
 
         Assert.Equal("Realtime bootstrap request failed.", exception.Message);
         Assert.Null(exception.InnerException);
         Assert.DoesNotContain(session.AccessToken, exception.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("transport-secret", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false, 503)]
+    [InlineData(true, 429)]
+    public async Task TransientRenewalPreservesValidCredentialAndHonorsServerCooldown(bool dateHeader, int status)
+    {
+        Guid sessionId = new("22222222-2222-2222-2222-222222222222");
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        ManualTimeProvider time = new();
+        MemoryCredentialStore store = new();
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(new FixedSessionAccessor(session), store, client, time);
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        Assert.InRange(initial.RefreshAfter.TotalSeconds, 210, 240);
+        string? persisted = store.Value(CredentialKey.FirebaseRealtimeSession);
+        time.Advance(initial.RefreshAfter);
+        handler.RejectNextBootstrap = (HttpStatusCode)status;
+        handler.BootstrapRetryAfter = dateHeader
+            ? new System.Net.Http.Headers.RetryConditionHeaderValue(s_initialTime.AddMinutes(40))
+            : new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromMinutes(40));
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.InRange(failure.RetryAfter.TotalMinutes, 40, 48);
+        Assert.Equal(TimeSpan.FromMinutes(40), failure.ServerRetryAfter);
+        Assert.Equal((HttpStatusCode)status, failure.StatusCode);
+        Assert.Equal(persisted, store.Value(CredentialKey.FirebaseRealtimeSession));
+        FirebaseRealtimeCredential usable = await provider.GetUsableCredentialAsync();
+        Assert.Equal(initial.IdToken, usable.IdToken);
+        Assert.True(usable.ExpiresAfter > TimeSpan.Zero);
+        time.Advance(TimeSpan.FromSeconds(10));
+        time.SetUtcNow(s_initialTime.AddYears(1));
+        FirebaseRealtimeRetryException cooling = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(failure.RetryAfter - TimeSpan.FromSeconds(10), cooling.RetryAfter);
+        Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+        time.Advance(TimeSpan.FromMinutes(5));
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(() => provider.GetUsableCredentialAsync().AsTask());
+        await provider.ResetAsync();
+        Assert.True(initial.LifetimeToken.IsCancellationRequested);
+        time.SetUtcNow(s_initialTime);
+        handler.RolloutLeaseExpiresAt = s_initialTime.AddMinutes(5).ToUnixTimeMilliseconds();
+        _ = await provider.GetCredentialAsync();
+        Assert.Equal(3, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task TransientRenewalWithoutRetryAfterRecoversAfterMinimumCooldown(int transportFailure)
+    {
+        Guid sessionId = new("22222222-2222-2222-2222-222222222222");
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        ManualTimeProvider time = new();
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, time);
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        time.Advance(initial.RefreshAfter);
+        handler.FailNextBootstrapNetwork = transportFailure == 1;
+        handler.FailNextBootstrapIo = transportFailure == 2;
+        handler.RejectNextBootstrap = transportFailure == 0 ? HttpStatusCode.ServiceUnavailable : null;
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.InRange(failure.RetryAfter.TotalSeconds, 4, 6);
+        FirebaseRealtimeCredential usable = await provider.GetUsableCredentialAsync();
+        Assert.Equal(initial.IdToken, usable.IdToken);
+        Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+        time.Advance(failure.RetryAfter);
+        time.SetUtcNow(s_initialTime.AddSeconds(250));
+        handler.RolloutLeaseExpiresAt = s_initialTime.AddSeconds(550).ToUnixTimeMilliseconds();
+        FirebaseRealtimeCredential renewed = await provider.GetCredentialAsync();
+        Assert.True(renewed.ExpiresAfter > TimeSpan.FromMinutes(4));
+        Assert.Equal(3, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+    }
+
+    [Fact]
+    public async Task SessionFailureCountSurvivesBriefSuccessAndResetsAfterThirtySeconds()
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        ManualTimeProvider time = new();
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, time, retryJitter: () => 0.5);
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException first = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(5), first.RetryAfter);
+        time.Advance(first.RetryAfter);
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException second = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.RecoverRejectedCredentialAsync(initial).AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(10), second.RetryAfter);
+        time.Advance(second.RetryAfter);
+        FirebaseRealtimeCredential recovered = await provider.GetCredentialAsync();
+        time.Advance(TimeSpan.FromSeconds(30));
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        FirebaseRealtimeRetryException stable = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.RecoverRejectedCredentialAsync(recovered).AsTask());
+        Assert.Equal(TimeSpan.FromSeconds(5), stable.RetryAfter);
+        int requests = handler.RequestKinds.Count(kind => kind == "bootstrap");
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(() => provider.GetUsableCredentialAsync().AsTask());
+        Assert.Equal(requests, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+    }
+
+    [Theory]
+    [InlineData("realtime_bootstrap_unavailable", "realtime_bootstrap_unavailable")]
+    [InlineData("untrusted-secret-marker", "transport-error")]
+    public async Task BootstrapFailureRetainsOnlyAllowlistedCode(string serverCode, string expectedCode)
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        FirebaseProtocolHandler handler = new()
+        {
+            RejectNextBootstrap = HttpStatusCode.ServiceUnavailable,
+            BootstrapFailureCode = serverCode,
+        };
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, new ManualTimeProvider());
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(expectedCode, failure.FailureCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, failure.StatusCode);
+        FirebaseRealtimeRetryException cooling = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(expectedCode, cooling.FailureCode);
+        Assert.DoesNotContain("untrusted-secret-marker", failure.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-detail-marker", failure.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InterruptedErrorBodyRetainsHttpStatusAndServerRetryDelay()
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        FirebaseProtocolHandler handler = new()
+        {
+            RejectNextBootstrap = HttpStatusCode.TooManyRequests,
+            BootstrapRetryAfter = new(TimeSpan.FromMinutes(40)),
+            InterruptBootstrapErrorBody = true,
+        };
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, new ManualTimeProvider());
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(HttpStatusCode.TooManyRequests, failure.StatusCode);
+        Assert.InRange(failure.RetryAfter.TotalMinutes, 40, 48);
+        Assert.Equal(TimeSpan.FromMinutes(40), failure.ServerRetryAfter);
+        Assert.Equal("transport-error", failure.FailureCode);
+    }
+
+    [Fact]
+    public async Task RejectedAuthVersionCoalescesRecoveryAndLateFailureCannotRejectReplacement()
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, new ManualTimeProvider());
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        int rejectedSignals = 0;
+        provider.CredentialRejected += _ => rejectedSignals++;
+        handler.BlockNextBootstrap = true;
+        Task recovery = provider.RecoverRejectedCredentialAsync(initial).AsTask();
+        await handler.BootstrapStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task[] duplicateErrors = [.. Enumerable.Range(0, 8)
+            .Select(_ => provider.RecoverRejectedCredentialAsync(initial).AsTask())];
+        await Task.WhenAll(duplicateErrors).WaitAsync(TimeSpan.FromSeconds(5));
+        Task<FirebaseRealtimeCredential> waitingWrite = provider.GetUsableCredentialAsync().AsTask();
+        Assert.False(waitingWrite.IsCompleted);
+        Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+        Assert.Equal(1, rejectedSignals);
+        handler.AllowBootstrap.TrySetResult();
+        await recovery.WaitAsync(TimeSpan.FromSeconds(5));
+        FirebaseRealtimeCredential replacement = await waitingWrite.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(initial.Generation, replacement.Generation);
+        Assert.True(replacement.AuthVersion > initial.AuthVersion);
+        await provider.RecoverRejectedCredentialAsync(initial);
+        FirebaseRealtimeCredential unchanged = await provider.GetUsableCredentialAsync();
+        Assert.Equal(replacement.AuthVersion, unchanged.AuthVersion);
+        Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
+        Assert.Equal(1, rejectedSignals);
+    }
+
+    [Fact]
+    public async Task RejectedTokenCannotBeUsedDuringRecoveryCooldown()
+    {
+        Guid sessionId;
+        sessionId = Guid.NewGuid();
+        StoredSupabaseSession session = SupabaseSession(s_userId, sessionId, "supabase-a");
+        FirebaseProtocolHandler handler = new();
+        handler.AddSession(session, "id-a-0", "refresh-a-0", expiresIn: 3_600);
+        using HttpClient client = new(handler);
+        FirebaseRealtimeCredentialProvider provider = new(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, new ManualTimeProvider());
+        FirebaseRealtimeCredential initial = await provider.GetCredentialAsync();
+        handler.RejectNextBootstrap = HttpStatusCode.ServiceUnavailable;
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.RecoverRejectedCredentialAsync(initial).AsTask());
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => provider.GetUsableCredentialAsync().AsTask());
+        await provider.RecoverRejectedCredentialAsync(initial);
+        Assert.Equal(2, handler.RequestKinds.Count(kind => kind == "bootstrap"));
     }
 
     [Fact]
@@ -724,6 +944,18 @@ public sealed class FirebaseRealtimeCredentialProviderTests
                 $"transport-secret {request.RequestUri} {request.Headers.Authorization}");
     }
 
+    private sealed class InterruptedErrorContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            Task.FromException(new HttpRequestException("Untrusted interrupted response detail."));
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+    }
+
     private sealed class FirebaseProtocolHandler : HttpMessageHandler
     {
         private readonly Dictionary<string, SessionFixture> _bySupabaseToken = new(StringComparer.Ordinal);
@@ -733,6 +965,17 @@ public sealed class FirebaseRealtimeCredentialProviderTests
         public bool BlockExchanges { get; init; }
         public bool IncludeProtocolClaim { get; init; } = true;
         public bool RejectNextRefresh { get; set; }
+        public HttpStatusCode? RejectNextBootstrap { get; set; }
+        public string? BootstrapFailureCode { get; init; }
+        public bool InterruptBootstrapErrorBody { get; init; }
+        public bool FailNextBootstrapNetwork { get; set; }
+        public bool FailNextBootstrapIo { get; set; }
+        public bool BlockNextBootstrap { get; set; }
+        public TaskCompletionSource BootstrapStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowBootstrap { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public System.Net.Http.Headers.RetryConditionHeaderValue? BootstrapRetryAfter { get; set; }
         public bool MismatchNextExchangeSession { get; set; }
         public bool MismatchExchangeUser { get; init; }
         public string? RefreshResponseUserId { get; init; } = s_userId.ToString("D");
@@ -780,6 +1023,42 @@ public sealed class FirebaseRealtimeCredentialProviderTests
                 "https://asia-southeast1-sidey-realtime.cloudfunctions.net/bootstrapRealtime")
             {
                 RequestKinds.Enqueue("bootstrap");
+                if (BlockNextBootstrap)
+                {
+                    BlockNextBootstrap = false;
+                    BootstrapStarted.TrySetResult();
+                    await AllowBootstrap.Task.WaitAsync(cancellationToken);
+                }
+                if (FailNextBootstrapIo)
+                {
+                    FailNextBootstrapIo = false;
+                    throw new IOException("Transient test stream failure.");
+                }
+                if (FailNextBootstrapNetwork)
+                {
+                    FailNextBootstrapNetwork = false;
+                    throw new HttpRequestException("Transient test transport failure.");
+                }
+                if (RejectNextBootstrap is HttpStatusCode status)
+                {
+                    RejectNextBootstrap = null;
+                    HttpResponseMessage rejected = new(status);
+                    if (BootstrapFailureCode is not null)
+                    {
+                        rejected.Content = JsonContent.Create(new
+                        {
+                            error = BootstrapFailureCode,
+                            details = "secret-detail-marker",
+                        });
+                    }
+                    if (InterruptBootstrapErrorBody)
+                    {
+                        rejected.Content = new InterruptedErrorContent();
+                    }
+                    rejected.Headers.RetryAfter = BootstrapRetryAfter;
+                    rejected.Headers.Date = BootstrapServerDate;
+                    return rejected;
+                }
                 Assert.Equal(HttpMethod.Post, request.Method);
                 Assert.Equal(
                     "{}",

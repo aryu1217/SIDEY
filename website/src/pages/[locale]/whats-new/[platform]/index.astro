@@ -1,0 +1,17 @@
+---
+import WhatsNewPage from "../../../../components/WhatsNewPage.astro";
+import type { ReleasePlatform } from "../../../../data/release-notes";
+import { supportedLocales, localePathSegment, type Locale } from "../../../../i18n/landing";
+
+export function getStaticPaths() {
+  const platforms = ["macos", "windows"] as const;
+  return supportedLocales.filter((locale) => !["ko", "en", "ja", "zh-Hant"].includes(locale))
+    .flatMap((locale) => platforms.map((platform) => ({
+      params: { locale: localePathSegment(locale), platform }, props: { locale, platform },
+    })));
+}
+
+const { locale, platform } = Astro.props as { locale: Locale; platform: ReleasePlatform };
+---
+
+<WhatsNewPage locale={locale} platform={platform} />

@@ -33,9 +33,18 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly Lock _snapshotGate = new();
     private readonly Lock _liveEmitGate = new();
+    private readonly Lock _reconnectGate = new();
     private readonly CancellationTokenSource _shutdown = new();
     private CancellationTokenSource? _generationCancellation;
     private Task _generationTask = Task.CompletedTask;
+    private Task _reconnectTask = Task.CompletedTask;
+    private bool _reconnectPending;
+    private CancellationTokenSource? _rejectedGeneration;
+    private long _credentialListenerGeneration;
+    private long _credentialGeneration;
+    private long _credentialAuthVersion;
+    private long _rejectedCredentialGeneration;
+    private long _rejectedAuthVersion;
     private Guid? _activeRoomId;
     private string? _accessRevision;
     private readonly Dictionary<Guid, string> _roomRevisions = [];
@@ -64,6 +73,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         _timeProvider = timeProvider ?? TimeProvider.System;
         _createClient = createClient ?? (databaseUrl =>
             new FirebaseRtdbRestClient(new FirebaseRtdbUrlBuilder(databaseUrl)));
+        _credentials.CredentialRejected += OnCredentialRejected;
     }
 
     public bool IsReady => Volatile.Read(ref _ready) != 0;
@@ -130,21 +140,72 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         }
     }
 
-    public void RequestReconnect()
+    public void RequestReconnect() => RequestReconnectCore(forceInvalidCredential: false);
+
+    private void RequestReconnectCore(bool forceInvalidCredential)
     {
-        CancellationTokenSource? current = Volatile.Read(ref _generationCancellation);
+        CancellationTokenSource? rejected = null;
+        lock (_reconnectGate)
+        {
+            CancellationTokenSource? current = Volatile.Read(ref _generationCancellation);
+            if (_shutdown.IsCancellationRequested || current is null || (!forceInvalidCredential && !IsReady))
+            {
+                return;
+            }
+            if (forceInvalidCredential)
+            {
+                rejected = current;
+            }
+            if (_reconnectPending)
+            {
+                if (forceInvalidCredential)
+                {
+                    _rejectedGeneration = current;
+                }
+            }
+            else
+            {
+                _reconnectPending = true;
+                _reconnectTask = RunReconnectRequestsAsync(current);
+            }
+        }
+        // A rejected token must not let an opening candidate become ready while a
+        // previous reconnect is finishing. The queued restart remains coalesced.
         try
         {
-            current?.Cancel();
+            rejected?.Cancel();
         }
         catch (ObjectDisposedException)
         {
         }
-        _ = RestartAfterCancellationAsync();
+    }
+
+    private void OnCredentialRejected(FirebaseRealtimeCredential credential)
+    {
+        lock (_reconnectGate)
+        {
+            if (credential.Generation > _rejectedCredentialGeneration)
+            {
+                _rejectedCredentialGeneration = credential.Generation;
+                _rejectedAuthVersion = credential.AuthVersion;
+            }
+            else if (credential.Generation == _rejectedCredentialGeneration)
+            {
+                _rejectedAuthVersion = Math.Max(_rejectedAuthVersion, credential.AuthVersion);
+            }
+            if (_credentialListenerGeneration != Volatile.Read(ref _generation)
+                || credential.Generation != _credentialGeneration
+                || credential.AuthVersion != _credentialAuthVersion)
+            {
+                return;
+            }
+            RequestReconnectCore(forceInvalidCredential: true);
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        _credentials.CredentialRejected -= OnCredentialRejected;
         _shutdown.Cancel();
         await _lifecycleGate.WaitAsync().ConfigureAwait(false);
         try
@@ -156,6 +217,12 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             _lifecycleGate.Release();
         }
 
+        Task reconnect;
+        lock (_reconnectGate)
+        {
+            reconnect = _reconnectTask;
+        }
+        await reconnect.ConfigureAwait(false);
         _shutdown.Dispose();
         _lifecycleGate.Dispose();
     }
@@ -166,6 +233,41 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         CancellationToken cancellationToken)
     {
         StreamSet? current = null;
+        int consecutiveFailures = 0;
+        long? readySince = null;
+
+        async Task DelayAfterFailureAsync(Exception? failure = null)
+        {
+            if (readySince is long timestamp
+                && _timeProvider.GetElapsedTime(timestamp) >= FirebaseRealtimeRetryPolicy.StableConnection)
+            {
+                consecutiveFailures = 0;
+            }
+            readySince = null;
+            consecutiveFailures = Math.Min(consecutiveFailures + 1, 17);
+            System.Net.HttpStatusCode? statusCode = failure switch
+            {
+                HttpRequestException request => request.StatusCode,
+                FirebaseRealtimeStreamRequestException request => request.StatusCode,
+                FirebaseRtdbRequestException request => request.StatusCode,
+                _ => null,
+            };
+            TimeSpan delay = FirebaseRealtimeRetryPolicy.CalculateDelay(
+                consecutiveFailures,
+                failure is FirebaseRealtimeRetryException ? null : statusCode,
+                retryAfter: null,
+                Random.Shared.NextDouble());
+            if (failure is FirebaseRealtimeRetryException retryFailure && retryFailure.RetryAfter > delay)
+            {
+                // The provider already applies jitter to its shared deadline.
+                delay = retryFailure.RetryAfter;
+            }
+            await FirebaseRealtimeRetryPolicy.DelayAsync(
+                delay,
+                _timeProvider,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -199,6 +301,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                             }
                             await DisconnectStreamSetAsync(current, generation, activeRoomId).ConfigureAwait(false);
                             current = null;
+                            await DelayAfterFailureAsync().ConfigureAwait(false);
                             continue;
                         }
                     }
@@ -239,7 +342,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                     }
                     _emit(new BackendEvent.Diagnostic(
                         $"firebase-listener-connect-failed {FailureDiagnostic(exception)}"));
-                    Task retry = DelayForReconnectAsync(cancellationToken);
+                    Task retry = DelayAfterFailureAsync(exception);
                     if (current is not null)
                     {
                         await Task.WhenAny(retry, current.Completion, current.Expiry).ConfigureAwait(false);
@@ -257,6 +360,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                 current = next;
                 BeginLiveGeneration(generation);
                 SetReady(ready: true);
+                readySince = _timeProvider.GetTimestamp();
                 _emit(new BackendEvent.Diagnostic(
                     $"firebase-listener-ready streams={(activeRoomId.HasValue ? 2 : 1)} generation={generation}"));
                 if (previous is not null)
@@ -277,9 +381,10 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
 
                 if (!cancellationToken.IsCancellationRequested)
                 {
+                    Exception? failure = current.Failure;
                     await DisconnectStreamSetAsync(current, generation, activeRoomId).ConfigureAwait(false);
                     current = null;
-                    await DelayForReconnectAsync(cancellationToken).ConfigureAwait(false);
+                    await DelayAfterFailureAsync(failure).ConfigureAwait(false);
                 }
             }
         }
@@ -332,6 +437,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
                 throw new InvalidDataException("Firebase realtime stream ended before its initial snapshot.");
             }
             await next.Ready.ConfigureAwait(false);
+            EnsureCredentialNotRejected(next.Credential);
             return next;
         }
         catch
@@ -366,6 +472,13 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             throw new FirebaseRealtimeCredentialProtocolException(
                 detail: null,
                 innerException: exception);
+        }
+        lock (_reconnectGate)
+        {
+            EnsureCredentialNotRejected(credential);
+            _credentialListenerGeneration = generation;
+            _credentialGeneration = credential.Generation;
+            _credentialAuthVersion = credential.AuthVersion;
         }
         FirebaseRtdbRestClient client = _createClient(credential.DatabaseUrl);
         var streamSet = new StreamSet(client, activeRoomId.HasValue ? 2 : 1, credential, _timeProvider, cancellationToken);
@@ -860,13 +973,61 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         }
     }
 
-    private async Task RestartAfterCancellationAsync()
+    private async Task RunReconnectRequestsAsync(CancellationTokenSource expectedGeneration)
+    {
+        // Let callers in the same burst share this task before touching the lifecycle.
+        await Task.Yield();
+        try
+        {
+            while (true)
+            {
+                await RestartAfterCancellationAsync(expectedGeneration).ConfigureAwait(false);
+                lock (_reconnectGate)
+                {
+                    if (_rejectedGeneration is not { } rejected)
+                    {
+                        _reconnectPending = false;
+                        return;
+                    }
+                    _rejectedGeneration = null;
+                    expectedGeneration = rejected;
+                }
+            }
+        }
+        catch
+        {
+            lock (_reconnectGate)
+            {
+                _reconnectPending = false;
+            }
+            throw;
+        }
+    }
+
+    private void EnsureCredentialNotRejected(FirebaseRealtimeCredential credential)
+    {
+        lock (_reconnectGate)
+        {
+            if (credential.Generation == _rejectedCredentialGeneration
+                && credential.AuthVersion <= _rejectedAuthVersion)
+            {
+                throw new UnauthorizedAccessException("Firebase realtime credential was rejected before readiness.");
+            }
+        }
+    }
+
+    private async Task RestartAfterCancellationAsync(CancellationTokenSource expectedGeneration)
     {
         try
         {
             await _lifecycleGate.WaitAsync(_shutdown.Token).ConfigureAwait(false);
             try
             {
+                if (!ReferenceEquals(_generationCancellation, expectedGeneration)
+                    || _shutdown.IsCancellationRequested)
+                {
+                    return;
+                }
                 Guid? activeRoomId = _activeRoomId;
                 await StopWithinGateAsync().ConfigureAwait(false);
                 var generationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
@@ -886,11 +1047,6 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
         {
         }
-    }
-
-    private async Task DelayForReconnectAsync(CancellationToken cancellationToken)
-    {
-        await Task.Delay(TimeSpan.FromSeconds(1), _timeProvider, cancellationToken).ConfigureAwait(false);
     }
 
     private static string FailureDiagnostic(Exception? exception) => exception switch
@@ -979,6 +1135,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             CancellationToken cancellationToken)
         {
             Client = client;
+            Credential = credential;
             _requiredReadyCount = requiredReadyCount;
             _timeProvider = timeProvider;
             _receivedTimestamp = timeProvider.GetTimestamp();
@@ -988,6 +1145,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
         }
 
         public FirebaseRtdbRestClient Client { get; }
+        public FirebaseRealtimeCredential Credential { get; }
         public CancellationToken Token => _cancellation.Token;
         public Task Ready => _ready.Task;
         public Task Completion => _completion;

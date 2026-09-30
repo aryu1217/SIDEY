@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -33,12 +34,14 @@ internal sealed class FirebaseRealtimeRolloutSelection
         FirebaseRealtimeSelectedTransport transport,
         bool killSwitch,
         TimeSpan cacheTtl,
-        FirebaseRealtimeRolloutSelectionSource source)
+        FirebaseRealtimeRolloutSelectionSource source,
+        FirebaseRealtimeRolloutException? failure = null)
     {
         Transport = transport;
         KillSwitch = killSwitch;
         CacheTtl = cacheTtl;
         Source = source;
+        Failure = failure;
     }
 
     public FirebaseRealtimeSelectedTransport Transport { get; }
@@ -46,6 +49,7 @@ internal sealed class FirebaseRealtimeRolloutSelection
     public bool KillSwitch { get; }
     public TimeSpan CacheTtl { get; }
     public FirebaseRealtimeRolloutSelectionSource Source { get; }
+    public FirebaseRealtimeRolloutException? Failure { get; }
 
     public override string ToString() =>
         $"{nameof(FirebaseRealtimeRolloutSelection)}(Transport={Transport}, KillSwitch={KillSwitch}, CacheTtl={CacheTtl.TotalSeconds}, Source={Source})";
@@ -53,18 +57,31 @@ internal sealed class FirebaseRealtimeRolloutSelection
 
 internal sealed class FirebaseRealtimeRolloutException : Exception
 {
-    public FirebaseRealtimeRolloutException(bool failClosed)
+    public FirebaseRealtimeRolloutException(
+        bool failClosed,
+        HttpStatusCode? statusCode = null,
+        string failureCode = "selection-failed",
+        TimeSpan? retryAfter = null,
+        TimeSpan? retryDelay = null)
         : base(failClosed
             ? "Firebase realtime rollout refresh failed closed."
             : "Firebase realtime rollout selection failed.")
     {
         FailClosed = failClosed;
+        StatusCode = statusCode;
+        FailureCode = failureCode;
+        RetryAfter = retryAfter;
+        RetryDelay = retryDelay;
     }
 
     public bool FailClosed { get; }
+    public HttpStatusCode? StatusCode { get; }
+    public string FailureCode { get; }
+    public TimeSpan? RetryAfter { get; }
+    public TimeSpan? RetryDelay { get; }
 
     public override string ToString() =>
-        $"{nameof(FirebaseRealtimeRolloutException)}(FailClosed={FailClosed})";
+        $"{nameof(FirebaseRealtimeRolloutException)}(FailClosed={FailClosed}, StatusCode={StatusCode}, FailureCode={FailureCode}, RetryAfter={RetryAfter})";
 }
 
 internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRolloutSelector
@@ -74,7 +91,13 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
 
     private const int ProtocolVersion = 2;
     private const int MaximumResponseBytes = 16 * 1024;
-    private static readonly TimeSpan s_failureFallbackTtl = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan s_invalidSelectionRetry = TimeSpan.FromSeconds(30);
+    private static readonly HashSet<string> s_safeFailureCodes =
+    [
+        "PGRST000", "PGRST001", "PGRST002", "PGRST003",
+        "PGRST301", "PGRST302", "PGRST303", "42501", "28000", "28P01",
+        "53300", "57P01", "57014",
+    ];
     private static readonly JsonSerializerOptions s_jsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> s_responseProperties =
     [
@@ -95,6 +118,12 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
     private readonly SemaphoreSlim _gate = new(1, 1);
     private CacheEntry? _cache;
     private bool _failedClosed;
+    private SessionKey? _retryKey;
+    private FirebaseRealtimeRolloutException? _retryFailure;
+    private TimeSpan _retryDelay;
+    private long _retryStartedTimestamp;
+    private long? _successTimestamp;
+    private int _consecutiveFailures;
 
     public FirebaseRealtimeRolloutSelector(
         SupabaseRuntimeConfiguration configuration,
@@ -132,6 +161,29 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (_retryKey != key)
+            {
+                _retryKey = key;
+                _retryFailure = null;
+                _successTimestamp = null;
+                _consecutiveFailures = 0;
+            }
+            if (_retryFailure is { } pendingFailure)
+            {
+                TimeSpan remaining = _retryDelay - _timeProvider.GetElapsedTime(_retryStartedTimestamp);
+                if (remaining > TimeSpan.Zero)
+                {
+                    FirebaseRealtimeRolloutException waiting = new(
+                        pendingFailure.FailClosed, pendingFailure.StatusCode,
+                        pendingFailure.FailureCode, pendingFailure.RetryAfter, remaining);
+                    if (waiting.FailClosed)
+                        throw waiting;
+                    return new FirebaseRealtimeRolloutSelection(
+                        FirebaseRealtimeSelectedTransport.LegacySupabase, true, remaining,
+                        FirebaseRealtimeRolloutSelectionSource.FailureFallback, waiting);
+                }
+                _retryFailure = null;
+            }
             if (_failedClosed)
             {
                 forceRefresh = true;
@@ -151,6 +203,7 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
                     session,
                     cancellationToken).ConfigureAwait(false);
                 _failedClosed = false;
+                _successTimestamp ??= _timeProvider.GetTimestamp();
                 _cache = new CacheEntry(key, selected, _timeProvider.GetTimestamp());
                 return selected;
             }
@@ -158,20 +211,46 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
             {
                 throw;
             }
-            catch
+            catch (Exception exception)
             {
-                if (_failedClosed
-                    || _cache is { } previous && previous.Key == key && previous.Selection.Enabled)
+                FirebaseRealtimeRolloutException? httpFailure;
+                httpFailure = exception as FirebaseRealtimeRolloutException;
+                HttpStatusCode? status = httpFailure?.StatusCode
+                    ?? (exception as HttpRequestException)?.StatusCode;
+                string code = httpFailure?.FailureCode ?? (exception switch
                 {
-                    _failedClosed = true;
-                    throw new FirebaseRealtimeRolloutException(failClosed: true);
+                    HttpRequestException or IOException => "network-error",
+                    OperationCanceledException => "timeout",
+                    InvalidDataException or JsonException => "invalid-response",
+                    _ => "selection-failed",
+                });
+                if (_successTimestamp is long success
+                    && _timeProvider.GetElapsedTime(success) >= FirebaseRealtimeRetryPolicy.StableConnection)
+                {
+                    _consecutiveFailures = 0;
                 }
+                _successTimestamp = null;
+                bool transient = status == HttpStatusCode.TooManyRequests
+                    || status is { } httpStatus && (int)httpStatus >= 500
+                    || status is null && exception is HttpRequestException or IOException or OperationCanceledException;
+                if (transient)
+                    _consecutiveFailures = Math.Min(_consecutiveFailures + 1, 17);
+                _retryDelay = transient ? FirebaseRealtimeRetryPolicy.CalculateDelay(
+                    _consecutiveFailures, status, httpFailure?.RetryAfter, Random.Shared.NextDouble())
+                    : s_invalidSelectionRetry;
+                _retryStartedTimestamp = _timeProvider.GetTimestamp();
+                _failedClosed |= _cache is { } previous && previous.Key == key && previous.Selection.Enabled;
+                _retryFailure = new FirebaseRealtimeRolloutException(
+                    _failedClosed, status, code, httpFailure?.RetryAfter, _retryDelay);
+                if (_failedClosed)
+                    throw _retryFailure;
 
-                var fallback = new FirebaseRealtimeRolloutSelection(
+                FirebaseRealtimeRolloutSelection fallback = new(
                     FirebaseRealtimeSelectedTransport.LegacySupabase,
                     killSwitch: true,
-                    s_failureFallbackTtl,
-                    FirebaseRealtimeRolloutSelectionSource.FailureFallback);
+                    _retryDelay,
+                    FirebaseRealtimeRolloutSelectionSource.FailureFallback,
+                    _retryFailure);
                 _cache = new CacheEntry(key, fallback, _timeProvider.GetTimestamp());
                 return fallback;
             }
@@ -207,7 +286,44 @@ internal sealed class FirebaseRealtimeRolloutSelector : IFirebaseRealtimeRollout
             cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidDataException("Rollout RPC failed.");
+            RetryConditionHeaderValue? retry = response.Headers.RetryAfter;
+            TimeSpan? retryAfter = retry?.Delta;
+            if (retry?.Date is DateTimeOffset retryAt)
+            {
+                retryAfter = retryAt - (response.Headers.Date ?? _timeProvider.GetUtcNow());
+            }
+            if (retryAfter < TimeSpan.Zero)
+            {
+                retryAfter = TimeSpan.Zero;
+            }
+            string failureCode = "http-error";
+            try
+            {
+                byte[] errorPayload = await ReadBoundedAsync(response.Content, MaximumResponseBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                JsonDocument error;
+                error = JsonDocument.Parse(errorPayload, new JsonDocumentOptions { MaxDepth = 4 });
+                using (error)
+                {
+                    if (error.RootElement.ValueKind == JsonValueKind.Object
+                        && error.RootElement.TryGetProperty("code", out JsonElement code)
+                        && code.ValueKind == JsonValueKind.String
+                        && code.GetString() is string candidate
+                        && s_safeFailureCodes.Contains(candidate))
+                    {
+                        failureCode = candidate;
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // A malformed or interrupted error body cannot erase the HTTP status/header.
+            }
+            throw new FirebaseRealtimeRolloutException(false, response.StatusCode, failureCode, retryAfter);
         }
 
         byte[] payload = await ReadBoundedAsync(

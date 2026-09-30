@@ -1,0 +1,30 @@
+---
+import { getWebsiteCopy, localeNames, localeRoot, supportedLocales, type Locale } from "../i18n/landing";
+
+interface Props { locale: Locale; }
+const { locale } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const routeSuffix = Astro.url.pathname.slice(base.length).replace(/^[^/]+\//, "");
+const label = getWebsiteCopy(locale).footer.language;
+---
+
+<nav class="footer-language-links" aria-label={label}>
+  {supportedLocales.map((code) => (
+    <a href={`${localeRoot(code)}${routeSuffix}`} lang={code} hreflang={code} aria-current={code === locale ? "page" : undefined}>{localeNames[code]}</a>
+  ))}
+</nav>
+
+<style>
+  .footer-language-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem 1rem;
+    margin-top: 1.25rem;
+    color: var(--muted);
+    font-size: .8rem;
+  }
+
+  a { text-decoration: none; }
+  a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
+  a[aria-current="page"] { color: var(--ink); font-weight: 700; }
+</style>

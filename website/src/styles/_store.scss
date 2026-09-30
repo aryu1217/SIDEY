@@ -55,7 +55,7 @@
   color: var(--ink);
   background: rgba(255, 255, 255, .5);
   box-shadow: inset 0 0 0 .0625rem rgba(57, 61, 109, .05), 0 1.125rem 2.75rem rgba(67, 61, 105, .07);
-  text-align: left;
+  text-align: start;
   text-decoration: none;
   @include glass(1.125rem, 130%);
 }

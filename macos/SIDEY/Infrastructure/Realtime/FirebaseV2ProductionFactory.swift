@@ -125,11 +125,18 @@ enum FirebaseV2ProductionFactory {
             backend: backend,
             events: backend.events
         )
+        let rolloutMonitor = RealtimeRolloutMonitor(
+            backend: backend,
+            identity: supabaseSession.identity,
+            cache: cache,
+            appVersion: appVersion
+        )
         let firebaseTransport = try makeFirebaseTransport(
             backend: backend,
             supabasePlane: firebasePlane,
             accountID: supabaseSession.identity.accountID,
             wireItems: wireItems,
+            refreshPolicy: { try await rolloutMonitor.refresh() },
             bundle: bundle
         )
         let router = try RoomMessagingTransportRouter(
@@ -147,6 +154,7 @@ enum FirebaseV2ProductionFactory {
                     supabasePlane: recoveredPlane,
                     accountID: recoveredSession.identity.accountID,
                     wireItems: recoveredWireItems,
+                    refreshPolicy: { try await rolloutMonitor.refresh() },
                     bundle: bundle
                 )
             },
@@ -160,12 +168,7 @@ enum FirebaseV2ProductionFactory {
         )
         return FirebaseV2ProductionRuntime(
             router: router,
-            rolloutMonitor: RealtimeRolloutMonitor(
-                backend: backend,
-                identity: supabaseSession.identity,
-                cache: cache,
-                appVersion: appVersion
-            ),
+            rolloutMonitor: rolloutMonitor,
             initialRefreshInterval: .seconds(decision.cacheTTLSeconds)
         )
     }
@@ -175,6 +178,7 @@ enum FirebaseV2ProductionFactory {
         supabasePlane: SideyBackendRealtimeAdapter,
         accountID: UUID,
         wireItems: [FirebaseV2StoreWireItem],
+        refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)? = nil,
         bundle: Bundle = .main
     ) throws -> FirebaseV2CompositeTransport {
         var bubbles: [FirebaseV2WireCode: String] = [:]
@@ -216,6 +220,7 @@ enum FirebaseV2ProductionFactory {
             databaseValues: databaseValues,
             databaseWrites: FirebaseV2DatabaseWriteAdapter(database: runtime.database),
             chatClient: chatClient,
+            refreshPolicy: refreshPolicy,
             throwableCatalogIDByWireCode: throwables,
             serverTimeOffsets: FirebaseV2ServerTimeOffsetStream(database: runtime.database)
         )

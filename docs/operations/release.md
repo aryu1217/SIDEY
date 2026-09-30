@@ -12,8 +12,36 @@ submission, upload, website deployment와 production backend deployment는 각�
 
 Private source와 backend의 GitHub Actions는 꺼져 있다. `.github/workflows/` 파일은
 과거 절차의 기록이며 CI, Windows release, website deployment, backend 다운로드 집계가
-실행되지 않는다. 공개 저장소의 기존 사이트·릴리스는 유지되지만 새 게시 절차는 별도로
-검증하고 승인받아야 한다.
+실행되지 않는다. 웹사이트는 공개 `SIDEY` 저장소의 수동 `SIDEY Website deployment`
+워크플로로 게시한다. 네이티브 release와 backend의 게시 경로는 이 워크플로에 포함되지 않는다.
+모든 게시 작업은 검증과 사용자 승인을 거쳐 수행한다.
+
+### 공개 저장소에서 웹사이트 게시
+
+공개 저장소의 `.github/workflows/website-deployment.yml`이 실행 진입점이다. `main`에서
+수동 실행하며 private source의 `main`을 읽기 전용 SSH Deploy key로 가져온다.
+`SIDEY-source`의 Actions를 활성화할 필요가 없다.
+
+- 조직의 Settings → Member privileges에서 Deploy keys를 허용한다.
+- 전용 SSH 공개 키를 `SIDEY-source`의 Settings → Deploy keys에 등록한다.
+  **Allow write access는 선택하지 않는다.**
+- 대응하는 비공개 키를 공개 `SIDEY` 저장소의 Actions secret
+  `SIDEY_SOURCE_DEPLOY_KEY`에 저장한다. 개인 SSH 키를 재사용하거나 키를 Git에 넣지 않는다.
+- 공개 `SIDEY`의 Settings → Pages → Source는 **GitHub Actions**로 설정한다.
+- 승인된 게시에는 공개 저장소의 Actions → SIDEY Website deployment → Run workflow를
+  사용하고 `main`을 선택한다.
+
+워크플로는 website pnpm build/test, asset·publication 검사를 수행한다.
+`scripts/pages/prepare_website_deployment.py`는 현재 공개 `gh-pages`의 Windows update
+metadata를 웹사이트의 published release snapshot 및 실제 GitHub release asset digest와
+대조한 뒤 원본 bytes를 보존한다. 미출시 native target인 `release/windows.json`으로
+다운로드나 업데이트를 바꾸지 않는다. 공개 릴리즈와 snapshot 또는 metadata가 다르면
+게시를 중단하고, 릴리즈별로 검증된 metadata를 먼저 준비해야 한다.
+
+업로드 대상은 public tree guard를 통과한 정적 사이트뿐이다. Private checkout, SSH key,
+개발용 source archive는 공개 artifact에 포함하지 않는다. Pages 배포 직전에 공개
+`gh-pages` commit이 바뀌었으면 수동 실행을 다시 해야 한다. 이 웹사이트 게시 경로는
+기존 `gh-pages` update metadata를 수정하지 않으며 네이티브 릴리즈를 생성하지 않는다.
 
 ## 1. 범위와 version 확인
 

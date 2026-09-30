@@ -1444,9 +1444,6 @@
           },
           "notify": {
             "title": "Yeni güncellemeleri bildir"
-          },
-          "show_after": {
-            "title": "Güncellemeden sonra ayrıntıları göster"
           }
         }
       },

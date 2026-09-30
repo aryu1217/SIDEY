@@ -28,13 +28,14 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         {
             ["patch_soft_ball"] = "0",
         };
-    private static readonly TimeSpan s_selectorFailureRetry = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan s_selectorFailureRetry = TimeSpan.FromSeconds(5);
     private Task? _legacyPump;
     private Task? _selectionLoop;
     private Guid? _activeRoomId;
     private TimeSpan _selectionTtl = TimeSpan.FromMinutes(5);
     private int _firebaseEnabled;
     private int _selectorFailedClosed;
+    private int _selectorRetrying;
     private int _sessionInvalidated;
     private int _disposed;
     private CancellationTokenSource? _firebaseWriteFence;
@@ -158,7 +159,8 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         using FirebaseWriteOperation operation = CreateFirebaseWriteOperation(
             roomId,
             "Firebase realtime chat is not ready.",
-            cancellationToken);
+            cancellationToken,
+            localChatNotReady: true);
         try
         {
             return await _chat.SendAsync(
@@ -403,7 +405,7 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var lead = TimeSpan.FromTicks(Math.Min(
+                TimeSpan lead = Volatile.Read(ref _selectorRetrying) != 0 ? TimeSpan.Zero : TimeSpan.FromTicks(Math.Min(
                     TimeSpan.FromSeconds(30).Ticks,
                     _selectionTtl.Ticks / 2));
                 TimeSpan delay = _selectionTtl - lead;
@@ -440,9 +442,13 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                EmitSelectorFailure(exception as FirebaseRealtimeRolloutException);
+                _selectionTtl = exception is FirebaseRealtimeRolloutException selectionFailure
+                    ? selectionFailure.RetryDelay ?? selectionFailure.RetryAfter ?? s_selectorFailureRetry
+                    : s_selectorFailureRetry;
+                Volatile.Write(ref _selectorRetrying, 1);
                 if (UsesFirebaseChat)
                 {
-                    _selectionTtl = s_selectorFailureRetry;
                     Volatile.Write(ref _selectorFailedClosed, 1);
                     CancelFirebaseWriteFence();
                     await _firebase.StopAsync(CancellationToken.None).ConfigureAwait(false);
@@ -454,6 +460,9 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
                 return;
             }
 
+            if (selection.Failure is { } failure)
+                EmitSelectorFailure(failure);
+            Volatile.Write(ref _selectorRetrying, selection.Failure is null ? 0 : 1);
             _selectionTtl = selection.CacheTtl;
             bool enabled = selection.Enabled
                 && !selection.KillSwitch
@@ -499,8 +508,10 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
             {
                 CancelFirebaseWriteFence();
             }
-            EmitConnectionStatus();
-            if (firebaseConnection.Status.IsReady)
+            bool connectionChanged = EmitConnectionStatus();
+            if (firebaseConnection.Status.IsReady
+                && !connectionChanged
+                && ConnectionStatus.TransportConnected)
             {
                 Emit(new BackendEvent.ReconciliationRequired());
             }
@@ -517,19 +528,20 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
 
     private void Emit(BackendEvent backendEvent) => _events.TryWrite(backendEvent);
 
-    private void EmitConnectionStatus()
+    private bool EmitConnectionStatus()
     {
         lock (_stateGate)
         {
             RealtimeConnectionStatus status = ConnectionStatus;
             if (_lastEmittedConnectionStatus == status)
             {
-                return;
+                return false;
             }
             // Applying a reconciled snapshot synchronizes rooms again. Re-emitting an
             // unchanged status here would request another reconciliation indefinitely.
             _lastEmittedConnectionStatus = status;
             Emit(new BackendEvent.ConnectionChanged(status));
+            return true;
         }
     }
 
@@ -569,6 +581,16 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         }
     }
 
+    private void EmitSelectorFailure(FirebaseRealtimeRolloutException? failure)
+    {
+        string status = failure?.StatusCode is { } code ? ((int)code).ToString(System.Globalization.CultureInfo.InvariantCulture) : "none";
+        string reason = failure?.FailureCode ?? "selection-failed";
+        string retry = failure?.RetryAfter is { } delay
+            ? Math.Ceiling(delay.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture) : "none";
+        Emit(new BackendEvent.Diagnostic(
+            $"firebase-selector-error status={status} code={reason} retry-seconds={retry}"));
+    }
+
     private void EmitSendDiagnostic(string kind, string result) =>
         Emit(new BackendEvent.Diagnostic($"firebase-send kind={kind} result={result}"));
 
@@ -576,6 +598,7 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     {
         string reason = exception switch
         {
+            ChatNotReadyException => "not-ready",
             FirebaseRealtimeChatException
             { Classification: FirebaseRealtimeChatFailureClassification.CommitAmbiguous } => "commit-ambiguous",
             FirebaseRealtimeChatException => "rejected",
@@ -591,7 +614,8 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     private FirebaseWriteOperation CreateFirebaseWriteOperation(
         Guid roomId,
         string notReadyMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool localChatNotReady = false)
     {
         lock (_stateGate)
         {
@@ -602,6 +626,8 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
                 || _firebaseWriteFence is null
                 || _firebaseWriteFence.IsCancellationRequested)
             {
+                if (localChatNotReady)
+                    throw new ChatNotReadyException();
                 throw new InvalidOperationException(notReadyMessage);
             }
             CancellationToken fenceToken = _firebaseWriteFence.Token;
@@ -659,7 +685,7 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     {
         using var waitCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken);
-        var timer = Task.Delay(delay, waitCancellation.Token);
+        Task timer = FirebaseRealtimeRetryPolicy.DelayAsync(delay, TimeProvider.System, waitCancellation.Token);
         Task wake = _selectionWake.WaitAsync(waitCancellation.Token);
         Task completed = await Task.WhenAny(timer, wake).ConfigureAwait(false);
         await completed.ConfigureAwait(false);

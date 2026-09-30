@@ -1,0 +1,17 @@
+---
+import StoreCatalogPage from "../../../../components/StoreCatalogPage.astro";
+import type { StoreCategory } from "../../../../data/store";
+import { supportedLocales, localePathSegment, type Locale } from "../../../../i18n/landing";
+
+export function getStaticPaths() {
+  const categories = ["characters", "throwables", "bubbles"] as const;
+  return supportedLocales.filter((locale) => !["ko", "en", "ja", "zh-Hant"].includes(locale))
+    .flatMap((locale) => categories.map((category) => ({
+      params: { locale: localePathSegment(locale), category }, props: { locale, category },
+    })));
+}
+
+const { locale, category } = Astro.props as { locale: Locale; category: StoreCategory };
+---
+
+<StoreCatalogPage locale={locale} category={category} />

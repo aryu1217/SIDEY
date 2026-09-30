@@ -46,13 +46,14 @@ class ScopeEvidenceTests(unittest.TestCase):
             patch.object(w, "dirty_paths", return_value=[]) as dirty,
             patch.object(w, "is_ancestor", return_value=True) as ancestor,
             patch.object(w, "snapshot", return_value=self.snapshot) as snapshot,
+            patch.object(w, "scope_input_fingerprint", return_value="scope-inputs"),
             patch.object(w, "run_scope_checks") as checks,
         ):
             result = w.verify_scope(self.root, "web", self.head, self.output)
 
         self.assertEqual(checks.call_args.args, (self.root, "web"))
         ancestor.assert_called_once_with(self.root, self.base, self.head)
-        self.assertGreaterEqual(fetch.call_count, 2)
+        self.assertEqual(fetch.call_count, 1)
         self.assertGreaterEqual(head.call_count, 2)
         self.assertGreaterEqual(dirty.call_count, 2)
         self.assertGreaterEqual(snapshot.call_count, 2)
@@ -63,6 +64,7 @@ class ScopeEvidenceTests(unittest.TestCase):
         self.assertEqual(recorded["snapshot"], self.snapshot)
         self.assertEqual(recorded["host"], sys.platform)
         self.assertEqual(recorded["status"], "passed")
+        self.assertEqual(recorded["inputs"], "scope-inputs")
 
     def test_verify_scope_rejects_wrong_head_dirty_source_or_stale_base(self):
         cases = (
@@ -89,7 +91,7 @@ class ScopeEvidenceTests(unittest.TestCase):
     def test_failed_checks_or_source_drift_preserve_prior_evidence(self):
         self.output.parent.mkdir()
         self.output.write_bytes(b"previous evidence")
-        for cause in ("checks", "remote", "head", "dirty", "snapshot"):
+        for cause in ("checks", "head", "dirty", "snapshot"):
             with self.subTest(cause=cause):
                 remote = [self.base, "c" * 40] if cause == "remote" else [self.base] * 2
                 head = [self.head, "c" * 40] if cause == "head" else [self.head] * 2

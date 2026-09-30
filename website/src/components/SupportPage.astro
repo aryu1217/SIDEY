@@ -1,61 +1,57 @@
 ---
 import PolicyLayout from "../layouts/PolicyLayout.astro";
-import { localePathSegment, type Locale } from "../i18n/landing";
+import { getWebsiteCopy, localePathSegment, type Locale } from "../i18n/landing";
 
 interface Props { locale: Locale; }
 const { locale } = Astro.props;
 const path = localePathSegment(locale);
 const supportEmail = "ryu200112@gmail.com";
-const content: Record<Locale, {
-  title: string; description: string; heading: string; introduction: string;
-  contact: string; contactBody: string; include: string; details: string[];
-  protect: string; protectBody: string; response: string;
-}> = {
-  ko: {
-    title: "지원 · SIDEY", description: "SIDEY 문의 방법과 문제 해결에 필요한 진단 정보를 안내합니다.", heading: "SIDEY 지원",
-    introduction: "문제가 생기거나 구매·계정 관련 도움이 필요하면 아래 이메일로 문의해 주세요.",
-    contact: "문의하기", contactBody: "문의 내용을 확인할 수 있도록 제목에 SIDEY와 사용 중인 운영체제를 적어 주세요.",
-    include: "함께 보내면 도움이 되는 정보", details: ["사용 중인 운영체제와 SIDEY 버전", "문제가 발생한 대략적인 시각과 재현 순서", "표시된 오류 코드와 개인정보가 보이지 않게 정리한 화면 캡처", "Windows 설치 문제인 경우 앱이 안내한 진단 데이터"],
-    protect: "보내면 안 되는 정보", protectBody: "초대 코드, 메시지 내용, 로그인·인증 토큰, 비밀번호, 결제수단 전체 번호는 보내지 마세요. 필요한 정보가 더 있으면 답장으로 별도 안내합니다.",
-    response: "문의 언어에 따라 답변에 시간이 걸릴 수 있으며, 언어별 응답 시간은 보장하지 않습니다.",
-  },
-  en: {
-    title: "Support · SIDEY", description: "How to contact SIDEY support and what diagnostic details help us investigate.", heading: "SIDEY Support",
-    introduction: "Email us if you run into a problem or need help with a purchase or Account.",
-    contact: "Contact support", contactBody: "Include SIDEY and your operating system in the subject so we can route your request correctly.",
-    include: "Helpful details to include", details: ["Your operating system and SIDEY version", "The approximate time of the problem and steps to reproduce it", "Any displayed error code and a screenshot with personal information removed", "For a Windows installation problem, the diagnostic data the app asks you to collect"],
-    protect: "Do not send sensitive content", protectBody: "Do not send invite codes, message contents, sign-in or authentication tokens, passwords, or full payment-card numbers. We will reply if another specific detail is needed.",
-    response: "Replies may take longer depending on the inquiry language. SIDEY does not promise a language-specific response time.",
-  },
-  ja: {
-    title: "サポート · SIDEY", description: "SIDEYへの問い合わせ方法と、調査に役立つ診断情報をご案内します。", heading: "SIDEY サポート",
-    introduction: "不具合が発生した場合や、購入・アカウントに関するサポートが必要な場合は、以下のメールアドレスまでお問い合わせください。",
-    contact: "お問い合わせ", contactBody: "確認しやすいよう、件名にSIDEYとお使いのOSを記載してください。",
-    include: "添えていただきたい情報", details: ["お使いのOSとSIDEYのバージョン", "問題が発生したおおよその時刻と再現手順", "表示されたエラーコードと、個人情報を隠したスクリーンショット", "Windowsのインストール問題の場合は、アプリが案内する診断データ"],
-    protect: "送信しないでください", protectBody: "招待コード、メッセージ本文、ログイン・認証トークン、パスワード、カード番号の全桁は送信しないでください。ほかに必要な情報がある場合は、返信で個別にご案内します。",
-    response: "お問い合わせの言語によっては返信に時間がかかる場合があります。言語ごとの返信時間は保証していません。",
-  },
-  "zh-Hant": {
-    title: "支援 · SIDEY", description: "查看 SIDEY 的聯絡方式，以及有助於問題調查的診斷資訊。", heading: "SIDEY 支援",
-    introduction: "如果遇到問題，或需要購買與帳號方面的協助，請寄信到以下電子郵件地址。",
-    contact: "聯絡支援團隊", contactBody: "請在主旨中註明 SIDEY 與你使用的作業系統，方便我們確認問題。",
-    include: "建議附上的資訊", details: ["使用中的作業系統與 SIDEY 版本", "問題發生的大約時間與重現步驟", "畫面顯示的錯誤代碼，以及已遮蔽個人資料的螢幕截圖", "若為 Windows 安裝問題，請附上 App 指示收集的診斷資料"],
-    protect: "請勿傳送敏感內容", protectBody: "請勿傳送邀請碼、訊息內容、登入或驗證權杖、密碼，或完整的付款卡號。如需其他特定資訊，我們會另行回覆說明。",
-    response: "回覆時間可能因詢問語言而異，SIDEY 不保證各語言的特定回覆時限。",
-  },
-};
-const copy = content[locale];
+const issuesUrl = "https://github.com/sidey-app/SIDEY/issues";
+const bugReportUrl = "https://github.com/sidey-app/SIDEY/issues/new?template=01-bug-report.yml";
+const macSystemCommand = "uname -mprs";
+const windowsSystemCommand = "\"$([Environment]::OSVersion.VersionString) $(if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' })\"";
+const macLogsCommand = 'log show --last 30m --style compact --predicate \'subsystem == "app.sidey.desktop"\' > ~/Desktop/SIDEY-Diagnostics-$(date +%Y%m%d-%H%M%S).log';
+const copy = getWebsiteCopy(locale).support;
 ---
 
 <PolicyLayout locale={locale} title={copy.title} description={copy.description} canonicalPath={`${path}/support/`} heading={copy.heading} introduction={copy.introduction} current="support">
   <article class="policy-markdown">
-    <h2>{copy.contact}</h2>
-    <p>{copy.contactBody}</p>
-    <p><a href={`mailto:${supportEmail}`}>{supportEmail}</a></p>
+    <h2>{copy.githubTitle}</h2>
+    <p>{copy.githubBody}</p>
+    <ul>
+      <li><a href={`${issuesUrl}?q=is%3Aissue`}>{copy.searchIssues}</a></li>
+      <li><a href={bugReportUrl}>{copy.reportIssue}</a></li>
+    </ul>
+    <h2>{copy.emailTitle}</h2>
+    <p>{copy.emailBody}</p>
+    <p><a href={`mailto:${supportEmail}`}>{copy.emailAction}: {supportEmail}</a></p>
     <h2>{copy.include}</h2>
     <ul>{copy.details.map((detail) => <li>{detail}</li>)}</ul>
+    <h2>{copy.diagnostics}</h2>
+    <h3>{copy.operatingSystem}</h3>
+    <p>{copy.macosLabel}</p>
+    <pre dir="ltr"><code>{macSystemCommand}</code></pre>
+    <p>{copy.windowsLabel}</p>
+    <pre dir="ltr"><code>{windowsSystemCommand}</code></pre>
+    <p>{copy.macVersion}</p>
+    <p>{copy.windowsVersion}</p>
+    <p>{copy.macDiagnostics}</p>
+    <pre dir="ltr"><code>{macLogsCommand}</code></pre>
+    <p>{copy.windowsDiagnostics}</p>
     <h2>{copy.protect}</h2>
     <p>{copy.protectBody}</p>
     <p>{copy.response}</p>
   </article>
 </PolicyLayout>
+
+<style>
+  pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: var(--surface-secondary, rgba(127, 127, 127, 0.1));
+  }
+  code { font-family: monospace; }
+</style>

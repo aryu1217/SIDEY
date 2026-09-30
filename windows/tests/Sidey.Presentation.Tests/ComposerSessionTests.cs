@@ -1,3 +1,5 @@
+using Sidey.Core.Abstractions;
+using Sidey.Core.Localization;
 using Sidey.Presentation.Services;
 using Sidey.Presentation.ViewModels;
 
@@ -5,6 +7,58 @@ namespace Sidey.Presentation.Tests;
 
 public sealed class ComposerSessionTests
 {
+    [Fact]
+    public async Task DisconnectedComposerPreservesDraftUntilConnectionRecovers()
+    {
+        int sends = 0;
+        Guid room;
+        room = Guid.NewGuid();
+        using ComposerViewModel composer = new((_, _) =>
+        {
+            sends++;
+            return Task.CompletedTask;
+        }, autoCloseAfterSend: false);
+        composer.ApplyRoom(room, canCompose: true, isConnectionReady: false);
+        composer.Draft = "Saved draft";
+
+        Assert.True(composer.CanCompose);
+        Assert.True(composer.IsConnectionRecovering);
+        Assert.False(composer.SendCommand.CanExecute(null));
+        // The command also checks readiness when called without a UI CanExecute check.
+        await composer.SendCommand.ExecuteAsync(null);
+        Assert.Equal("Saved draft", composer.Draft);
+        Assert.Equal(0, sends);
+
+        composer.ApplyRoom(room, canCompose: true, isConnectionReady: true);
+        Assert.False(composer.IsConnectionRecovering);
+        Assert.True(composer.SendCommand.CanExecute(null));
+        await composer.SendCommand.ExecuteAsync(null);
+        Assert.Equal(1, sends);
+        Assert.Equal(string.Empty, composer.Draft);
+    }
+
+    [Fact]
+    public async Task TerminalNotReadyRaceRestoresDraftAndShowsSafeConnectionMessage()
+    {
+        using ComposerViewModel composer = new((_, _) =>
+            Task.FromException(new ChatNotReadyException()), autoCloseAfterSend: false);
+        Guid room;
+        room = Guid.NewGuid();
+        composer.ApplyRoom(room, canCompose: true, isConnectionReady: true);
+        composer.Draft = "Keep this message";
+
+        await composer.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("Keep this message", composer.Draft);
+        Assert.Equal(I18n.Get("connection.notice.reconnecting"), composer.ErrorMessage);
+
+        composer.ApplyRoom(room, canCompose: true, isConnectionReady: false);
+        Assert.True(composer.HasError);
+        composer.ApplyRoom(room, canCompose: true, isConnectionReady: true);
+        Assert.False(composer.HasError);
+        Assert.Equal("Keep this message", composer.Draft);
+    }
+
     [Fact]
     public async Task HistorySendsToCapturedRoomAndPreservesOtherRoomDraftOnFailure()
     {

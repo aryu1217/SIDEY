@@ -196,6 +196,9 @@
       </StackPanel>
     </Grid>
     <StackPanel Grid.Row="2" Spacing="8" DataContext="{Binding Composer}">
+      <TextBlock Text="{Binding ConnectionMessage}" TextWrapping="Wrap"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          Visibility="{Binding IsConnectionRecovering, Converter={StaticResource BooleanToVisibilityConverter}}" />
       <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"
           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
           Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}" />

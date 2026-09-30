@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Updatedetails"
       },
-      "show_after": {
-        "title": "Updatedetails nach dem Update anzeigen"
-      },
       "title": "Updates"
     },
     "window": {

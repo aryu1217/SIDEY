@@ -41,7 +41,6 @@ public partial class App : Application
 #endif
     private bool _startupUpdateCheckStarted;
     private bool _trayUpdateCheckInProgress;
-    private bool _releaseNotesOpenedAfterUpdate;
     private bool _monitorConnectionFailures;
     private bool _connectionFailureNotificationArmed = true;
     private DateTimeOffset? _lastConnectionFailureNotificationAt;
@@ -222,20 +221,12 @@ public partial class App : Application
             if (!backgroundLaunch)
                 EnsureMainWindow().ShowFatalError(error);
         }
-        if (completedUpdateVersion is null
-            || _tray is not null
-            || _updateService.Preferences.ShowReleaseNotesAfterUpdate)
+        if (completedUpdateVersion is null || _tray is not null)
         {
-            bool markedLaunched = _updateCompletionTracker.TryConsumeCompletedUpdate(
-                _updateService.CurrentUpdateVersion,
-                _updateService.Preferences.ShowReleaseNotesAfterUpdate,
-                out bool shouldOpenReleaseNotes);
+            bool markedLaunched = _updateCompletionTracker.TryMarkLaunched(
+                _updateService.CurrentUpdateVersion);
             StartupDiagnostics.Stage(
                 $"update-completion-state-saved result={markedLaunched.ToString().ToLowerInvariant()}");
-            if (shouldOpenReleaseNotes)
-            {
-                _ = OpenReleaseNotesAfterUpdateAsync();
-            }
         }
 #if DEBUG
         _developmentUpdate = DevelopmentUpdateService.Start(OnDevelopmentUpdateAccepted);
@@ -439,7 +430,6 @@ public partial class App : Application
         try
         {
             MainWindow window = EnsureMainWindow();
-            window.ShowUpdates();
             if (window.ViewModel.IsCheckingForUpdates)
                 return;
             AvailableUpdate? update = await window.ViewModel.CheckForUpdatesOnStartupAsync(
@@ -449,6 +439,8 @@ public partial class App : Application
                         PostUpdateNotification(found.Version);
                 },
                 onUpdateReady: ready => PostUpdateReadyToInstallNotification(ready.Version));
+            if (update is not null && !_shuttingDown && ReferenceEquals(_mainWindow, window))
+                window.ShowUpdates();
             if (update is null && !_shuttingDown)
                 _tray?.NotifyLatestVersion();
         }
@@ -459,25 +451,6 @@ public partial class App : Application
                 _tray?.NotifyUpdateCheckFailed();
         }
         finally { _trayUpdateCheckInProgress = false; }
-    }
-
-    private async Task OpenReleaseNotesAfterUpdateAsync()
-    {
-        if (_releaseNotesOpenedAfterUpdate)
-        {
-            return;
-        }
-
-        _releaseNotesOpenedAfterUpdate = true;
-        try
-        {
-            await _updateService.OpenReleaseNotesAsync(_updateService.CurrentReleaseNotesUri);
-            StartupDiagnostics.Stage("update-release-notes-opened");
-        }
-        catch (Exception exception)
-        {
-            StartupDiagnostics.NonFatal("update-release-notes-open", exception);
-        }
     }
 
     private async Task DisposeAfterFailedLaunchAsync()
@@ -742,7 +715,8 @@ public partial class App : Application
 
     private static void ApplyComposerState(ComposerViewModel composer, CoordinatorState state) =>
         composer.ApplyRoom(state.ActiveRoomId,
-            state.ActiveRoomId is not null && !state.NeedsOnboarding && state.GroupOperation == GroupOperation.Idle);
+            state.ActiveRoomId is not null && !state.NeedsOnboarding && state.GroupOperation == GroupOperation.Idle,
+            state.RealtimeConnection.IsReady && state.RealtimeConnection.ActiveRoomTransportConnected);
 
     private void OnComposerPlacementChanged(ComposerPlacement placement)
     {

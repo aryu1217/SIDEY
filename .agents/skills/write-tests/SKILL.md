@@ -7,6 +7,11 @@ description: Design, create, revise or remove automated tests for SIDEY macOS or
 
 Write the smallest reliable test that proves the requested native behavior at the narrowest useful boundary.
 
+Follow the [logical task and Git boundaries](../remote-branch-workflow/SKILL.md#logical-task-and-git-boundaries).
+Tests needed to complete the current feature or fix belong to that task's
+existing worktree, branch, and PR, subject to path ownership. A focused `test`
+commit or invoking this skill does not create a separate test task or PR.
+
 Apply the repository-root `AGENTS.md`, every nested `AGENTS.md` governing the changed paths, and the authoritative behavior or architecture documents relevant to the change. Read the affected production code, its callers and the nearest tests. State the trigger, observable result and consequential failure before choosing a layer.
 
 Read only the selected platform reference:

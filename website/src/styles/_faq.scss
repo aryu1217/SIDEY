@@ -61,7 +61,7 @@
   min-height: 0;
   overflow: hidden;
 
-  > p { padding: 0 3rem 1.625rem .25rem; }
+  > p { padding-block: 0 1.625rem; padding-inline: .25rem 3rem; }
 }
 
 .purchase-ledger dd {

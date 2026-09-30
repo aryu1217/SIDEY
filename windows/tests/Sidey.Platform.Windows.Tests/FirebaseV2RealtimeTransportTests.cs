@@ -131,19 +131,21 @@ public sealed class FirebaseV2RealtimeTransportTests
             PresenceState.Online,
             CancellationToken.None);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => transport.PublishChatAsync(
+        await Assert.ThrowsAsync<ChatNotReadyException>(() => transport.PublishChatAsync(
             s_messageId,
             s_roomId,
             "not-ready",
             CancellationToken.None));
         listener.PublishReady();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => transport.PublishChatAsync(
+        await Assert.ThrowsAsync<ChatNotReadyException>(() => transport.PublishChatAsync(
             s_messageId,
             s_otherRoomId,
             "wrong-room",
             CancellationToken.None));
 
         Assert.Equal(0, chat.SendCount);
+        await transport.PublishChatAsync(s_messageId, s_roomId, "Recovered", CancellationToken.None);
+        Assert.Equal(1, chat.SendCount);
     }
 
     [Theory]
@@ -193,7 +195,44 @@ public sealed class FirebaseV2RealtimeTransportTests
         bool[] activeRoomStates = [.. received.OfType<BackendEvent.ConnectionChanged>()
             .Select(change => change.Status.ActiveRoomTransportConnected)];
         Assert.Equal(reconnect ? [false, true, false, true] : [false, true], activeRoomStates);
-        Assert.Equal(reconnect ? 2 : 1, received.OfType<BackendEvent.ReconciliationRequired>().Count());
+        // The gateway reconciles on ConnectionChanged; an extra request here
+        // would fetch the full Supabase snapshot twice for each Firebase recovery.
+        Assert.DoesNotContain(received, item => item is BackendEvent.ReconciliationRequired);
+    }
+
+    [Fact]
+    public async Task FirebaseRecoveryWithoutActiveRoomStillRequestsOneReconciliation()
+    {
+        FakeLegacyTransport legacy = new()
+        {
+            ConnectionStatus = new RealtimeConnectionStatus(true, false, false),
+        };
+        FakeFirebaseListener listener = new() { PublishReadyOnStart = false };
+        await using FirebaseV2RealtimeTransport transport = new(
+            legacy,
+            new FakeSelector(enabled: true),
+            new FakeChatClient(),
+            new FakeCredentialProvider(),
+            sink => listener.WithSink(sink));
+        Dictionary<Guid, long> epochs = new() { [s_roomId] = 1 };
+        await transport.SynchronizeAsync(epochs, null, PresenceState.Online, CancellationToken.None);
+        listener.PublishReady();
+
+        BackendEvent.Diagnostic sentinel = new("firebase-ready-without-active-room");
+        listener.Publish(sentinel);
+        List<BackendEvent> received = [];
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
+        await foreach (BackendEvent backendEvent in transport.ReadEventsAsync(timeout.Token))
+        {
+            if (ReferenceEquals(backendEvent, sentinel))
+            {
+                break;
+            }
+            received.Add(backendEvent);
+        }
+
+        Assert.Single(received.OfType<BackendEvent.ConnectionChanged>());
+        Assert.Single(received.OfType<BackendEvent.ReconciliationRequired>());
     }
 
     [Fact]
@@ -425,7 +464,11 @@ public sealed class FirebaseV2RealtimeTransportTests
         var selector = new FakeSelector(enabled: true)
         {
             CacheTtl = TimeSpan.FromMilliseconds(100),
-            RefreshFailure = new HttpRequestException("offline"),
+            RefreshFailure = new FirebaseRealtimeRolloutException(
+                failClosed: true,
+                statusCode: System.Net.HttpStatusCode.ServiceUnavailable,
+                failureCode: "PGRST003",
+                retryAfter: TimeSpan.FromSeconds(90)),
         };
         var listener = new FakeFirebaseListener();
         await using var transport = new FirebaseV2RealtimeTransport(
@@ -460,9 +503,11 @@ public sealed class FirebaseV2RealtimeTransportTests
         listener.Publish(new BackendEvent.Diagnostic("after-selector-failure"));
         await reader.WaitAsync(TimeSpan.FromSeconds(5));
 
+        Assert.Contains(received, item => item is BackendEvent.Diagnostic
+        { Stage: "firebase-selector-error status=503 code=PGRST003 retry-seconds=90" });
         Assert.False(transport.ConnectionStatus.IsReady);
         Assert.DoesNotContain(received, item => item is BackendEvent.CharacterPulsed);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => transport.PublishChatAsync(
+        await Assert.ThrowsAsync<ChatNotReadyException>(() => transport.PublishChatAsync(
             s_messageId,
             s_roomId,
             "blocked",

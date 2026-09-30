@@ -1,65 +1,43 @@
 ---
-import { localeRoot } from "../i18n/landing";
-
-interface Props {
-  path?: string;
-  title?: string;
-}
-
+import { localeRoot, supportedLocales, localeNames } from "../i18n/landing";
+interface Props { path?: string; title?: string; }
 const { path = "", title = "SIDEY" } = Astro.props;
-const normalizedPath = path.replace(/^\/+|\/+$/g, "");
-const routeSuffix = normalizedPath ? `${normalizedPath}/` : "";
-const baseUrl = import.meta.env.BASE_URL.endsWith("/")
-  ? import.meta.env.BASE_URL
-  : `${import.meta.env.BASE_URL}/`;
-const koreanTarget = `${localeRoot("ko")}${routeSuffix}`;
-const englishTarget = `${localeRoot("en")}${routeSuffix}`;
-const japaneseTarget = `${localeRoot("ja")}${routeSuffix}`;
-const traditionalChineseTarget = `${localeRoot("zh-Hant")}${routeSuffix}`;
-const gatewayTarget = `${baseUrl}${routeSuffix}`;
+const suffix = path.replace(/^\/+|\/+$/g, "");
+const routeSuffix = suffix ? `${suffix}/` : "";
+const targets = Object.fromEntries(supportedLocales.map(code => [code.toLowerCase(), `${localeRoot(code)}${routeSuffix}`]));
+const gatewayTarget = `${import.meta.env.BASE_URL}${routeSuffix}`;
 ---
-
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{title}</title>
-    <meta name="description" content="SIDEY language selection">
-    <link rel="alternate" hreflang="ko" href={new URL(koreanTarget, Astro.site)}>
-    <link rel="alternate" hreflang="en" href={new URL(englishTarget, Astro.site)}>
-    <link rel="alternate" hreflang="ja" href={new URL(japaneseTarget, Astro.site)}>
-    <link rel="alternate" hreflang="zh-Hant" href={new URL(traditionalChineseTarget, Astro.site)}>
-    <link rel="alternate" hreflang="x-default" href={new URL(gatewayTarget, Astro.site)}>
-    <script is:inline define:vars={{ koreanTarget, englishTarget, japaneseTarget, traditionalChineseTarget }}>
-      (() => {
-        const preferredLanguage = navigator.languages?.[0] ?? navigator.language ?? "";
-        const language = preferredLanguage.toLowerCase();
-        const destination = language.startsWith("ko")
-          ? koreanTarget
-          : language.startsWith("ja")
-            ? japaneseTarget
-            : language.startsWith("zh-hant") || language.startsWith("zh-tw") || language.startsWith("zh-hk") || language.startsWith("zh-mo")
-              ? traditionalChineseTarget
-              : englishTarget;
-        const target = new URL(destination, window.location.origin);
-        target.search = window.location.search;
-        target.hash = window.location.hash;
-        window.location.replace(target.href);
-      })();
-    </script>
-  </head>
-  <body>
-    <main>
-      <p>
-        <a href={koreanTarget} lang="ko" hreflang="ko">한국어</a>
-        ·
-        <a href={englishTarget} lang="en" hreflang="en">English</a>
-        ·
-        <a href={japaneseTarget} lang="ja" hreflang="ja">日本語</a>
-        ·
-        <a href={traditionalChineseTarget} lang="zh-Hant" hreflang="zh-Hant">繁體中文</a>
-      </p>
-    </main>
-  </body>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title><meta name="description" content="SIDEY language selection">
+{supportedLocales.map(code => <link rel="alternate" hreflang={code} href={new URL(targets[code.toLowerCase()], Astro.site)} />)}
+<link rel="alternate" hreflang="x-default" href={new URL(gatewayTarget, Astro.site)}>
+<script is:inline define:vars={{ targets }}>
+(() => {
+ const match = value => {
+   const tag = (value ?? "").toLowerCase();
+   if (targets[tag]) return tag;
+   if (tag.startsWith("zh-hans")) return "zh-hans";
+   if (tag.startsWith("zh-hant")) return "zh-hant";
+   if (tag.startsWith("zh")) return /tw|hk|mo/.test(tag) ? "zh-hant" : "zh-hans";
+   if (tag.startsWith("pt")) return tag.includes("br") ? "pt-br" : "pt-pt";
+   if (tag.startsWith("sr")) return tag.includes("latn") ? "sr-latn" : "sr-cyrl";
+   if (tag === "iw" || tag.startsWith("iw-")) return "he";
+   const primary = tag.split("-")[0];
+   return targets[primary] ? primary : undefined;
+ };
+ const language = (navigator.languages?.length ? navigator.languages : [navigator.language]).map(match).find(Boolean) ?? "en";
+ const target = new URL(targets[language], window.location.origin);
+ target.search = window.location.search; target.hash = window.location.hash;
+ window.location.replace(target.href);
+})();
+</script>
+</head>
+<body><main><nav aria-label="Choose language">{supportedLocales.map(code => <a href={targets[code.toLowerCase()]} lang={code} hreflang={code}>{localeNames[code]}</a>)}</nav></main></body>
 </html>
+
+<style>
+  nav { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem; }
+</style>

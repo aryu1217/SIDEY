@@ -19,6 +19,20 @@ Firebase read와 callable write를 즉시 닫는다. Selector, bootstrap, lease 
 중단된 Firebase 연결은 전송과 수신을 모두 닫는다. 아직 v2를 선택하지 않은 build는
 혼합 버전 지원 기간에 기존 Supabase 경로를 계속 사용한다.
 
+Windows는 lease 만료보다 여유 있게 갱신을 시작하고 요청 시점을 분산한다. 초기화의
+일시적인 실패에는 서버의 `Retry-After` 대기 시간을 지키며, 재시도 간격을 지수적으로
+늘리고 분산한다. 이 대기는 방 전환이나 다른 전송 요청으로 우회하지 않는다. 갱신이
+실패해도 아직 유효한 인증과 연결은 유지하며, 기존 권한으로 전송할 수 있다. 만료된
+권한이나 새 권한 확인이 필요한 요청에는 기존 인증을 재사용하지 않는다. 구체적인
+갱신 시점과 대기 정책은 [인증 제공자](../../windows/src/Sidey.Infrastructure/Authentication/FirebaseRealtimeCredentialProvider.cs)와
+[실시간 리스너](../../windows/src/Sidey.Infrastructure/Realtime/FirebaseRealtimeListener.cs)에 정의한다.
+
+Windows는 채팅의 `unauthenticated` 응답을 받은 인증 버전의 재사용을 차단하고 갱신을
+요청한다. 같은 버전의 병렬 오류는 하나의 인증 복구로 합치며, 이전 버전의 늦은 오류는
+새 인증을 무효화하지 않는다. 인증 복구가 메시지를 자동 재전송하지는 않는다. 실제
+전송의 저장 여부가 불명확하면 기존 UUID로 확인한다. 권한 거절과 로그아웃에 대한
+전송 차단은 유지하며, 중복 재연결 요청은 진행 중인 복구 작업을 공유한다.
+
 Presence는 모든 버전에서 Supabase를 통해 연결·online·away 상태에 사용한다. v2를 선택한
 client는 SIDEY 입력창의 typing, 캐릭터 pulse와 projectile 같은 저장하지 않는 event도
 Firebase RTDB로 송수신한다. 기존 client의 Supabase Broadcast는 혼합 버전 지원을 위한
@@ -49,6 +63,11 @@ Legacy bridge는 운영 runtime switch로 제어한다. Client rollout 뒤 최�
 
 ## 작성과 표시
 
+Windows는 연결 복구 중에도 메시지 작성과 방별 초안을 유지한다. 전송은 인증과 권한,
+활성 방의 연결 준비가 확인된 뒤에 가능하며, 복구 중인 상태를 입력창에 표시한다.
+준비되지 않아 서버 요청 전에 거절된 전송은 초안을 보존하고 최근 기록 조회를
+생략한다. 전송 직전 연결이 끊기는 경우에도 transport의 최종 검사는 유지한다.
+
 메시지 입력은 최대 200자·3줄을 허용한다. Enter는 전송,
 Shift+Enter는 줄바꿈이다. Typing은 SIDEY 입력창의 lease 동안만 표시하고 실제 메시지
 말풍선이 있으면 본문을 우선한다.
@@ -71,6 +90,14 @@ Windows의 조용히 모드도 메시지 본문 말풍선과 본인·상대방�
 
 최근 기록은 server retention 범위에서 페이지로 읽는다. Pending과 failed 전송은 원래
 방의 outbox에 남으며 다른 방의 draft를 바꾸지 않는다.
+
+Windows 최근 기록 창은 앱 메모리에 있는 최신 페이지와 실시간 메시지를 먼저 표시한다.
+같은 방을 캐시가 유효한 동안 다시 열면 첫 페이지 재조회를 생략하며, 실시간 메시지는
+캐시 유효시간을 연장하지 않고 반영한다. 만료된 캐시는 서버 갱신을 기다리는 동안 표시하고,
+갱신에 실패하면 기존 기록과 재시도 동작을 유지한다. 계정, 방 접근 권한이나 연결 상태가
+바뀌거나 최근 메시지 삭제가 확인되면 캐시를 무효화한다. 서버 보존 기간이 지난 메시지는
+표시하지 않으며 캐시는 디스크에 저장하지 않는다. 유효시간과 보관 한도는
+[최근 기록 ViewModel](../../windows/src/Sidey.Presentation/ViewModels/HistoryWindowViewModel.cs)이 정의한다.
 
 macOS와 Windows의 최근 기록은 최신 메시지가 아래에 오도록 표시한다. 처음 열거나 본인이
 전송하면

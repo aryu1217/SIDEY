@@ -15,11 +15,18 @@ Apply the repository-root `AGENTS.md` and every nested `AGENTS.md` governing the
 
 ## Establish the documentation contract
 
+Follow the [logical task and Git boundaries](../remote-branch-workflow/SKILL.md#logical-task-and-git-boundaries).
+Documentation needed to accurately explain the current feature or fix belongs
+to that logical task. Reuse its task-owned worktree and branch, subject to
+path ownership, and include the documentation in the same PR even if it uses a
+focused `docs` commit. Invoking this skill does not start a documentation-only
+task.
+
 1. Read the target guide and any edition or neighboring guide required by its path rules.
 2. Identify the contributor problem and the decision or procedure the guide must support.
 3. Trace every behavioral claim to current native code, tests, project metadata, scripts, packaging inputs or CI. Source code and machine-readable contracts own exact current values; current product and architecture documents define repository-wide behavior, while decision records explain long-lived rationale.
 4. Mark planned behavior and manual procedures as such. Do not present either as implemented or verified.
-5. Keep implementation changes and product decisions out of a documentation-only task. If accurate documentation requires either, report the gap and follow the separate ownership and branch rules.
+5. A documentation-only task is an independent user request to change only documentation. Keep implementation changes and product decisions outside that request unless the user authorizes expanding it; report any gap needed for accurate documentation. Documentation work inside an authorized feature task may accompany its implementation on the same branch. Split only when the logical-task contract or repository ownership rules require it.
 
 ## Draft from evidence
 
