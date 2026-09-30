@@ -14,14 +14,21 @@ struct DrawLadderLayout {
     let rowCount: Int
 
     init(event: DrawEvent, participantIDs: [UUID]) {
-        let count = participantIDs.count
+        let count = event.gameEntryCount
         let labels = event.ladderLabels ?? []
-        let assignments = Dictionary(event.result.assignments?.map { ($0.userID, $0.label) } ?? [],
-                                     uniquingKeysWith: { first, _ in first })
+        let assignmentsByUser = Dictionary(event.result.assignments?.compactMap { assignment in
+            assignment.userID.map { ($0, assignment.label) }
+        } ?? [], uniquingKeysWith: { first, _ in first })
+        let assignmentsByEntry = Dictionary(event.result.assignments?.compactMap { assignment in
+            assignment.entryIndex.map { ($0, assignment.label) }
+        } ?? [], uniquingKeysWith: { first, _ in first })
         var claimed = Set<Int>()
         var destinations = [Int]()
-        for id in participantIDs {
-            let matching = assignments[id].flatMap { assigned in
+        for index in 0..<count {
+            let assigned = event.isFreeEntryMode
+                ? assignmentsByEntry[index]
+                : assignmentsByUser[participantIDs[index]]
+            let matching = assigned.flatMap { assigned in
                 labels.indices.first { !claimed.contains($0) && labels[$0] == assigned }
             }
             let slot = matching ?? (0..<count).first { !claimed.contains($0) } ?? destinations.count
@@ -79,9 +86,9 @@ final class DrawLadderScene: SKScene {
     }
 
     private let event: DrawEvent
-    private let members: [RoomMember]
+    private let entries: [DrawGameEntry]
     private let layout: DrawLadderLayout
-    private var characters: [DrawCharacterNode] = []
+    private var gameNodes: [SKNode] = []
     private var routes: [[Segment]] = []
     private let rungOutline = SKShapeNode()
     private let rungInner = SKShapeNode()
@@ -90,8 +97,8 @@ final class DrawLadderScene: SKScene {
 
     init(event: DrawEvent, room: Room, size: CGSize) {
         self.event = event
-        members = event.gameMembers(in: room)
-        layout = DrawLadderLayout(event: event, participantIDs: members.map(\.userID))
+        entries = event.gameEntries(in: room)
+        layout = DrawLadderLayout(event: event, participantIDs: event.participantIDs)
         super.init(size: size)
         backgroundColor = .clear
         scaleMode = .resizeFill
@@ -110,26 +117,28 @@ final class DrawLadderScene: SKScene {
         progress = min(max(value, 0), 1)
         rungOutline.isHidden = progress == 0
         rungInner.isHidden = progress == 0
-        let count = characters.count
+        let count = gameNodes.count
         guard count > 0 else { return }
         let total = CGFloat(count) * 2.2 + CGFloat(max(0, count - 1)) * 0.2
         let elapsed = progress * total
         var activeRoute: [Segment] = []
         var activeDistance: CGFloat = 0
 
-        for index in characters.indices {
+        for index in gameNodes.indices {
             let start = CGFloat(index) * 2.4
             let fraction = min(max((elapsed - start) / 2.2, 0), 1)
             let route = routes[index]
             let distance = route.reduce(CGFloat.zero) { $0 + $1.length } * fraction
             let (point, facing, horizontal) = location(on: route, distance: distance)
-            let character = characters[index]
-            character.position = point
+            let node = gameNodes[index]
+            node.position = point
             let moving = fraction > 0 && fraction < 1
-            character.setWalking(moving, facing: horizontal ? facing : 1)
-            if previous < progress, progress - previous < 0.2,
-               previous * total < start + 2.2, elapsed >= start + 2.2 {
-                character.react()
+            if let character = node as? DrawCharacterNode {
+                character.setWalking(moving, facing: horizontal ? facing : 1)
+                if previous < progress, progress - previous < 0.2,
+                   previous * total < start + 2.2, elapsed >= start + 2.2 {
+                    character.react()
+                }
             }
             if moving {
                 activeRoute = route
@@ -141,11 +150,11 @@ final class DrawLadderScene: SKScene {
 
     private func rebuild() {
         removeAllChildren()
-        characters.removeAll()
+        gameNodes.removeAll()
         routes.removeAll()
-        guard !members.isEmpty else { return }
+        guard !entries.isEmpty else { return }
 
-        let count = members.count
+        let count = entries.count
         let side: CGFloat = 36
         let width = max(1, size.width - side * 2)
         let spacing = count == 1 ? 0 : width / CGFloat(count - 1)
@@ -221,15 +230,22 @@ final class DrawLadderScene: SKScene {
             addChild(label)
         }
 
-        for index in members.indices {
-            let character = DrawCharacterNode(member: members[index])
-            // The shared 48-point sprite is 2x its 24-pixel source. Half size
-            // is still an integer 1x pixel scale on crowded ladders.
-            let characterScale: CGFloat = spacing < 56 ? 0.5 : 1
-            character.setScale(characterScale)
-            character.zPosition = 4
-            addChild(character)
-            characters.append(character)
+        for (index, entry) in entries.enumerated() {
+            let node: SKNode
+            if let member = entry.member {
+                let character = DrawCharacterNode(member: member)
+                // The shared 48-point sprite is 2x its 24-pixel source. Half
+                // size is still an integer 1x scale on crowded ladders.
+                character.setScale(spacing < 56 ? 0.5 : 1)
+                node = character
+            } else {
+                let text = DrawGameTextNode(text: entry.label)
+                text.fit(maxWidth: max(24, spacing - 6))
+                node = text
+            }
+            node.zPosition = 4
+            addChild(node)
+            gameNodes.append(node)
             routes.append(makeRoute(startLane: index, lanes: lanes, top: top, bottom: bottom, rowY: rowY))
         }
         setProgress(progress)

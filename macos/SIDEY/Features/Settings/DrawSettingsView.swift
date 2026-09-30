@@ -4,8 +4,11 @@ struct DrawSettingsView: View {
     @Bindable var model: AppModel
     let actions: SettingsActions
     @State private var kind: DrawKind = .lot
-    @State private var selectedIDs: Set<UUID> = []
-    @State private var labels: [UUID: String] = [:]
+    @State private var entryMode: DrawEntryMode = .custom
+    @State private var memberIDs: [UUID] = []
+    @State private var customEntries: [DrawTextEntry] = [DrawTextEntry(), DrawTextEntry()]
+    @State private var destinationLabels: [UUID: String] = [:]
+    @State private var pendingDeleteID: UUID?
 
     private var room: Room? { model.activeRoom }
     private var createTitle: LocalizedStringResource {
@@ -15,18 +18,26 @@ struct DrawSettingsView: View {
         case .roulette: "draw.create.roulette"
         }
     }
-    private var participants: [RoomMember] {
-        room?.members.filter { selectedIDs.contains($0.userID) } ?? []
+    private var entryIDs: [UUID] {
+        entryMode == .members ? memberIDs : customEntries.map(\.id)
+    }
+    private var availableMembers: [RoomMember] {
+        room?.members.filter { !memberIDs.contains($0.userID) } ?? []
+    }
+    private func validLabel(_ raw: String) -> Bool {
+        let label = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (1...80).contains(label.count)
+            && !label.contains(where: { "\r\n\t".contains($0) })
     }
     private var canCreate: Bool {
-        guard (2...12).contains(participants.count),
+        guard (2...12).contains(entryIDs.count),
               model.connectionState == .online,
               !model.drawOperationInProgress else { return false }
-        return kind != .ladder || participants.allSatisfy {
-            let label = (labels[$0.userID] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            return (1...80).contains(label.count)
-                && !label.contains(where: { "\r\n\t".contains($0) })
-        }
+        if entryMode == .members {
+            guard Set(memberIDs).count == memberIDs.count,
+                  Set(memberIDs).isSubset(of: Set(room?.members.map(\.userID) ?? [])) else { return false }
+        } else if !customEntries.allSatisfy({ validLabel($0.text) }) { return false }
+        return kind != .ladder || entryIDs.allSatisfy { validLabel(destinationLabels[$0] ?? "") }
     }
 
     var body: some View {
@@ -44,17 +55,57 @@ struct DrawSettingsView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("draw.participants.title").font(.headline)
-                    ForEach(room.members) { member in
-                        Toggle(isOn: Binding(
-                            get: { selectedIDs.contains(member.userID) },
-                            set: { enabled in
-                                if enabled { selectedIDs.insert(member.userID) }
-                                else { selectedIDs.remove(member.userID) }
+                    Picker("draw.entries.mode", selection: $entryMode) {
+                        Text("draw.entries.custom").tag(DrawEntryMode.custom)
+                        Text("draw.entries.members").tag(DrawEntryMode.members)
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("draw.entries.title").font(.headline)
+                    if entryMode == .custom {
+                        ForEach($customEntries) { $entry in
+                            HStack {
+                                TextField("draw.entries.placeholder", text: $entry.text)
+                                    .textFieldStyle(.roundedBorder)
+                                Button {
+                                    customEntries.removeAll { $0.id == entry.id }
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .accessibilityLabel("draw.entries.remove")
+                                .disabled(customEntries.count <= 2)
                             }
-                        )) {
-                            Text(verbatim: member.nickname)
                         }
+                        Button {
+                            customEntries.append(DrawTextEntry())
+                        } label: {
+                            Label("draw.entries.add", systemImage: "plus")
+                        }
+                        .disabled(customEntries.count >= 12)
+                    } else {
+                        ForEach(memberIDs, id: \.self) { id in
+                            if let member = room.members.first(where: { $0.userID == id }) {
+                                HStack {
+                                    Text(verbatim: member.nickname)
+                                    Spacer()
+                                    Button {
+                                        memberIDs.removeAll { $0 == id }
+                                    } label: {
+                                        Image(systemName: "minus.circle")
+                                    }
+                                    .accessibilityLabel("draw.entries.remove")
+                                    .disabled(memberIDs.count <= 2)
+                                }
+                            }
+                        }
+                        Menu {
+                            ForEach(availableMembers) { member in
+                                Button(member.nickname) { memberIDs.append(member.userID) }
+                            }
+                        } label: {
+                            Label("draw.entries.add_member", systemImage: "plus")
+                        }
+                        .disabled(availableMembers.isEmpty || memberIDs.count >= 12)
                     }
                     if kind == .ladder {
                         Divider()
@@ -62,14 +113,13 @@ struct DrawSettingsView: View {
                         Text("draw.ladder.hint")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        ForEach(participants.indices, id: \.self) { index in
-                            let member = participants[index]
+                        ForEach(Array(entryIDs.enumerated()), id: \.element) { entry in
                             HStack {
-                                Text(verbatim: "\(index + 1).")
+                                Text(verbatim: "\(entry.offset + 1).")
                                     .frame(width: 35, alignment: .leading)
                                 TextField("draw.ladder.placeholder", text: Binding(
-                                    get: { labels[member.userID] ?? "" },
-                                    set: { labels[member.userID] = $0 }
+                                    get: { destinationLabels[entry.element] ?? "" },
+                                    set: { destinationLabels[entry.element] = $0 }
                                 ))
                                 .textFieldStyle(.roundedBorder)
                             }
@@ -77,11 +127,12 @@ struct DrawSettingsView: View {
                     }
                     Button {
                         let values = kind == .ladder
-                            ? participants.map {
-                                (labels[$0.userID] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                            }
+                            ? entryIDs.map { (destinationLabels[$0] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) }
                             : nil
-                        actions.onCreateDraw(kind, participants.map(\.userID), values)
+                        let entries = entryMode == .custom
+                            ? customEntries.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+                            : nil
+                        actions.onCreateDraw(kind, entryMode == .members ? memberIDs : [], entries, values)
                     } label: {
                         if model.drawOperationInProgress { ProgressView() }
                         Text(createTitle)
@@ -118,6 +169,18 @@ struct DrawSettingsView: View {
                             }
                             Spacer()
                             Button("draw.replay") { actions.onReplayDraw(event.id) }
+                            if event.creatorID == model.currentUserID {
+                                Button {
+                                    pendingDeleteID = event.id
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.red)
+                                .help("draw.delete")
+                                .accessibilityLabel("draw.delete")
+                                .disabled(model.drawOperationInProgress)
+                            }
                         }
                         .contextMenu {
                             if event.creatorID == model.currentUserID,
@@ -133,14 +196,40 @@ struct DrawSettingsView: View {
                 }
             }
         }
+        .confirmationDialog("draw.delete.confirm", isPresented: Binding(
+            get: { pendingDeleteID != nil },
+            set: { if !$0 { pendingDeleteID = nil } }
+        )) {
+            if let pendingDeleteID {
+                Button("draw.delete", role: .destructive) {
+                    actions.onDeleteDraw(pendingDeleteID)
+                    self.pendingDeleteID = nil
+                }
+            }
+            Button("common.cancel", role: .cancel) { pendingDeleteID = nil }
+        } message: {
+            Text("draw.delete.detail")
+        }
         .task(id: room?.id) {
             // Initialize once per room so later presence updates do not
             // overwrite participant choices the user has made manually.
-            selectedIDs = DrawParticipantSelectionPolicy.initialIDs(in: room)
-            labels = [:]
+            let initial = DrawParticipantSelectionPolicy.initialIDs(in: room)
+            memberIDs = room?.members.map(\.userID).filter { initial.contains($0) } ?? []
+            customEntries = [DrawTextEntry(), DrawTextEntry()]
+            destinationLabels = [:]
             actions.onRefreshDraws()
         }
     }
+}
+
+private enum DrawEntryMode: Hashable {
+    case custom
+    case members
+}
+
+private struct DrawTextEntry: Identifiable {
+    let id = UUID()
+    var text = ""
 }
 
 enum DrawParticipantSelectionPolicy {

@@ -112,8 +112,8 @@ final class DrawResultWindowController {
         } else {
             duration = switch event.kind {
             case .lot: 4.0
-            case .ladder: Double(event.participantIDs.count) * 2.2
-                + Double(max(0, event.participantIDs.count - 1)) * 0.2
+            case .ladder: Double(event.gameEntryCount) * 2.2
+                + Double(max(0, event.gameEntryCount - 1)) * 0.2
             case .roulette: 5.0
             }
         }

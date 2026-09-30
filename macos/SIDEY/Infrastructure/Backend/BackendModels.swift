@@ -565,6 +565,22 @@ struct CreateDrawEventParameters: Encodable, Sendable {
     }
 }
 
+struct CreateDrawEventV2Parameters: Encodable, Sendable {
+    let roomID: UUID
+    let kind: String
+    let participantIDs: [UUID]
+    let entryLabels: [String]?
+    let ladderLabels: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case roomID = "p_room_id"
+        case kind = "p_kind"
+        case participantIDs = "p_participants"
+        case entryLabels = "p_entry_labels"
+        case ladderLabels = "p_ladder_labels"
+    }
+}
+
 struct DrawRoomParameters: Encodable, Sendable {
     let roomID: UUID
     enum CodingKeys: String, CodingKey { case roomID = "p_room_id" }

@@ -95,7 +95,54 @@ final class DrawCharacterNode: SKNode {
     }
 }
 
+/// Text-only game entry. It shares the nameplate contrast with participant
+/// characters while fitting within a paper, ladder lane, or roulette sector.
+@MainActor
+final class DrawGameTextNode: SKNode {
+    private let label = SKLabelNode(fontNamed: "AppleSDGothicNeo-SemiBold")
+    private let background = SKShapeNode()
+
+    init(text: String) {
+        super.init()
+        label.text = text
+        label.fontSize = 14
+        label.fontColor = .white
+        label.horizontalAlignmentMode = .center
+        label.verticalAlignmentMode = .center
+        label.zPosition = 1
+        background.fillColor = PixelNameplateLayout.backgroundColor
+        background.strokeColor = .clear
+        addChild(background)
+        addChild(label)
+        fit(maxWidth: 160)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func fit(maxWidth: CGFloat) {
+        let available = max(20, maxWidth)
+        label.xScale = 1
+        label.xScale = min(1, (available - 12) / max(label.frame.width, 1))
+        let width = min(available, label.frame.width + 12)
+        background.path = CGPath(roundedRect: CGRect(x: -width / 2, y: -12,
+                                                      width: width, height: 24),
+                                 cornerWidth: 7, cornerHeight: 7, transform: nil)
+    }
+}
+
+struct DrawGameEntry {
+    let label: String
+    let member: RoomMember?
+}
+
 extension DrawEvent {
+    func gameEntries(in room: Room) -> [DrawGameEntry] {
+        if let entryLabels {
+            return entryLabels.map { DrawGameEntry(label: $0, member: nil) }
+        }
+        return gameMembers(in: room).map { DrawGameEntry(label: $0.nickname, member: $0) }
+    }
+
     func gameMembers(in room: Room) -> [RoomMember] {
         participantIDs.map { id in
             room.members.first(where: { $0.userID == id }) ?? RoomMember(

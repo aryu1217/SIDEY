@@ -85,11 +85,13 @@ final class AppCoordinator {
             onRemoveRoomMember: { [weak self] roomID, userID in self?.removeRoomMember(roomID, userID: userID) },
             onLeaveRoom: { [weak self] roomID in self?.leaveRoom(roomID) },
             onDeleteRoom: { [weak self] roomID in self?.deleteRoom(roomID) },
-            onCreateDraw: { [weak self] kind, participants, labels in
-                self?.createDrawEvent(kind: kind, participants: participants, ladderLabels: labels)
+            onCreateDraw: { [weak self] kind, participants, entries, labels in
+                self?.createDrawEvent(kind: kind, participants: participants,
+                                      entryLabels: entries, ladderLabels: labels)
             },
             onReplayDraw: { [weak self] id in self?.replayDrawEvent(id) },
             onCloseDraw: { [weak self] id in self?.closeDrawEvent(id) },
+            onDeleteDraw: { [weak self] id in self?.deleteDrawEvent(id) },
             onRefreshDraws: { [weak self] in self?.refreshDrawEvents() },
             onCharacterSoundEffectsChanged: { [weak self] enabled in
                 guard let self else { return }

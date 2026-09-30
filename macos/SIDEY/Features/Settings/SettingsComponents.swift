@@ -19,6 +19,12 @@ struct ConnectionBadge: View {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(localizedLabel).font(.caption.weight(.medium))
             Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .clipShape(Capsule())
+        .glassEffect(in: Capsule())
+        .overlay(alignment: .trailing) {
             Button(action: onReconnect) {
                 Image(systemName: "arrow.clockwise")
                     .font(.caption.weight(.semibold))
@@ -29,11 +35,8 @@ struct ConnectionBadge: View {
             .disabled(state == .connecting)
             .help("connection.retry.action")
             .accessibilityLabel("connection.retry.action")
+            .padding(.trailing, 12)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .clipShape(Capsule())
-        .glassEffect(in: Capsule())
         .overlay {
             if state == .connecting {
                 ConnectionProgressBorder(reduceMotion: reduceMotion)

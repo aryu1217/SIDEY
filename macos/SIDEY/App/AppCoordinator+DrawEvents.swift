@@ -41,14 +41,18 @@ extension AppCoordinator {
         }
     }
 
-    func createDrawEvent(kind: DrawKind, participants: [UUID], ladderLabels: [String]?) {
+    func createDrawEvent(kind: DrawKind, participants: [UUID], entryLabels: [String]?, ladderLabels: [String]?) {
+        let entryCount = entryLabels?.count ?? participants.count
         guard !model.drawOperationInProgress,
               let backend,
               let room = model.activeRoom,
-              (2...12).contains(participants.count),
+              (2...12).contains(entryCount),
+              (entryLabels == nil || participants.isEmpty),
               Set(participants).count == participants.count,
               Set(participants).isSubset(of: Set(room.members.map(\.userID))),
-              kind == .ladder ? ladderLabels?.count == participants.count : ladderLabels == nil
+              entryLabels?.allSatisfy({ validDrawLabel($0) }) ?? true,
+              kind == .ladder ? ladderLabels?.count == entryCount : ladderLabels == nil,
+              ladderLabels?.allSatisfy({ validDrawLabel($0) }) ?? true
         else { return }
         model.drawOperationInProgress = true
         Task { [weak self] in
@@ -59,6 +63,7 @@ extension AppCoordinator {
                     roomID: room.id,
                     kind: kind,
                     participantIDs: participants,
+                    entryLabels: entryLabels,
                     ladderLabels: ladderLabels
                 )
                 refreshDrawEvents()
@@ -113,4 +118,34 @@ extension AppCoordinator {
             }
         }
     }
+
+    func deleteDrawEvent(_ eventID: UUID) {
+        guard !model.drawOperationInProgress,
+              let backend,
+              let roomID = model.activeRoom?.id,
+              let event = model.drawEvents.first(where: { $0.id == eventID && $0.roomID == roomID }),
+              event.creatorID == model.currentUserID else { return }
+        model.drawOperationInProgress = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer { model.drawOperationInProgress = false }
+            do {
+                try await backend.deleteDrawEvent(id: eventID)
+                guard model.activeRoom?.id == roomID else { return }
+                drawRefreshGeneration += 1
+                drawOpenGeneration += 1
+                model.drawEvents.removeAll { $0.id == eventID }
+                overlayWindows.refreshDrawIcons()
+                refreshDrawEvents()
+            } catch {
+                model.errorMessage = L10n.format("draw.delete_failed", error.localizedDescription)
+            }
+        }
+    }
+}
+
+private func validDrawLabel(_ raw: String) -> Bool {
+    let label = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return (1...80).contains(label.count)
+        && !label.contains(where: { "\r\n\t".contains($0) })
 }

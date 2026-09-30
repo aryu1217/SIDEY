@@ -9,6 +9,7 @@ struct PixelWorldView: View {
     let characterPulse: CharacterPulseEvent?
     let characterThrow: CharacterThrowEvent?
     let onCharacterFramesChanged: ([UUID: CGRect]) -> Void
+    let onChatBubbleFramesChanged: ([UUID: CGRect]) -> Void
 
     var body: some View {
         let members = model.pixelWorldMembers
@@ -30,7 +31,8 @@ struct PixelWorldView: View {
             composerFrame: composerFrame,
             characterPulse: characterPulse,
             characterThrow: characterThrow,
-            onCharacterFramesChanged: onCharacterFramesChanged
+            onCharacterFramesChanged: onCharacterFramesChanged,
+            onChatBubbleFramesChanged: onChatBubbleFramesChanged
         )
     }
 }
@@ -50,6 +52,7 @@ private struct PixelWorldRepresentable: NSViewRepresentable {
     let characterPulse: CharacterPulseEvent?
     let characterThrow: CharacterThrowEvent?
     let onCharacterFramesChanged: ([UUID: CGRect]) -> Void
+    let onChatBubbleFramesChanged: ([UUID: CGRect]) -> Void
 
     func makeNSView(context: Context) -> SKView {
         let view = SKView(frame: .zero)
@@ -93,6 +96,7 @@ private struct PixelWorldRepresentable: NSViewRepresentable {
             characterPulse: characterPulse,
             characterThrow: characterThrow,
             onCharacterFramesChanged: onCharacterFramesChanged,
+            onChatBubbleFramesChanged: onChatBubbleFramesChanged,
             pausedTreeUserIDs: pausedTreeUserIDs
         )
     }

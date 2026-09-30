@@ -1,12 +1,12 @@
 import AppKit
 import SpriteKit
 
-/// A paper always belongs to the same participant. Only the paper belonging to
-/// the server-selected winner is pulled from the shuffled pile.
+/// A paper always belongs to the same entry. Only the paper belonging to the
+/// server-selected winner is pulled from the shuffled pile.
 @MainActor
 final class DrawLotScene: SKScene {
     private static let totalDuration: CGFloat = 4
-    private let members: [RoomMember]
+    private let entries: [DrawGameEntry]
     private let winnerIndex: Int?
     private let plans: [PaperPlan]
     private var papers: [PaperNode] = []
@@ -15,10 +15,12 @@ final class DrawLotScene: SKScene {
     private var startingPositions: [CGPoint] = []
 
     init(event: DrawEvent, room: Room, size: CGSize) {
-        members = event.gameMembers(in: room)
-        winnerIndex = members.firstIndex { $0.userID == event.result.winnerUserID }
+        entries = event.gameEntries(in: room)
+        winnerIndex = event.isFreeEntryMode
+            ? event.result.winnerEntryIndex.flatMap { entries.indices.contains($0) ? $0 : nil }
+            : entries.firstIndex { $0.member?.userID == event.result.winnerUserID }
         var random = DrawGameRandom(eventID: event.id)
-        plans = members.map { _ in
+        plans = entries.map { _ in
             PaperPlan(
                 phase: CGFloat(random.next() % 10_000) / 10_000,
                 orbit: CGFloat(18 + random.index(31)),
@@ -48,18 +50,18 @@ final class DrawLotScene: SKScene {
     }
 
     private func rebuildLayout() {
-        guard !members.isEmpty, size.width > 0, size.height > 0 else { return }
-        let columns = members.count <= 4 ? 2
-            : min(members.count, max(2, Int(ceil(sqrt(CGFloat(members.count) * size.width / max(size.height, 1))))))
-        let rows = Int(ceil(CGFloat(members.count) / CGFloat(columns)))
+        guard !entries.isEmpty, size.width > 0, size.height > 0 else { return }
+        let columns = entries.count <= 4 ? 2
+            : min(entries.count, max(2, Int(ceil(sqrt(CGFloat(entries.count) * size.width / max(size.height, 1))))))
+        let rows = Int(ceil(CGFloat(entries.count) / CGFloat(columns)))
         let width = min(150, max(52, (size.width - 28) / CGFloat(columns) - 10))
         let height = min(160, max(58, (size.height - 28) / CGFloat(rows) - 10))
         paperSize = CGSize(width: width, height: height)
         let spacingX = min(width + 12, (size.width - width - 16) / CGFloat(max(columns - 1, 1)))
         let spacingY = min(height + 12, (size.height - height - 16) / CGFloat(max(rows - 1, 1)))
-        startingPositions = members.indices.map { index in
+        startingPositions = entries.indices.map { index in
             let row = index / columns
-            let itemsInRow = min(columns, members.count - row * columns)
+            let itemsInRow = min(columns, entries.count - row * columns)
             let column = index % columns
             return CGPoint(
                 x: size.width / 2 + (CGFloat(column) - CGFloat(itemsInRow - 1) / 2) * spacingX,
@@ -67,10 +69,10 @@ final class DrawLotScene: SKScene {
             )
         }
 
-        if papers.count != members.count {
+        if papers.count != entries.count {
             removeAllChildren()
-            papers = members.map { member in
-                let paper = PaperNode(member: member)
+            papers = entries.map { entry in
+                let paper = PaperNode(entry: entry)
                 addChild(paper)
                 return paper
             }
@@ -80,7 +82,7 @@ final class DrawLotScene: SKScene {
     }
 
     private func render() {
-        guard papers.count == members.count, !papers.isEmpty else { return }
+        guard papers.count == entries.count, !papers.isEmpty else { return }
         let seconds = progress * Self.totalDuration
         let fold = smooth(min(1, seconds / 0.5))
         let shuffle = min(1, max(0, (seconds - 0.5) / 2))
@@ -171,12 +173,20 @@ private final class PaperNode: SKNode {
     private let left = SKShapeNode()
     private let flap = SKShapeNode()
     private let crease = SKShapeNode()
-    private let character: DrawCharacterNode
+    private let content: SKNode
+    private let character: DrawCharacterNode?
     private var paperSize = CGSize(width: 100, height: 100)
     private var characterScale: CGFloat = 0.5
 
-    init(member: RoomMember) {
-        character = DrawCharacterNode(member: member)
+    init(entry: DrawGameEntry) {
+        if let member = entry.member {
+            let node = DrawCharacterNode(member: member)
+            character = node
+            content = node
+        } else {
+            character = nil
+            content = DrawGameTextNode(text: entry.label)
+        }
         super.init()
         left.fillColor = Self.front
         left.strokeColor = DrawGamePalette.outline
@@ -187,8 +197,8 @@ private final class PaperNode: SKNode {
         flap.lineWidth = 2
         flap.zPosition = 1
         addChild(flap)
-        character.zPosition = 2
-        addChild(character)
+        content.zPosition = 2
+        addChild(content)
         crease.strokeColor = DrawGamePalette.outline.withAlphaComponent(0.45)
         crease.lineWidth = 1
         crease.zPosition = 4
@@ -206,9 +216,14 @@ private final class PaperNode: SKNode {
         creasePath.move(to: CGPoint(x: 0, y: -size.height / 2))
         creasePath.addLine(to: CGPoint(x: 0, y: size.height / 2))
         crease.path = creasePath
-        characterScale = size.width >= 88 && size.height >= 88 ? 1 : 0.5
-        character.setScale(characterScale)
-        character.position = CGPoint(x: 0, y: -size.height * 0.25)
+        if let character {
+            characterScale = size.width >= 88 && size.height >= 88 ? 1 : 0.5
+            character.setScale(characterScale)
+            character.position = CGPoint(x: 0, y: -size.height * 0.25)
+        } else if let text = content as? DrawGameTextNode {
+            text.fit(maxWidth: size.width * 0.76)
+            text.position = .zero
+        }
         setFoldAngle(0)
     }
 
@@ -227,10 +242,11 @@ private final class PaperNode: SKNode {
         flap.fillColor = cosine < 0 ? Self.back : (angle == 0 ? Self.front : Self.foldedFront)
         flap.zPosition = cosine < 0 ? 3 : 1
         // The character is printed inside the paper. The closed back hides it.
-        character.alpha = max(0, min(1, cosine * 2))
+        content.alpha = max(0, min(1, cosine * 2))
     }
 
     func keepCharacterAtLogicalPixelScale(parentScale: CGFloat, highlighted: Bool) {
+        guard let character else { return }
         let displayScale = highlighted ? max(characterScale, 1) : characterScale
         character.setScale(displayScale / max(parentScale, 0.01))
     }

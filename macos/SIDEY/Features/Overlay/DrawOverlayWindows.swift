@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 private final class DrawIconPanel: NSPanel {
@@ -9,12 +10,14 @@ private final class DrawIconPanel: NSPanel {
 @MainActor
 final class DrawIconBubbleController {
     private static func size(for count: Int) -> CGSize {
-        CGSize(width: count == 1 ? 55 : 104, height: 50)
+        CGSize(width: CGFloat(count * 34 + max(0, count - 1) * 4 + 12), height: 48)
     }
     private let panel: DrawIconPanel
     private let hostingView: NSHostingView<DrawIconBubbleView>
     private let onOpen: (UUID) -> Void
     private var events: [DrawEvent]
+    private var wasChatBubbleVisible = false
+    private var lastRequestedFrame: CGRect?
 
     init(events: [DrawEvent], onOpen: @escaping (UUID) -> Void) {
         self.events = events
@@ -37,7 +40,13 @@ final class DrawIconBubbleController {
         panel.contentView = hostingView
     }
 
-    func update(events: [DrawEvent], characterFrame: CGRect?, visibleFrame: CGRect?, visible: Bool) {
+    func update(
+        events: [DrawEvent],
+        characterFrame: CGRect?,
+        chatBubbleFrame: CGRect?,
+        visibleFrame: CGRect?,
+        visible: Bool
+    ) {
         if self.events != events {
             self.events = events
             hostingView.rootView = DrawIconBubbleView(events: events, onOpen: onOpen)
@@ -47,12 +56,39 @@ final class DrawIconBubbleController {
             return
         }
         let size = Self.size(for: events.count)
-        let x = min(max(characterFrame.midX - size.width / 2, visibleFrame.minX),
-                    visibleFrame.maxX - size.width)
-        let idealY = characterFrame.maxY + 110
+        let centeredX = characterFrame.midX - size.width / 2
+        var x = min(max(centeredX, visibleFrame.minX), visibleFrame.maxX - size.width)
+        let restingY = characterFrame.maxY + 4
+        let idealY = max(restingY, chatBubbleFrame.map { $0.maxY + 6 } ?? restingY)
         let y = min(max(idealY, visibleFrame.minY), visibleFrame.maxY - size.height)
+        if let chatBubbleFrame,
+           CGRect(origin: CGPoint(x: x, y: y), size: size).intersects(chatBubbleFrame) {
+            // A tall chat stack can leave no room above it. Keep the game
+            // bubble beside that stack instead of covering the message.
+            let alternatives = [chatBubbleFrame.minX - size.width - 6, chatBubbleFrame.maxX + 6]
+                .filter { $0 >= visibleFrame.minX && $0 + size.width <= visibleFrame.maxX }
+                .sorted { abs($0 - centeredX) < abs($1 - centeredX) }
+            if let alternative = alternatives.first(where: {
+                !CGRect(origin: CGPoint(x: $0, y: y), size: size).intersects(chatBubbleFrame)
+            }) {
+                x = alternative
+            }
+        }
         let frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
-        if panel.frame != frame { panel.setFrame(frame, display: true) }
+        if lastRequestedFrame != frame {
+            let chatChanged = (chatBubbleFrame != nil) != wasChatBubbleVisible
+            if chatChanged, panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.22
+                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    panel.animator().setFrame(frame, display: true)
+                }
+            } else {
+                panel.setFrame(frame, display: true)
+            }
+            lastRequestedFrame = frame
+        }
+        wasChatBubbleVisible = chatBubbleFrame != nil
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
@@ -65,26 +101,98 @@ private struct DrawIconBubbleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 ForEach(events) { event in
                     Button { onOpen(event.id) } label: {
-                        Image(systemName: event.kind.symbol)
-                            .font(.system(size: 17, weight: .bold))
-                            .frame(width: 33, height: 30)
+                        DrawPixelGameIcon(kind: event.kind)
+                            .frame(width: 34, height: 32)
                     }
                     .buttonStyle(.plain)
                     .help(event.kind.title)
                     .accessibilityLabel(event.kind.title)
                 }
             }
-            .padding(.horizontal, 7)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 11))
+            .padding(.horizontal, 6)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(.white.opacity(0.7), lineWidth: 1)
+            }
             Image(systemName: "triangle.fill")
-                .font(.system(size: 10))
+                .font(.system(size: 8))
                 .rotationEffect(.degrees(180))
                 .foregroundStyle(.regularMaterial)
-                .offset(y: -2)
+                .offset(y: -1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Each tile is one logical pixel. A 24 pt canvas maps it to an integer number
+/// of backing pixels at the system display scale, without interpolation.
+private struct DrawPixelGameIcon: View {
+    let kind: DrawKind
+
+    var body: some View {
+        Canvas(opaque: false, rendersAsynchronously: false) { context, _ in
+            for y in 0..<24 {
+                for x in 0..<24 {
+                    guard let color = Self.pixel(kind: kind, x: x, y: y) else { continue }
+                    context.fill(
+                        Path(CGRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1)),
+                        with: .color(color)
+                    )
+                }
+            }
+        }
+        .frame(width: 24, height: 24)
+        .accessibilityHidden(true)
+    }
+
+    private static let ink = Color(red: 0.20, green: 0.17, blue: 0.31)
+    private static let light = Color(red: 1.00, green: 0.97, blue: 0.85)
+    private static let gold = Color(red: 1.00, green: 0.74, blue: 0.28)
+    private static let coral = Color(red: 0.96, green: 0.35, blue: 0.43)
+    private static let violet = Color(red: 0.49, green: 0.37, blue: 0.91)
+    private static let teal = Color(red: 0.22, green: 0.73, blue: 0.79)
+
+    private static func pixel(kind: DrawKind, x: Int, y: Int) -> Color? {
+        switch kind {
+        case .lot:
+            guard (3...20).contains(x), (4...19).contains(y),
+                  !(x < 5 && (y < 6 || y > 17)),
+                  !(x > 18 && (y < 6 || y > 17)) else { return nil }
+            if x == 3 || x == 20 || y == 4 || y == 19 ||
+                (x == 4 || x == 19) && (y == 5 || y == 18) { return ink }
+            if (7...9).contains(y) { return coral }
+            if y == 10 { return ink }
+            if (x == 8 || x == 16) && (12...17).contains(y) { return gold }
+            if (11...13).contains(x) && (12...16).contains(y) { return gold }
+            return light
+        case .ladder:
+            guard (3...20).contains(x), (2...21).contains(y) else { return nil }
+            if (x == 4 || x == 19) && (3...20).contains(y) { return ink }
+            if (x == 5 || x == 18) && (3...20).contains(y) { return violet }
+            if (6...17).contains(x) && [5, 9, 13, 17].contains(y) { return ink }
+            if (6...17).contains(x) && [6, 10, 14, 18].contains(y) { return gold }
+            if (4...6).contains(x) && (y == 2 || y == 21) { return ink }
+            if (17...19).contains(x) && (y == 2 || y == 21) { return ink }
+            return nil
+        case .roulette:
+            if (10...13).contains(x) && (0...3).contains(y) {
+                return y == 0 ? ink : gold
+            }
+            if (6...17).contains(x) && y == 22 { return ink }
+            if (8...15).contains(x) && y == 21 { return violet }
+            let dx = Double(x) - 11.5
+            let dy = Double(y) - 12
+            let distance = dx * dx + dy * dy
+            guard distance <= 90 else { return nil }
+            if distance >= 68 { return ink }
+            if distance <= 2 { return gold }
+            if distance <= 5 { return ink }
+            let sector = Int((atan2(dy, dx) + .pi) / (.pi / 3))
+            return [coral, light, teal, violet, gold, light][min(sector, 5)]
+        }
     }
 }

@@ -112,14 +112,17 @@ final class PixelWorldWindowController {
     private var characterThrow: CharacterThrowEvent?
     private var localActivityFrame: CGRect = .zero
     private let onCharacterFramesChanged: ([UUID: CGRect]) -> Void
+    private let onChatBubbleFramesChanged: ([UUID: CGRect]) -> Void
 
     init(
         model: AppModel,
         frame: CGRect,
-        onCharacterFramesChanged: @escaping ([UUID: CGRect]) -> Void = { _ in }
+        onCharacterFramesChanged: @escaping ([UUID: CGRect]) -> Void = { _ in },
+        onChatBubbleFramesChanged: @escaping ([UUID: CGRect]) -> Void = { _ in }
     ) {
         self.model = model
         self.onCharacterFramesChanged = onCharacterFramesChanged
+        self.onChatBubbleFramesChanged = onChatBubbleFramesChanged
         panel = NSPanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -202,7 +205,8 @@ final class PixelWorldWindowController {
             composerFrame: composerFrame,
             characterPulse: characterPulse,
             characterThrow: characterThrow,
-            onCharacterFramesChanged: onCharacterFramesChanged
+            onCharacterFramesChanged: onCharacterFramesChanged,
+            onChatBubbleFramesChanged: onChatBubbleFramesChanged
         )
     }
 }

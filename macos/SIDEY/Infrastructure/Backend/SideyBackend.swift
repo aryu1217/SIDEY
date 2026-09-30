@@ -141,10 +141,23 @@ actor SideyBackend {
         roomID: UUID,
         kind: DrawKind,
         participantIDs: [UUID],
+        entryLabels: [String]?,
         ladderLabels: [String]?
     ) async throws -> DrawEvent {
         _ = try await authenticatedSession()
         do {
+            if let entryLabels {
+                return try await client.rpc(
+                    "create_draw_event_v2",
+                    params: CreateDrawEventV2Parameters(
+                        roomID: roomID,
+                        kind: kind.rawValue,
+                        participantIDs: participantIDs,
+                        entryLabels: entryLabels,
+                        ladderLabels: ladderLabels
+                    )
+                ).execute().value
+            }
             return try await client.rpc(
                 "create_draw_event",
                 params: CreateDrawEventParameters(
@@ -181,6 +194,18 @@ actor SideyBackend {
             "close_draw_event",
             params: DrawEventParameters(eventID: id)
         ).execute().value
+    }
+
+    func deleteDrawEvent(id: UUID) async throws {
+        _ = try await authenticatedSession()
+        do {
+            _ = try await client.rpc(
+                "delete_draw_event",
+                params: DrawEventParameters(eventID: id)
+            ).execute()
+        } catch {
+            throw SideyBackendError.normalized(error)
+        }
     }
 
     func currentFirebaseV2BootstrapSession() async throws -> FirebaseV2SupabaseSession {

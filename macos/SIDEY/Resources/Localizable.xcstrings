@@ -2607,25 +2607,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose members. The server fixes one result for everyone."
+            "value": "Write your own entries or add group members. The server fixes one result for everyone."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "メンバーを選ぶと、サーバーが全員共通の結果を確定します。"
+            "value": "項目を入力するかグループメンバーを追加できます。結果は全員共通です。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "멤버를 고르면 서버가 모두에게 같은 결과를 확정해요."
+            "value": "항목을 직접 쓰거나 그룹 참가자를 추가할 수 있어요. 결과는 모두에게 같아요."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "選擇成員後，伺服器會確定所有人相同的結果。"
+            "value": "可自行輸入項目或加入群組成員。伺服器會為所有人確定相同結果。"
           }
         }
       }
@@ -2688,6 +2688,122 @@
         }
       }
     },
+    "draw.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete record"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "記録を削除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기록 삭제"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刪除紀錄"
+          }
+        }
+      }
+    },
+    "draw.delete.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this draw record?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この抽選記録を削除しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 뽑기 기록을 삭제할까요?"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要刪除此抽籤紀錄嗎？"
+          }
+        }
+      }
+    },
+    "draw.delete.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes the result and icon for everyone in the group."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループ全員の結果とアイコンが削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 모두의 결과와 아이콘이 삭제돼요."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會移除群組所有人的結果和圖示。"
+          }
+        }
+      }
+    },
+    "draw.delete_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t delete the draw record. (%@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "抽選記録を削除できませんでした。（%@）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뽑기 기록을 삭제하지 못했어요. (%@)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法刪除抽籤紀錄。（%@）"
+          }
+        }
+      }
+    },
     "draw.end": {
       "extractionState": "manual",
       "localizations": {
@@ -2713,6 +2829,238 @@
           "stringUnit": {
             "state": "translated",
             "value": "提前結束"
+          }
+        }
+      }
+    },
+    "draw.entries.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add entry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目を追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 추가"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增項目"
+          }
+        }
+      }
+    },
+    "draw.entries.add_member": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add member"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メンバーを追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참가자 추가"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增成員"
+          }
+        }
+      }
+    },
+    "draw.entries.custom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write entries"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目を入力"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 입력"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自行輸入"
+          }
+        }
+      }
+    },
+    "draw.entries.members": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group members"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループメンバー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 참가자"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群組成員"
+          }
+        }
+      }
+    },
+    "draw.entries.mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entries"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目の種類"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 종류"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目類型"
+          }
+        }
+      }
+    },
+    "draw.entries.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entry (up to 80 characters)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目（80文字以内）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 입력 (최대 80자)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸入項目（最多 80 字）"
+          }
+        }
+      }
+    },
+    "draw.entries.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove entry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目を削除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 빼기"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除項目"
+          }
+        }
+      }
+    },
+    "draw.entries.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entries (2–12)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目（2〜12）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 (2~12개)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目（2–12 個）"
           }
         }
       }
@@ -2926,25 +3274,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Destinations are assigned to participants when the ladder is drawn."
+            "value": "Each starting entry is matched to one destination when the ladder is drawn."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ゴールはあみだくじの結果に応じて参加者に割り当てられます。"
+            "value": "開始項目は抽選時にゴールの一つと対応します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "입력한 항목은 사다리 결과에 따라 참가자에게 배정돼요."
+            "value": "시작 항목마다 도착 항목 하나가 배정돼요."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "系統會依爬梯子的結果，將終點項目分配給參與者。"
+            "value": "開始項目會在抽籤時各自對應一個終點。"
           }
         }
       }
@@ -3119,35 +3467,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法開啟結果。（%@）"
-          }
-        }
-      }
-    },
-    "draw.participants.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Participants (2–12)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "参加者（2〜12人）"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "참여자 (2~12명)"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "參與者（2–12 人）"
           }
         }
       }
@@ -6752,35 +7071,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "history.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recent messages"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近のメッセージ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최근 메시지"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近訊息"
           }
         }
       }

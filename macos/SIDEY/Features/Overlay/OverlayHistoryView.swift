@@ -38,18 +38,12 @@ struct OverlayHistoryView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Label(L10n.text("history.title"), systemImage: "clock.arrow.circlepath")
-                    .font(.headline)
-                Text(L10n.format(
-                    "history.retention_notice",
-                    Int64(ProductLimits.messageRetentionDays)
-                ))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        Text(L10n.format(
+            "history.retention_notice",
+            Int64(ProductLimits.messageRetentionDays)
+        ))
+        .font(.caption)
+        .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -209,46 +203,56 @@ struct HistoryMessageCard: View {
     let participant: MessageHistoryParticipant
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(nsImage: PixelCharacterPreviewImage.image(
-                for: PixelCharacterCatalog.definition(for: participant.characterID)
-            ))
-            .interpolation(.none)
-            .resizable()
-            .frame(width: 24, height: 24)
-            .frame(width: 40, height: 40)
-            .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-            .accessibilityHidden(true)
+        HStack(alignment: .top, spacing: 10) {
+            if participant.isCurrentUser { Spacer(minLength: 24) }
+            if !participant.isCurrentUser { avatar }
+            messageBubble
+                .frame(maxWidth: 440)
+            if participant.isCurrentUser { avatar }
+            if !participant.isCurrentUser { Spacer(minLength: 24) }
+        }
+        .frame(maxWidth: .infinity, alignment: participant.isCurrentUser ? .trailing : .leading)
+        .accessibilityElement(children: .combine)
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 7) {
-                    Text(participant.nickname)
-                        .font(.system(.callout, design: .rounded, weight: .semibold))
-                        .lineLimit(1)
-                    if participant.isCurrentUser {
-                        Text(L10n.text("profile.current_user.badge"))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.tint)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.12), in: Capsule())
-                    }
-                    Spacer(minLength: 8)
-                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+    private var avatar: some View {
+        Image(nsImage: PixelCharacterPreviewImage.image(
+            for: PixelCharacterCatalog.definition(for: participant.characterID)
+        ))
+        .interpolation(.none)
+        .resizable()
+        .frame(width: 48, height: 48)
+        .accessibilityHidden(true)
+    }
+
+    private var messageBubble: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 7) {
+                Text(participant.nickname)
+                    .font(.system(.callout, design: .rounded, weight: .semibold))
+                    .lineLimit(1)
+                if participant.isCurrentUser {
+                    Text(L10n.text("profile.current_user.badge"))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.tint)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
                 }
-
-                Text(entry.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-
-                deliveryStatus
+                Spacer(minLength: 8)
+                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
+
+            Text(entry.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+
+            deliveryStatus
         }
         .padding(12)
         .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

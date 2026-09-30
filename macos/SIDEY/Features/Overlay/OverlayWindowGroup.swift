@@ -168,7 +168,8 @@ final class OverlayWindowGroup {
     private lazy var worldWindow = PixelWorldWindowController(
         model: model,
         frame: .zero,
-        onCharacterFramesChanged: { [weak self] frames in self?.characterFramesChanged(frames) }
+        onCharacterFramesChanged: { [weak self] frames in self?.characterFramesChanged(frames) },
+        onChatBubbleFramesChanged: { [weak self] frames in self?.chatBubbleFramesChanged(frames) }
     )
     private lazy var interactionWindow = OverlayInteractionWindowController(
         model: model,
@@ -197,6 +198,7 @@ final class OverlayWindowGroup {
     private(set) var composerVisible = false
     private var currentUserLocalFrame: CGRect?
     private var characterLocalFrames: [UUID: CGRect] = [:]
+    private var chatBubbleLocalFrames: [UUID: CGRect] = [:]
     private var composerVisibilityBeforeCharacterClick: Bool?
     private var throwTargetingTask: Task<Void, Never>?
     private var throwTargetingActive = false
@@ -373,6 +375,7 @@ final class OverlayWindowGroup {
             controller.update(
                 events: events,
                 characterFrame: screenFrame(for: characterLocalFrames[creatorID]),
+                chatBubbleFrame: screenFrame(for: chatBubbleLocalFrames[creatorID]),
                 visibleFrame: visibleScreen,
                 visible: overlayVisible
             )
@@ -425,6 +428,7 @@ final class OverlayWindowGroup {
         renderFrame = frames.renderFrame
         currentUserLocalFrame = nil
         characterLocalFrames.removeAll()
+        chatBubbleLocalFrames.removeAll()
         hotspotWindow.setFrame(nil)
         resetThrowTargeting()
         worldWindow.setLayout(
@@ -497,6 +501,11 @@ final class OverlayWindowGroup {
         }
         positionHotspot()
         refreshThrowHotspots()
+        refreshDrawIcons()
+    }
+
+    private func chatBubbleFramesChanged(_ frames: [UUID: CGRect]) {
+        chatBubbleLocalFrames = frames
         refreshDrawIcons()
     }
 

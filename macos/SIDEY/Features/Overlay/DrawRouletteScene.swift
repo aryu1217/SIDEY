@@ -5,7 +5,7 @@ import SpriteKit
 /// the event ID determines only the reproducible number of full turns.
 @MainActor
 final class DrawRouletteScene: SKScene {
-    private let members: [RoomMember]
+    private let entries: [DrawGameEntry]
     private let winnerIndex: Int?
     private let totalRotation: CGFloat
     private let wheel = SKNode()
@@ -16,16 +16,16 @@ final class DrawRouletteScene: SKScene {
     private var lastCrossing = 0
 
     init(event: DrawEvent, room: Room, size: CGSize) {
-        let gameMembers = event.gameMembers(in: room)
-        let selectedIndex = event.result.winnerUserID.flatMap { winner in
-            gameMembers.firstIndex(where: { $0.userID == winner })
-        }
-        members = gameMembers
+        let gameEntries = event.gameEntries(in: room)
+        let selectedIndex = event.isFreeEntryMode
+            ? event.result.winnerEntryIndex.flatMap { gameEntries.indices.contains($0) ? $0 : nil }
+            : gameEntries.firstIndex { $0.member?.userID == event.result.winnerUserID }
+        entries = gameEntries
         winnerIndex = selectedIndex
         var random = DrawGameRandom(eventID: event.id)
         let turns = CGFloat(4 + random.index(3))
-        if let selectedIndex, !gameMembers.isEmpty {
-            let step = 2 * CGFloat.pi / CGFloat(gameMembers.count)
+        if let selectedIndex, !gameEntries.isEmpty {
+            let step = 2 * CGFloat.pi / CGFloat(gameEntries.count)
             let finalPhase = (2 * CGFloat.pi - CGFloat(selectedIndex) * step)
                 .truncatingRemainder(dividingBy: 2 * CGFloat.pi)
             totalRotation = turns * 2 * .pi + finalPhase
@@ -63,8 +63,8 @@ final class DrawRouletteScene: SKScene {
             pointer.zRotation = 0
         }
 
-        if members.count > 1 {
-            let step = 2 * CGFloat.pi / CGFloat(members.count)
+        if entries.count > 1 {
+            let step = 2 * CGFloat.pi / CGFloat(entries.count)
             let crossing = Int(floor((angle + step / 2) / step))
             if crossing > lastCrossing && next < 1 {
                 pointer.removeAction(forKey: "tick")
@@ -81,17 +81,17 @@ final class DrawRouletteScene: SKScene {
         wheel.removeAllChildren()
         winnerDisplay.removeAllChildren()
         winnerOutline = nil
-        guard members.count >= 2 else { return }
+        guard entries.count >= 2 else { return }
 
         let radius = max(32, min(size.width * 0.37, size.height * 0.36))
         let center = CGPoint(x: size.width / 2, y: size.height / 2 - 7)
-        let step = 2 * CGFloat.pi / CGFloat(members.count)
+        let step = 2 * CGFloat.pi / CGFloat(entries.count)
         // DrawCharacterNode is 2x the logical sprite. These scales keep it at
         // either 24 or 48 points, never a fractional pixel enlargement.
-        let contentScale: CGFloat = members.count <= 4 && radius >= 120 ? 1 : 0.5
+        let contentScale: CGFloat = entries.count <= 4 && radius >= 120 ? 1 : 0.5
         wheel.position = center
 
-        for (index, member) in members.enumerated() {
+        for (index, entry) in entries.enumerated() {
             let middle = CGFloat.pi / 2 + CGFloat(index) * step
             let path = sectorPath(radius: radius, start: middle - step / 2, end: middle + step / 2)
             let sector = SKShapeNode(path: path)
@@ -101,13 +101,21 @@ final class DrawRouletteScene: SKScene {
             sector.zPosition = 0
             wheel.addChild(sector)
 
-            let character = DrawCharacterNode(member: member)
-            let contentRadius = radius * (members.count >= 8 ? 0.72 : 0.58)
-            character.position = CGPoint(x: (cos(middle) * contentRadius).rounded(),
-                                         y: (sin(middle) * contentRadius).rounded())
-            character.setScale(contentScale)
-            character.zPosition = 2
-            wheel.addChild(character)
+            let contentRadius = radius * (entries.count >= 8 ? 0.72 : 0.58)
+            let content: SKNode
+            if let member = entry.member {
+                let character = DrawCharacterNode(member: member)
+                character.setScale(contentScale)
+                content = character
+            } else {
+                let text = DrawGameTextNode(text: entry.label)
+                text.fit(maxWidth: min(130, max(24, 2 * contentRadius * sin(step / 2) - 6)))
+                content = text
+            }
+            content.position = CGPoint(x: (cos(middle) * contentRadius).rounded(),
+                                       y: (sin(middle) * contentRadius).rounded())
+            content.zPosition = 2
+            wheel.addChild(content)
 
             if index == winnerIndex {
                 let outline = SKShapeNode(path: path)
@@ -147,11 +155,21 @@ final class DrawRouletteScene: SKScene {
         pointer.lineWidth = 3
         pointer.zPosition = 10
 
-        if let winnerIndex {
-            let character = DrawCharacterNode(member: members[winnerIndex])
-            character.position = CGPoint(x: center.x, y: center.y - radius - 18)
-            character.setScale(radius >= 120 ? 1 : 0.5)
-            winnerDisplay.addChild(character)
+        if let winnerIndex, entries.indices.contains(winnerIndex) {
+            let entry = entries[winnerIndex]
+            let content: SKNode
+            if let member = entry.member {
+                let character = DrawCharacterNode(member: member)
+                character.setScale(radius >= 120 ? 1 : 0.5)
+                content = character
+            } else {
+                let text = DrawGameTextNode(text: entry.label)
+                text.fit(maxWidth: min(220, size.width - 32))
+                content = text
+            }
+            content.position = CGPoint(x: center.x,
+                                       y: center.y - radius - (entry.member == nil ? 24 : 18))
+            winnerDisplay.addChild(content)
         }
         winnerDisplay.zPosition = 20
         winnerDisplay.isHidden = progress < 1

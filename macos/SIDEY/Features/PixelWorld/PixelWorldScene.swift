@@ -226,8 +226,10 @@ final class PixelWorldScene: SKScene {
     private var lastUpdateTime: TimeInterval?
     private var lastHotspotReportTime: TimeInterval = 0
     private var lastHotspotFrames: [UUID: CGRect] = [:]
+    private var lastChatBubbleFrames: [UUID: CGRect] = [:]
     private var onCurrentUserFrameChanged: ((CGRect?) -> Void)?
     private var onCharacterFramesChanged: (([UUID: CGRect]) -> Void)?
+    private var onChatBubbleFramesChanged: (([UUID: CGRect]) -> Void)?
     private var lastLocalPulseTimes: [UUID: TimeInterval] = [:]
     private(set) var previewRenderEvents: [PixelWorldRenderEvent] = []
 
@@ -315,10 +317,12 @@ final class PixelWorldScene: SKScene {
         characterThrow: CharacterThrowEvent? = nil,
         onCurrentUserFrameChanged: ((CGRect?) -> Void)? = nil,
         onCharacterFramesChanged: (([UUID: CGRect]) -> Void)? = nil,
+        onChatBubbleFramesChanged: (([UUID: CGRect]) -> Void)? = nil,
         pausedTreeUserIDs: Set<UUID>? = nil
     ) {
         self.onCurrentUserFrameChanged = onCurrentUserFrameChanged
         self.onCharacterFramesChanged = onCharacterFramesChanged
+        self.onChatBubbleFramesChanged = onChatBubbleFramesChanged
         let roomChanged = roomID != currentRoomID
         currentRoomID = roomID
         self.installationSeed = installationSeed
@@ -334,6 +338,7 @@ final class PixelWorldScene: SKScene {
             characterNodes.removeAll()
             agents.removeAll()
             lastHotspotFrames.removeAll()
+            lastChatBubbleFrames.removeAll()
             projectiles.forEach { $0.node.removeFromParent() }
             projectiles.removeAll()
             removeImpactEffects()
@@ -744,6 +749,15 @@ final class PixelWorldScene: SKScene {
     }
 
     private func reportCharacterFrames(force: Bool) {
+        if let onChatBubbleFramesChanged {
+            let chatBubbleFrames = characterNodes.reduce(into: [UUID: CGRect]()) { result, entry in
+                result[entry.key] = entry.value.chatBubbleFrame(in: self)
+            }
+            if force || chatBubbleFrames != lastChatBubbleFrames {
+                lastChatBubbleFrames = chatBubbleFrames
+                onChatBubbleFramesChanged(chatBubbleFrames)
+            }
+        }
         let frames = characterNodes.reduce(into: [UUID: CGRect]()) { result, entry in
             result[entry.key] = CGRect(
                 x: entry.value.position.x - EdgeTrackGeometry.hotspotPointSize / 2,
@@ -1042,6 +1056,22 @@ private final class PixelCharacterNode: SKNode {
         }
         let typingFrame = typingBubbleNode.map { [$0.totalFrame] } ?? []
         return messageFrames + typingFrame
+    }
+    func chatBubbleFrame(in scene: SKScene) -> CGRect? {
+        let frames = bubbleTotalFrames
+        guard !frames.isEmpty else { return nil }
+        return frames.reduce(into: CGRect.null) { union, frame in
+            let corners = [
+                CGPoint(x: frame.minX, y: frame.minY),
+                CGPoint(x: frame.maxX, y: frame.minY),
+                CGPoint(x: frame.minX, y: frame.maxY),
+                CGPoint(x: frame.maxX, y: frame.maxY)
+            ]
+            for corner in corners {
+                let point = presentation.convert(corner, to: scene)
+                union = union.union(CGRect(origin: point, size: .zero))
+            }
+        }
     }
     var bubbleIsTyping: Bool { typingBubbleNode != nil }
     var nicknameWorldRotation: CGFloat {
