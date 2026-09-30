@@ -1,10 +1,17 @@
 #requires -Version 5.1
 
 [CmdletBinding()]
-param([Parameter(Mandatory = $true)][string]$PublishDirectory)
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$PublishDirectory,
+
+    [ValidateSet('x64', 'arm64')]
+    [string]$Architecture = 'x64'
+)
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+$Architecture = $Architecture.ToLowerInvariant()
 $repositoryRootPath = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $publishDirectoryPath = (Resolve-Path -LiteralPath $PublishDirectory).Path
 $runtimeDirectoryPath = Join-Path $publishDirectoryPath 'Runtime'
@@ -39,19 +46,23 @@ if ($null -ne $frameworkProperty -or $null -ne $frameworksProperty -or
 
 $dependencyManifest = Get-Content -LiteralPath $dependencyManifestPath -Raw |
     ConvertFrom-Json
+$runtimeIdentifier = "win-$Architecture"
+if ($dependencyManifest.runtimeTarget.name -notlike "*/$runtimeIdentifier") {
+    throw "Published runtime target does not match $runtimeIdentifier."
+}
 $dependencyLibraries = @($dependencyManifest.libraries.PSObject.Properties.Name)
 $runtimePack = @($dependencyLibraries | Where-Object {
-    $_ -like 'runtimepack.Microsoft.NETCore.App.Runtime.win-x64/*'
+    $_ -like "runtimepack.Microsoft.NETCore.App.Runtime.$runtimeIdentifier/*"
 })
 $windowsAppSdk = @($dependencyLibraries | Where-Object {
     $_ -like 'Microsoft.WindowsAppSDK/*'
 })
 if ($runtimePack.Count -ne 1 -or $windowsAppSdk.Count -ne 1) {
-    throw 'The published x64 .NET runtime pack and Windows App SDK could not be resolved uniquely.'
+    throw "The published $Architecture .NET runtime pack and Windows App SDK could not be resolved uniquely."
 }
 $runtimePackVersion = ($runtimePack[0] -split '/', 2)[1]
 if ([version]$includedFrameworks[0].version -ne [version]$runtimePackVersion) {
-    throw 'The included .NET runtime version differs from the restored x64 runtime pack.'
+    throw "The included .NET runtime version differs from the restored $Architecture runtime pack."
 }
 
 $applicationProjectPath = Join-Path $repositoryRootPath 'windows/src/Sidey.App/Sidey.App.csproj'
@@ -80,6 +91,38 @@ $missingRuntimeFiles = @($requiredRuntimeFiles | Where-Object {
 })
 if ($missingRuntimeFiles.Count -gt 0) {
     throw "Self-contained runtime files are missing: $($missingRuntimeFiles -join ', ')"
+}
+
+# Managed AnyCPU helper executables remain portable. The native host and runtime
+# must agree with the RID; a renamed or mixed publish tree is not a valid package.
+$expectedMachine = if ($Architecture -eq 'arm64') { 0xAA64 } else { 0x8664 }
+foreach ($nativeFile in @(
+    'SIDEY.Host.exe', 'coreclr.dll', 'clrjit.dll', 'hostfxr.dll',
+    'hostpolicy.dll', 'Microsoft.WindowsAppRuntime.dll', 'Microsoft.ui.xaml.dll')) {
+    $nativePath = Join-Path $runtimeDirectoryPath $nativeFile
+    $stream = [IO.File]::OpenRead($nativePath)
+    $reader = [IO.BinaryReader]::new($stream)
+    try {
+        if ($stream.Length -lt 64 -or $reader.ReadUInt16() -ne 0x5A4D) {
+            throw "Invalid PE image: $nativePath"
+        }
+        $stream.Position = 0x3C
+        $peOffset = $reader.ReadUInt32()
+        if ($peOffset -gt $stream.Length - 6) {
+            throw "Invalid PE header offset: $nativePath"
+        }
+        $stream.Position = $peOffset
+        if ($reader.ReadUInt32() -ne 0x00004550) {
+            throw "Invalid PE signature: $nativePath"
+        }
+        if ($reader.ReadUInt16() -ne $expectedMachine) {
+            throw "Published native binary does not match ${Architecture}: $nativePath"
+        }
+    }
+    finally {
+        $reader.Dispose()
+        $stream.Dispose()
+    }
 }
 
 $versionPropertiesPath = Join-Path $repositoryRootPath 'windows/Version.props'
@@ -147,4 +190,4 @@ if ($missingNativeRuntimes.Count -gt 0) {
 
 & (Join-Path $PSScriptRoot 'Test-ImpactAudioAssets.ps1') `
     -AssetsDirectory (Join-Path $publishDirectoryPath 'Assets')
-Write-Host "SelfContainedPublish=true; DotNetRuntime=$runtimePackVersion; WindowsAppSDK=$(($windowsAppSdk[0] -split '/', 2)[1]); VCRuntimeImports=$($nativeRuntimeImports.Count); Files=$($publishedFiles.Count); Bytes=$(($publishedFiles | Measure-Object Length -Sum).Sum); RuntimeDirectory=Runtime"
+Write-Host "SelfContainedPublish=true; DotNetRuntime=$runtimePackVersion; WindowsAppSDK=$(($windowsAppSdk[0] -split '/', 2)[1]); VCRuntimeImports=$($nativeRuntimeImports.Count); Files=$($publishedFiles.Count); Bytes=$(($publishedFiles | Measure-Object Length -Sum).Sum); RuntimeDirectory=Runtime; Architecture=$Architecture"

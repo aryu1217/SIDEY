@@ -32,6 +32,16 @@ namespace Sidey.Installer
         {
             try
             {
+                if (Array.IndexOf(arguments, "--update-launch-warning") >= 0)
+                {
+                    MessageBox(
+                        IntPtr.Zero,
+                        InstallerLanguages.UpdateLaunchWarning(GetUserDefaultUILanguage()),
+                        "SIDEY",
+                        0x00010030); // MB_SETFOREGROUND | MB_ICONWARNING | MB_OK
+                    return 2;
+                }
+
                 if (Array.IndexOf(arguments, "--activate-existing") >= 0)
                 {
                     return InstallerWindowActivation.TryActivateExisting() ? 0 : 1;
@@ -166,6 +176,9 @@ namespace Sidey.Installer
 
         [DllImport("kernel32.dll")]
         private static extern ushort GetUserDefaultUILanguage();
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "MessageBoxW")]
+        private static extern int MessageBox(IntPtr window, string text, string caption, uint type);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         private static extern IntPtr GetModuleHandle(string name);

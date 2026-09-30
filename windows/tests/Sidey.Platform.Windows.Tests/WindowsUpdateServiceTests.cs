@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Sidey.Platform.Windows;
@@ -27,7 +28,8 @@ public sealed class WindowsUpdateServiceTests
     {
         var service = new WindowsUpdateService(
             currentProductVersion: productVersion,
-            currentUpdateVersion: updateVersion);
+            currentUpdateVersion: updateVersion,
+            processArchitecture: Architecture.X64);
 
         Assert.Equal(expectedReleaseVersion, service.EffectiveCurrentReleaseVersion);
     }
@@ -145,7 +147,7 @@ public sealed class WindowsUpdateServiceTests
             "2.0.1",
             updateVersion,
             "windows-v2.0.1",
-            new Uri($"https://example.invalid/{InstallerName}"),
+            new Uri($"https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.1/{InstallerName}"),
             sha256);
         var reportedPercentages = new List<int>();
 
@@ -435,13 +437,104 @@ public sealed class WindowsUpdateServiceTests
         await Assert.ThrowsAsync<InvalidDataException>(() => service.CheckAsync());
     }
 
+    [Theory]
+    [InlineData(Architecture.X64, "x64", "windows-latest.json")]
+    [InlineData(Architecture.Arm64, "arm64", "windows-arm64-latest.json")]
+    public async Task ProcessArchitectureSelectsMatchingFeedAndInstaller(
+        Architecture architecture, string assetArchitecture, string feed)
+    {
+        string manifest = $$"""
+            {
+              "channel": "production",
+              "version": "2.2640.2",
+              "tag": "windows-v2.2640.2",
+              "installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.2/SIDEY-Windows-{{assetArchitecture}}-v2.2640.2-Setup.exe",
+              "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+            """;
+        using var handler = new StubHandler(JsonResponse(manifest));
+        using var client = new HttpClient(handler);
+        var service = new WindowsUpdateService(client, "2.2640.1", "2.2640.1",
+            processArchitecture: architecture);
+
+        WindowsUpdateManifest? update = await service.CheckAsync();
+
+        Assert.NotNull(update);
+        Assert.Equal(new Uri("https://sidey-app.github.io/SIDEY/" + feed), handler.RequestUri);
+        Assert.Contains("SIDEY-Windows-" + assetArchitecture + "-", update.InstallerUri.AbsoluteUri);
+        Assert.EndsWith($"SIDEY-Windows-{assetArchitecture}-v2.2640.2-Setup.exe",
+            service.InstallerPath(update.UpdateVersion), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Arm64FeedRejectsX64InstallerInsteadOfChangingArchitecture()
+    {
+        const string Manifest = """
+            {
+              "channel": "production",
+              "version": "2.2640.2",
+              "tag": "windows-v2.2640.2",
+              "installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.2/SIDEY-Windows-x64-v2.2640.2-Setup.exe",
+              "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+            """;
+        using var handler = new StubHandler(JsonResponse(Manifest));
+        using var client = new HttpClient(handler);
+        var service = new WindowsUpdateService(client, "2.2640.1", "2.2640.1",
+            processArchitecture: Architecture.Arm64);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.CheckAsync());
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Equal(WindowsUpdateService.Arm64ManifestUri, handler.RequestUri);
+    }
+
+    [Fact]
+    public async Task MissingArm64FeedNeverFallsBackToX64Feed()
+    {
+        using var handler = new StubHandler(new HttpResponseMessage(HttpStatusCode.NotFound));
+        using var client = new HttpClient(handler);
+        var service = new WindowsUpdateService(client, "2.2640.1", "2.2640.1",
+            processArchitecture: Architecture.Arm64);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CheckAsync());
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Equal(WindowsUpdateService.Arm64ManifestUri, handler.RequestUri);
+    }
+
+    [Fact]
+    public async Task Arm64DownloadRejectsExternallySuppliedX64ManifestBeforeNetworkAccess()
+    {
+        using var handler = new StubHandler(new HttpResponseMessage(HttpStatusCode.OK));
+        using var client = new HttpClient(handler);
+        var service = new WindowsUpdateService(client, "2.2640.1", "2.2640.1",
+            processArchitecture: Architecture.Arm64);
+        var update = new WindowsUpdateManifest("production", "2.2640.2", "2.2640.2", "windows-v2.2640.2",
+            new Uri("https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.2/SIDEY-Windows-x64-v2.2640.2-Setup.exe"),
+            new string('a', 64));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.DownloadInstallerAsync(update));
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.IsInstallerReadyAsync(update));
+        Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Theory]
+    [InlineData(Architecture.X86)]
+    [InlineData(Architecture.Arm)]
+    public void UnsupportedProcessArchitectureCannotSelectAnUpdate(Architecture architecture)
+    {
+        Assert.Throws<PlatformNotSupportedException>(() => new WindowsUpdateService(
+            currentProductVersion: "2.2640.1", currentUpdateVersion: "2.2640.1",
+            processArchitecture: architecture));
+    }
+
     private static WindowsUpdateService CreateService(
         HttpClient client,
         string productVersion,
         string updateVersion) => new(
             client,
             currentProductVersion: productVersion,
-            currentUpdateVersion: updateVersion);
+            currentUpdateVersion: updateVersion,
+            processArchitecture: Architecture.X64);
 
     private static HttpResponseMessage JsonResponse(string manifest) => new(HttpStatusCode.OK)
     {
@@ -451,12 +544,13 @@ public sealed class WindowsUpdateServiceTests
     private sealed class StubHandler(HttpResponseMessage response) : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
+        public Uri? RequestUri { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            _ = request;
+            RequestUri = request.RequestUri;
             _ = cancellationToken;
             RequestCount++;
             return Task.FromResult(response);

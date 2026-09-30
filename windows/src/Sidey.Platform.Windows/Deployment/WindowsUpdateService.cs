@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -23,6 +24,9 @@ public sealed partial class WindowsUpdateService
 {
     public static readonly Uri ManifestUri = new(
         "https://sidey-app.github.io/SIDEY/windows-latest.json");
+    public static readonly Uri Arm64ManifestUri = new(
+        "https://sidey-app.github.io/SIDEY/windows-arm64-latest.json");
+    private readonly string _architecture;
     private readonly HttpClient _httpClient;
     private readonly string _updateCacheDirectory;
     private readonly string? _installationDirectory;
@@ -32,13 +36,25 @@ public sealed partial class WindowsUpdateService
         string? currentProductVersion = null,
         string? currentUpdateVersion = null,
         string? updateCacheDirectory = null,
-        string? installationDirectory = null)
+        string? installationDirectory = null,
+        Architecture? processArchitecture = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(currentProductVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentUpdateVersion);
+        // Keep an x64 installation on x64 updates even when Windows emulates it on ARM64.
+        _architecture = (processArchitecture ?? RuntimeInformation.ProcessArchitecture) switch
+        {
+            Architecture.X64 => "x64",
+            Architecture.Arm64 => "arm64",
+            _ => throw new PlatformNotSupportedException("SIDEY updates support x64 and ARM64 processes."),
+        };
         _httpClient = httpClient ?? new HttpClient();
         _updateCacheDirectory = Path.GetFullPath(updateCacheDirectory
             ?? Path.Combine(Path.GetTempPath(), "SIDEY", "Updates"));
+        if (_architecture == "arm64")
+        {
+            _updateCacheDirectory = Path.Combine(_updateCacheDirectory, "arm64");
+        }
         _installationDirectory = installationDirectory is null ? null : Path.GetFullPath(installationDirectory);
         EffectiveCurrentProductVersion = currentProductVersion;
         EffectiveCurrentUpdateVersion = currentUpdateVersion;
@@ -84,7 +100,7 @@ public sealed partial class WindowsUpdateService
                         continue;
                     }
 
-                    string installerName = $"SIDEY-Windows-x64-v{version}";
+                    string installerName = $"SIDEY-Windows-{_architecture}-v{version}";
                     foreach (string suffix in new[] { "-Setup.exe", "-Setup.exe.download", ".msi", ".msi.download" })
                     {
                         string file = Path.Combine(directory, installerName + suffix);
@@ -139,7 +155,7 @@ public sealed partial class WindowsUpdateService
         try
         {
             manifest = await _httpClient.GetFromJsonAsync<ManifestDto>(
-                ManifestUri,
+                _architecture == "arm64" ? Arm64ManifestUri : ManifestUri,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
@@ -231,7 +247,7 @@ public sealed partial class WindowsUpdateService
             ReadIncrementalMetadata(manifest.Incremental, installerUri));
     }
 
-    private static Uri ValidateInstallerMetadata(
+    private Uri ValidateInstallerMetadata(
         string? version,
         string? tag,
         string? installerUrl,
@@ -255,7 +271,7 @@ public sealed partial class WindowsUpdateService
 
         var expectedInstallerUri = new Uri(
             $"https://github.com/sidey-app/SIDEY/releases/download/{tag}/" +
-            $"SIDEY-Windows-x64-v{releaseVersion}-Setup.exe");
+            $"SIDEY-Windows-{_architecture}-v{releaseVersion}-Setup.exe");
         if (!Uri.TryCreate(installerUrl, UriKind.Absolute, out Uri? parsedInstallerUri)
             || parsedInstallerUri != expectedInstallerUri)
         {
@@ -270,6 +286,8 @@ public sealed partial class WindowsUpdateService
         IProgress<int>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
+        _ = ValidateInstallerMetadata(manifest.UpdateVersion, manifest.UpdateTag,
+            manifest.InstallerUri.AbsoluteUri, manifest.Sha256, versionNamesAsset: false);
         if (await IsFullInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
         {
             progress?.Report(100);
@@ -377,6 +395,8 @@ public sealed partial class WindowsUpdateService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(manifest);
+        _ = ValidateInstallerMetadata(manifest.UpdateVersion, manifest.UpdateTag,
+            manifest.InstallerUri.AbsoluteUri, manifest.Sha256, versionNamesAsset: false);
         if (await IsIncrementalReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
         {
             return true;
@@ -412,7 +432,7 @@ public sealed partial class WindowsUpdateService
         return Path.Combine(
             _updateCacheDirectory,
             updateVersion,
-            $"SIDEY-Windows-x64-v{updateVersion}-Setup.exe");
+            $"SIDEY-Windows-{_architecture}-v{updateVersion}-Setup.exe");
     }
 
     public static void LaunchInstaller(string installerPath, bool silent = false)

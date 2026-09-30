@@ -3,8 +3,8 @@
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <RootNamespace>Sidey.Infrastructure</RootNamespace>
-    <Platforms>x64</Platforms>
-    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64;ARM64</Platforms>
+    <PlatformTarget>$(SideyArchitecture)</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Sidey.Core/Sidey.Core.csproj" />

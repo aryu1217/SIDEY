@@ -9,6 +9,14 @@ Unicode true
 !ifndef APP_FILE_VERSION
   !error "APP_FILE_VERSION is required."
 !endif
+!ifndef APP_ARCHITECTURE
+  !define APP_ARCHITECTURE "x64"
+!endif
+!if "${APP_ARCHITECTURE}" != "x64"
+!if "${APP_ARCHITECTURE}" != "arm64"
+  !error "APP_ARCHITECTURE must be x64 or arm64."
+!endif
+!endif
 !ifndef OUTPUT_DIR
   !error "OUTPUT_DIR is required."
 !endif
@@ -271,6 +279,16 @@ Var PendingInstallLocation
 !macroend
 
 Function .onInit
+!ifdef INCREMENTAL_PAYLOAD
+  Call ValidateIncrementalLaunch
+!endif
+!if "${APP_ARCHITECTURE}" == "arm64"
+  ${IfNot} ${IsNativeARM64}
+    MessageBox MB_OK|MB_ICONSTOP "This SIDEY package requires Windows on ARM64." /SD IDOK
+    SetErrorLevel 1633
+    Quit
+  ${EndIf}
+!endif
   SetRegView 64
   SetShellVarContext all
   StrCpy $InstallerCompletedCleanly 0
@@ -553,6 +571,25 @@ Function LaunchSideyAsDesktopUser
     Call ShowLifecycleError
   ${EndIf}
 FunctionEnd
+
+!ifdef INCREMENTAL_PAYLOAD
+Function ValidateIncrementalLaunch
+  ; A release-page launch has no prepared update cache. Reject it before the
+  ; language picker, installer activation, or any installed-app lifecycle work.
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/UPDATECACHE=" $UpdateCacheDirectory
+  ${If} ${Errors}
+  ${OrIf} $UpdateCacheDirectory == ""
+    ${IfNot} ${Silent}
+      Call PrepareInstallerActivation
+      ExecWait '"$PLUGINSDIR\Sidey.SetupLanguage.exe" --update-launch-warning' $1
+    ${EndIf}
+    SetErrorLevel 87
+    Quit
+  ${EndIf}
+FunctionEnd
+!endif
 
 Function SelectInstallerLanguage
   ; Select before NSIS initializes its language tables. LangDLL sorts its combo

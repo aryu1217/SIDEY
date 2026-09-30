@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -10,10 +11,12 @@ namespace Sidey.Platform.Windows.Tests;
 
 public sealed class WindowsIncrementalUpdateTests
 {
-    [Fact]
-    public async Task DistantOlderInstallationDownloadsOnlyChangedFilesAndPreparesExactLatestPayload()
+    [Theory]
+    [InlineData(Architecture.X64)]
+    [InlineData(Architecture.Arm64)]
+    public async Task DistantOlderInstallationDownloadsOnlyChangedFilesAndPreparesExactLatestPayload(Architecture architecture)
     {
-        using var fixture = new UpdateFixture();
+        using var fixture = new UpdateFixture(architecture);
         WindowsUpdateManifest update = fixture.CreateUpdate();
 
         string updater = await fixture.Service.DownloadInstallerAsync(update);
@@ -91,6 +94,25 @@ public sealed class WindowsIncrementalUpdateTests
     }
 
     [Fact]
+    public async Task Arm64IncrementalArtifactsWithX64NamesFallBackOnlyToArm64Setup()
+    {
+        using var fixture = new UpdateFixture(Architecture.Arm64);
+        WindowsUpdateManifest update = fixture.CreateUpdate(document =>
+        {
+            document["updater"]!["name"] = "SIDEY-Windows-x64-v2.2640.9-Update.exe";
+            document["payload"]!["name"] = "SIDEY-Windows-x64-v2.2640.9-Payload.bin";
+        });
+
+        string setup = await fixture.Service.DownloadInstallerAsync(update);
+
+        Assert.EndsWith("SIDEY-Windows-arm64-v2.2640.9-Setup.exe", setup, StringComparison.Ordinal);
+        Assert.Equal(fixture.Setup, await File.ReadAllBytesAsync(setup));
+        Assert.Empty(fixture.Handler.PayloadRanges);
+        Assert.Equal(0, fixture.Handler.UpdaterDownloads);
+        Assert.Equal(1, fixture.Handler.FullDownloads);
+    }
+
+    [Fact]
     public async Task FullSetupFallbackStillRejectsItsOwnChecksumMismatch()
     {
         using var fixture = new UpdateFixture();
@@ -163,14 +185,15 @@ public sealed class WindowsIncrementalUpdateTests
     private sealed class UpdateFixture : IDisposable
     {
         private const string Version = "2.2640.9";
-        private const string Prefix = "SIDEY-Windows-x64-v" + Version;
+        private readonly string _prefix;
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"sidey-incremental-{Guid.NewGuid():N}");
         private readonly HttpClient _client;
         private readonly JsonObject _manifest;
         private readonly Dictionary<string, string> _ranges = new(StringComparer.Ordinal);
 
-        public UpdateFixture()
+        public UpdateFixture(Architecture architecture = Architecture.X64)
         {
+            _prefix = "SIDEY-Windows-" + (architecture == Architecture.Arm64 ? "arm64" : "x64") + "-v" + Version;
             InstallationDirectory = Path.Combine(_directory, "installed");
             Directory.CreateDirectory(Path.Combine(InstallationDirectory, "Runtime"));
             Files = new Dictionary<string, byte[]>(StringComparer.Ordinal)
@@ -210,13 +233,13 @@ public sealed class WindowsIncrementalUpdateTests
             {
                 ["schema"] = 1,
                 ["version"] = Version,
-                ["updater"] = new JsonObject { ["name"] = Prefix + "-Update.exe", ["sha256"] = Digest(Updater), ["size"] = Updater.Length },
-                ["payload"] = new JsonObject { ["name"] = Prefix + "-Payload.bin", ["sha256"] = Digest(payloadBytes), ["size"] = payloadBytes.Length },
+                ["updater"] = new JsonObject { ["name"] = _prefix + "-Update.exe", ["sha256"] = Digest(Updater), ["size"] = Updater.Length },
+                ["payload"] = new JsonObject { ["name"] = _prefix + "-Payload.bin", ["sha256"] = Digest(payloadBytes), ["size"] = payloadBytes.Length },
                 ["files"] = files,
             };
             Handler = new ArtifactHandler(payloadBytes, Updater, Setup);
             _client = new HttpClient(Handler);
-            Service = new WindowsUpdateService(_client, "0.1.0", "0.1.0", Path.Combine(_directory, "cache"), InstallationDirectory);
+            Service = new WindowsUpdateService(_client, "0.1.0", "0.1.0", Path.Combine(_directory, "cache"), InstallationDirectory, processArchitecture: architecture);
         }
 
         public string InstallationDirectory { get; }
@@ -235,8 +258,8 @@ public sealed class WindowsIncrementalUpdateTests
             string digest = Handler.Failure == "manifest-hash" ? new string('0', 64) : Digest(Handler.Manifest);
             var baseUri = new Uri("https://github.com/sidey-app/SIDEY/releases/download/windows-v" + Version + "/");
             return new WindowsUpdateManifest("production", Version, Version, "windows-v" + Version,
-                new Uri(baseUri, Prefix + "-Setup.exe"), Digest(Setup),
-                new WindowsIncrementalUpdate(new Uri(baseUri, Prefix + "-Update.json"), digest));
+                new Uri(baseUri, _prefix + "-Setup.exe"), Digest(Setup),
+                new WindowsIncrementalUpdate(new Uri(baseUri, _prefix + "-Update.json"), digest));
         }
 
         public void Dispose()

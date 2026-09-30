@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Sidey.Platform.Windows;
 
 namespace Sidey.Platform.Windows.Tests;
@@ -6,6 +7,26 @@ namespace Sidey.Platform.Windows.Tests;
 public sealed class WindowsUpdateCleanupTests : IDisposable
 {
     private readonly string _cache = Directory.CreateTempSubdirectory("SIDEY-update-cleanup-").FullName;
+
+    [Fact]
+    public void Arm64CacheCleanupPreservesX64AndNewerArm64Updates()
+    {
+        string setup = CreateFile("arm64/1.0.10", "SIDEY-Windows-arm64-v1.0.10-Setup.exe");
+        string updater = CreateFile("arm64/1.0.10/incremental", "SIDEY-Windows-arm64-v1.0.10-Update.exe");
+        string manifest = CreateFile("arm64/1.0.10/incremental", "manifest.json");
+        string payload = CreateFile("arm64/1.0.10/incremental/files", new string('a', 64) + ".bin");
+        string x64 = CreateFile("1.0.10", "SIDEY-Windows-x64-v1.0.10-Setup.exe");
+        string newer = CreateFile("arm64/1.0.11", "SIDEY-Windows-arm64-v1.0.11-Setup.exe");
+        var service = new WindowsUpdateService(currentProductVersion: "1.0.10",
+            currentUpdateVersion: "1.0.10", updateCacheDirectory: _cache,
+            processArchitecture: Architecture.Arm64);
+
+        Assert.Equal(4, service.CleanupInstalledUpdates());
+        foreach (string owned in new[] { setup, updater, manifest, payload })
+            Assert.False(File.Exists(owned));
+        Assert.True(File.Exists(x64));
+        Assert.True(File.Exists(newer));
+    }
 
     [Fact]
     public void RemovesInstalledVersionsButPreservesNewerUpdatesAndUnrelatedFiles()
@@ -24,7 +45,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
         var service = new WindowsUpdateService(
             currentProductVersion: "1.0.10",
             currentUpdateVersion: "1.0.10",
-            updateCacheDirectory: _cache);
+            updateCacheDirectory: _cache,
+            processArchitecture: Architecture.X64);
 
         Assert.Equal(5, service.CleanupInstalledUpdates());
 
@@ -48,7 +70,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
         var service = new WindowsUpdateService(
             currentProductVersion: "1.0.10",
             currentUpdateVersion: "1.0.10",
-            updateCacheDirectory: _cache);
+            updateCacheDirectory: _cache,
+            processArchitecture: Architecture.X64);
 
         using (FileStream locked = File.Open(installer, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
@@ -88,7 +111,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
         var service = new WindowsUpdateService(
             currentProductVersion: "1.0.10",
             currentUpdateVersion: "1.0.10",
-            updateCacheDirectory: _cache);
+            updateCacheDirectory: _cache,
+            processArchitecture: Architecture.X64);
 
         Assert.Equal(owned.Length, service.CleanupInstalledUpdates());
 
@@ -109,7 +133,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
         var service = new WindowsUpdateService(
             currentProductVersion: "1.0.10",
             currentUpdateVersion: "1.0.10",
-            updateCacheDirectory: _cache);
+            updateCacheDirectory: _cache,
+            processArchitecture: Architecture.X64);
 
         using (FileStream locked = File.Open(updater, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
@@ -155,7 +180,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
             var service = new WindowsUpdateService(
                 currentProductVersion: "1.0.10",
                 currentUpdateVersion: "1.0.10",
-                updateCacheDirectory: _cache);
+                updateCacheDirectory: _cache,
+                processArchitecture: Architecture.X64);
 
             Assert.Equal(0, service.CleanupInstalledUpdates());
             Assert.Equal("must survive cleanup", File.ReadAllText(payload));
@@ -177,7 +203,8 @@ public sealed class WindowsUpdateCleanupTests : IDisposable
         var service = new WindowsUpdateService(
             currentProductVersion: "1.0.10",
             currentUpdateVersion: "1.0.10",
-            updateCacheDirectory: missing);
+            updateCacheDirectory: missing,
+            processArchitecture: Architecture.X64);
 
         Assert.Equal(0, service.CleanupInstalledUpdates());
         Assert.False(Directory.Exists(missing));

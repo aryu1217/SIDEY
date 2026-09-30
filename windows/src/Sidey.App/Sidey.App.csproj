@@ -5,9 +5,9 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <RootNamespace>Sidey.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x64</Platforms>
-    <PlatformTarget>x64</PlatformTarget>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64;ARM64</Platforms>
+    <PlatformTarget>$(SideyArchitecture)</PlatformTarget>
+    <RuntimeIdentifier>win-$(SideyArchitecture)</RuntimeIdentifier>
     <SideyDotNetRuntimeVersion>10.0.12</SideyDotNetRuntimeVersion>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <UseWinUI>true</UseWinUI>

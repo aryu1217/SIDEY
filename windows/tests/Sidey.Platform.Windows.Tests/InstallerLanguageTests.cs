@@ -6,6 +6,36 @@ namespace Sidey.Platform.Windows.Tests;
 public sealed class InstallerLanguageTests
 {
     [Theory]
+    [InlineData(1033, "This file is used by SIDEY for automatic updates. Update from within SIDEY, or download and run Setup for a manual update.")]
+    [InlineData(1041, "このファイルはSIDEYの自動更新用です。SIDEYアプリ内で更新するか、手動で更新する場合はSetupインストーラーをダウンロードして実行してください。")]
+    [InlineData(1042, "이 파일은 SIDEY의 자동 업데이트용입니다. SIDEY 앱에서 업데이트하거나, 수동으로 업데이트하려면 Setup 설치 파일을 다운로드하여 실행하세요.")]
+    [InlineData(1049, "Этот файл используется SIDEY для автоматических обновлений. Обновите SIDEY через приложение или скачайте и запустите установщик Setup для обновления вручную.")]
+    [InlineData(1058, "Цей файл використовується SIDEY для автоматичних оновлень. Оновіть SIDEY через застосунок або завантажте й запустіть інсталятор Setup для оновлення вручну.")]
+    [InlineData(2052, "此文件用于 SIDEY 的自动更新。请在 SIDEY 应用内更新，或下载并运行 Setup 安装程序以手动更新。")]
+    [InlineData(1028, "此檔案用於 SIDEY 的自動更新。請在 SIDEY 應用程式內更新，或下載並執行 Setup 安裝程式以手動更新。")]
+    public void DirectUpdateLaunchWarningExplainsAutomaticAndManualUpdateRoutes(int systemLanguage, string expected)
+    {
+        Assert.Equal(expected, InstallerLanguages.UpdateLaunchWarning(systemLanguage));
+    }
+
+    [Theory]
+    [InlineData(2057, 1033)]
+    [InlineData(3081, 1033)]
+    [InlineData(4100, 2052)]
+    [InlineData(3076, 1028)]
+    [InlineData(5124, 1028)]
+    [InlineData(0x7c04, 1028)]
+    [InlineData(0x0819, 1049)]
+    [InlineData(1036, 1033)]
+    [InlineData(0, 1033)]
+    public void DirectUpdateLaunchWarningUsesDisplayLanguageVariantsAndEnglishFallback(int systemLanguage, int expectedLanguage)
+    {
+        Assert.Equal(
+            InstallerLanguages.UpdateLaunchWarning(expectedLanguage),
+            InstallerLanguages.UpdateLaunchWarning(systemLanguage));
+    }
+
+    [Theory]
     [InlineData(1033, 1033)]
     [InlineData(2057, 1033)]
     [InlineData(3081, 1033)]

@@ -6,13 +6,17 @@ param(
     [string]$ReleaseVersion,
 
     [Parameter(Mandatory = $true)]
-    [string]$CandidateSetupPath
+    [string]$CandidateSetupPath,
+
+    [ValidateSet('x64', 'arm64')]
+    [string]$Architecture = 'x64'
 )
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+$Architecture = $Architecture.ToLowerInvariant()
 $candidateSetupFilePath = (Resolve-Path -LiteralPath $CandidateSetupPath).Path
-$setupName = "SIDEY-Windows-x64-v${ReleaseVersion}-Setup.exe"
+$setupName = "SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Setup.exe"
 if ([IO.Path]::GetFileName($candidateSetupFilePath) -ne $setupName) {
     throw "후보 파일 이름이 공개 계약과 다름: $setupName"
 }

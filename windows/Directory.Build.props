@@ -1,6 +1,11 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)Version.props" />
   <PropertyGroup>
+    <SideyArchitecture Condition="'$(RuntimeIdentifier)' == 'win-arm64' or '$(Platform)' == 'ARM64'">arm64</SideyArchitecture>
+    <SideyArchitecture Condition="'$(SideyArchitecture)' == ''">x64</SideyArchitecture>
+    <BaseOutputPath Condition="'$(BaseOutputPath)' == ''">bin\$(SideyArchitecture)\</BaseOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)' == ''">obj\$(SideyArchitecture)\</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
     <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,6 +16,13 @@
     <SideyDevelopmentCommerce Condition="'$(SideyDevelopmentCommerce)' == ''">false</SideyDevelopmentCommerce>
     <DefineConstants Condition="'$(Configuration)' == 'Debug' and '$(SideyDevelopmentCommerce)' == 'true'">$(DefineConstants);SIDEY_DEVELOPMENT_COMMERCE</DefineConstants>
   </PropertyGroup>
+  <!-- The SDK may remove the RID when building library references. Keep their
+       processor target and intermediate files aligned with the calling app. -->
+  <ItemDefinitionGroup Condition="'$(RuntimeIdentifier)' == 'win-arm64' and '$(Platform)' != 'ARM64'">
+    <ProjectReference>
+      <AdditionalProperties>SideyArchitecture=$(SideyArchitecture)</AdditionalProperties>
+    </ProjectReference>
+  </ItemDefinitionGroup>
   <Target Name="ValidateSideyVersionMetadata" BeforeTargets="BeforeBuild"
           Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec

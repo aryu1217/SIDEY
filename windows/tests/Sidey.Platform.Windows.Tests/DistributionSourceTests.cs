@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Xml.Linq;
 
@@ -441,7 +442,7 @@ public sealed class DistributionSourceTests
         Assert.Contains("$throwableDirectory.Name -eq 'throwable_toy_cannon'", package, StringComparison.Ordinal);
         Assert.Contains("@('emitter.bgra', 'emitter.png', 'preview.png')", package, StringComparison.Ordinal);
         Assert.Contains("Compare-Object $expectedFileNames $fileNames", package, StringComparison.Ordinal);
-        Assert.Contains("SIDEY-Windows-x64-v${ReleaseVersion}-Setup.exe", package, StringComparison.Ordinal);
+        Assert.Contains("SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Setup.exe", package, StringComparison.Ordinal);
         Assert.Contains("NSIS 3.12", package, StringComparison.Ordinal);
         Assert.Contains("makensis.exe", package, StringComparison.Ordinal);
         Assert.Contains("/VERSION", package, StringComparison.Ordinal);
@@ -843,6 +844,93 @@ public sealed class DistributionSourceTests
         Assert.Contains("IsNullOrWhiteSpace($env:SIDEY_DEV_ARTIFACT_PASSWORD)", workflow, StringComparison.Ordinal);
         Assert.Contains("path: ${{ runner.temp }}/sidey-windows-private-${{ github.sha }}.7z", workflow[uploadStep..], StringComparison.Ordinal);
         Assert.DoesNotContain("*Setup.exe", workflow[uploadStep..], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("arm64", "x64", "x64", 0x8664, "Published runtime target does not match win-arm64")]
+    [InlineData("ARM64", "x64", "x64", 0x8664, "Published runtime target does not match win-arm64")]
+    [InlineData("x64", "arm64", "arm64", 0xAA64, "Published runtime target does not match win-x64")]
+    [InlineData("arm64", "arm64", "x64", 0xAA64, "runtime pack and Windows App SDK could not be resolved uniquely")]
+    [InlineData("arm64", "arm64", "arm64", 0x8664, "Published native binary does not match arm64")]
+    [InlineData("x64", "x64", "x64", 0xAA64, "Published native binary does not match x64")]
+    public async Task PublishValidationRejectsMetadataAndNativeArchitectureMismatch(
+        string architecture, string targetArchitecture, string packArchitecture, int machine, string error)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"sidey-publish-architecture-{Guid.NewGuid():N}");
+        string runtimeDirectory = Path.Combine(directory, "Runtime");
+        Directory.CreateDirectory(runtimeDirectory);
+        try
+        {
+            string version = Value(XDocument.Load(RepositoryPath(
+                "windows", "src", "Sidey.App", "Sidey.App.csproj")), "SideyDotNetRuntimeVersion");
+            File.WriteAllText(Path.Combine(runtimeDirectory, "SIDEY.Host.runtimeconfig.json"), JsonSerializer.Serialize(new
+            {
+                runtimeOptions = new { includedFrameworks = new[] { new { name = "Microsoft.NETCore.App", version } } },
+            }));
+            File.WriteAllText(Path.Combine(runtimeDirectory, "SIDEY.Host.deps.json"), JsonSerializer.Serialize(new
+            {
+                runtimeTarget = new { name = $".NETCoreApp,Version=v10.0/win-{targetArchitecture}" },
+                libraries = new Dictionary<string, object>
+                {
+                    [$"runtimepack.Microsoft.NETCore.App.Runtime.win-{packArchitecture}/{version}"] = new { },
+                    ["Microsoft.WindowsAppSDK/2.4.0"] = new { },
+                },
+            }));
+            string[] requiredFiles =
+            [
+                "SIDEY.Host.exe", "SIDEY.Host.dll", "coreclr.dll", "clrjit.dll", "hostfxr.dll", "hostpolicy.dll",
+                "System.Private.CoreLib.dll", "Microsoft.WindowsAppRuntime.dll", "Microsoft.WindowsAppRuntime.pri",
+                "Microsoft.ui.xaml.dll", "Microsoft.UI.pri",
+            ];
+            foreach (string file in requiredFiles)
+            {
+                using var writer = new BinaryWriter(File.Create(Path.Combine(runtimeDirectory, file)));
+                writer.Write(new byte[128]);
+                writer.Seek(0, SeekOrigin.Begin);
+                writer.Write((ushort)0x5A4D);
+                writer.Seek(0x3C, SeekOrigin.Begin);
+                writer.Write(64);
+                writer.Seek(64, SeekOrigin.Begin);
+                writer.Write(0x00004550);
+                writer.Write((ushort)machine);
+            }
+
+            var start = new ProcessStartInfo("powershell.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            foreach (string argument in new[]
+            {
+                "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
+                RepositoryPath("scripts", "windows", "tests", "Test-SelfContainedPublish.ps1"),
+                "-PublishDirectory", directory, "-Architecture", architecture,
+            })
+            {
+                start.ArgumentList.Add(argument);
+            }
+            using Process process = Process.Start(start)!;
+            Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderr = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill(entireProcessTree: true);
+                throw;
+            }
+            Assert.NotEqual(0, process.ExitCode);
+            Assert.Contains(error, await stderr + await stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     private static string Value(XDocument document, string name) =>

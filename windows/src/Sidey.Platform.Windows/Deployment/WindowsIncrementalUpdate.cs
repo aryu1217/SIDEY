@@ -74,7 +74,7 @@ public sealed partial class WindowsUpdateService
         return true;
     }
 
-    private static IncrementalManifest ParseIncrementalManifest(byte[] bytes, WindowsUpdateManifest update)
+    private IncrementalManifest ParseIncrementalManifest(byte[] bytes, WindowsUpdateManifest update)
     {
         if (update.Incremental is null || bytes.Length > MaximumManifestBytes
             || !StringComparer.OrdinalIgnoreCase.Equals(
@@ -85,7 +85,7 @@ public sealed partial class WindowsUpdateService
         IncrementalManifest manifest = JsonSerializer.Deserialize<IncrementalManifest>(bytes)
             ?? throw new InvalidDataException("Missing incremental manifest.");
         string releaseVersion = ResolveReleaseVersion(update.ProductVersion, update.UpdateVersion);
-        string prefix = $"SIDEY-Windows-x64-v{releaseVersion}";
+        string prefix = $"SIDEY-Windows-{_architecture}-v{releaseVersion}";
         if (manifest.Schema != 1 || manifest.Version != releaseVersion
             || manifest.Updater is null || manifest.Payload is null
             || manifest.Updater.Name != prefix + "-Update.exe" || manifest.Payload.Name != prefix + "-Payload.bin"
@@ -156,7 +156,7 @@ public sealed partial class WindowsUpdateService
         }
     }
 
-    private static int CleanupIncrementalCache(string updateDirectory, string version)
+    private int CleanupIncrementalCache(string updateDirectory, string version)
     {
         string directory = Path.Combine(updateDirectory, "incremental");
         if (!Directory.Exists(directory))
@@ -185,8 +185,8 @@ public sealed partial class WindowsUpdateService
         foreach (string file in Directory.GetFiles(directory))
         {
             string name = Path.GetFileName(file);
-            if (name is "manifest.json" || name == $"SIDEY-Windows-x64-v{version}-Update.exe"
-                || name == $"SIDEY-Windows-x64-v{version}-Update.exe.download")
+            if (name is "manifest.json" || name == $"SIDEY-Windows-{_architecture}-v{version}-Update.exe"
+                || name == $"SIDEY-Windows-{_architecture}-v{version}-Update.exe.download")
             {
                 removed += DeleteOwnedCacheFile(file);
             }
@@ -266,7 +266,7 @@ public sealed partial class WindowsUpdateService
             {
                 progress?.Report(100);
                 return Path.Combine(directory,
-                    $"SIDEY-Windows-x64-v{ResolveReleaseVersion(update.ProductVersion, update.UpdateVersion)}-Update.exe");
+                    $"SIDEY-Windows-{_architecture}-v{ResolveReleaseVersion(update.ProductVersion, update.UpdateVersion)}-Update.exe");
             }
             Directory.CreateDirectory(directory);
             string manifestPath = Path.Combine(directory, "manifest.json");
