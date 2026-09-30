@@ -34,6 +34,7 @@ extension AppCoordinator {
                       model.currentUserID == viewerID else { return }
                 model.drawEvents = events
                 model.drawEventsRoomID = roomID
+                drawResultWindowStorage?.reconcileEvents(events, roomID: roomID)
                 overlayWindows.refreshDrawIcons()
             } catch {
                 // Keep the messenger usable when a background refresh fails.
@@ -112,6 +113,7 @@ extension AppCoordinator {
                       model.rooms.contains(where: { $0.id == roomID }) else { return }
                 model.drawHistoryEvents = events
                 model.drawHistoryLoading = false
+                drawResultWindowStorage?.reconcileEvents(events, roomID: roomID)
             } catch {
                 guard generation == drawHistoryRefreshGeneration,
                       model.currentUserID == viewerID,
@@ -196,17 +198,23 @@ extension AppCoordinator {
             do {
                 try await backend.deleteDrawEvent(id: eventID)
                 guard model.currentUserID == viewerID else { return }
-                drawRefreshGeneration += 1
-                drawHistoryRefreshGeneration += 1
-                drawOpenGeneration += 1
-                model.drawEvents.removeAll { $0.id == eventID }
-                model.drawHistoryEvents.removeAll { $0.id == eventID }
-                overlayWindows.refreshDrawIcons()
+                invalidateDeletedDrawEvent(eventID)
                 refreshDrawEvents()
             } catch {
                 model.errorMessage = L10n.format("draw.delete_failed", error.localizedDescription)
             }
         }
+    }
+
+    func invalidateDeletedDrawEvent(_ eventID: UUID) {
+        drawRefreshGeneration += 1
+        drawHistoryRefreshGeneration += 1
+        drawOpenGeneration += 1
+        model.drawHistoryLoading = false
+        model.drawEvents.removeAll { $0.id == eventID }
+        model.drawHistoryEvents.removeAll { $0.id == eventID }
+        drawResultWindowStorage?.closeIfEventDeleted(eventID)
+        overlayWindows.refreshDrawIcons()
     }
 }
 

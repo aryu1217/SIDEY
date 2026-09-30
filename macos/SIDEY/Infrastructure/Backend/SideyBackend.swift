@@ -1557,9 +1557,10 @@ actor SideyBackend {
         let inner = payload["payload"]?.objectValue ?? payload
         guard let change = try? inner.decode(as: DrawChangePayload.self),
               change.roomID == roomID,
-              ["created", "closed"].contains(change.operation)
+              ["created", "closed", "deleted"].contains(change.operation)
         else { return }
-        emit(.drawEventsChanged(roomID: roomID))
+        emit(.drawEventsChanged(roomID: roomID,
+                               deletedEventID: change.operation == "deleted" ? change.eventID : nil))
     }
 
     private func scheduleStructuralSnapshot() {

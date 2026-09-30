@@ -831,8 +831,13 @@ extension AppCoordinator {
         case .messagesReplaced(let roomID, let messages):
             model.replaceMessages(roomID: roomID, with: messages)
             reloadHistory(roomID: roomID)
-        case .drawEventsChanged(let roomID):
-            if roomID == model.activeRoom?.id { refreshDrawEvents() }
+        case .drawEventsChanged(let roomID, let deletedEventID):
+            if let deletedEventID { invalidateDeletedDrawEvent(deletedEventID) }
+            if roomID == model.activeRoom?.id {
+                refreshDrawEvents()
+            } else if roomID == model.drawHistoryRoomID {
+                refreshDrawHistory()
+            }
         case .presence(let roomID, let userID, let state):
             model.updatePresence(roomID: roomID, userID: userID, state: state)
             overlayWindows.refreshThrowHotspots()

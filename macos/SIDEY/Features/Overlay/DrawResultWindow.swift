@@ -107,6 +107,15 @@ final class DrawResultWindowController {
         if let roomID, !roomIDs.contains(roomID) { close() }
     }
 
+    func closeIfEventDeleted(_ eventID: UUID) {
+        if event?.id == eventID { close() }
+    }
+
+    func reconcileEvents(_ events: [DrawEvent], roomID: UUID) {
+        if self.roomID == roomID, let event,
+           !events.contains(where: { $0.id == event.id }) { close() }
+    }
+
     func updateScreen(_ identifier: String?) {
         screenIdentifier = identifier
         if stagePanel.isVisible { reposition() }

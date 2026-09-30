@@ -76,7 +76,7 @@ enum BackendEvent: Sendable {
     case messageDeleted(roomID: UUID, messageID: UUID)
     case messagesInvalidated(roomID: UUID)
     case messagesReplaced(roomID: UUID, messages: [ChatMessage])
-    case drawEventsChanged(roomID: UUID)
+    case drawEventsChanged(roomID: UUID, deletedEventID: UUID? = nil)
     case presence(roomID: UUID, userID: UUID, state: PresenceState)
     case typing(roomID: UUID, userID: UUID, active: Bool)
     case characterPulse(CharacterPulseEvent)
