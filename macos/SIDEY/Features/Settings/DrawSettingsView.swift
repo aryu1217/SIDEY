@@ -152,7 +152,8 @@ struct DrawSettingsView: View {
                 subtitle: "draw.history.subtitle",
                 systemImage: "clock.arrow.circlepath"
             ) {
-                HStack {
+                HStack(spacing: 10) {
+                    Text("draw.history.group")
                     Picker("draw.history.group", selection: Binding(
                         get: { model.drawHistoryRoomID },
                         set: { if let id = $0 { actions.onSelectDrawHistoryRoom(id) } }
@@ -161,7 +162,8 @@ struct DrawSettingsView: View {
                             Text(verbatim: group.name).tag(Optional(group.id))
                         }
                     }
-                    .frame(maxWidth: 280)
+                    .labelsHidden()
+                    .fixedSize(horizontal: true, vertical: false)
                     .disabled(model.rooms.isEmpty)
                     Spacer()
                     if model.drawHistoryLoading { ProgressView().controlSize(.small) }
