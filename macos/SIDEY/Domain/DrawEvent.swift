@@ -1,5 +1,15 @@
 import Foundation
 
+enum DrawEntryLimits {
+    static let maximumLabelLength = 15
+
+    static func isValidLabel(_ raw: String) -> Bool {
+        let label = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (1...maximumLabelLength).contains(label.unicodeScalars.count)
+            && !label.contains(where: { "\r\n\t".contains($0) })
+    }
+}
+
 enum DrawKind: String, Codable, CaseIterable, Sendable {
     case lot
     case ladder

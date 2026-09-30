@@ -212,7 +212,7 @@ final class GlobalShortcutTests: XCTestCase {
         registrar.send(.toggleComposer, pressed: true)
     }
 
-    func testMenuShowsCurrentShortcutsAndConflictWithoutAnotherKeyDispatchPath() throws {
+    func testMenuShowsNativeShortcutColumnAndConflictTooltip() throws {
         var configuration = GlobalShortcutConfiguration.defaults
         configuration[.toggleComposer] = GlobalShortcutBinding(key: .c, modifiers: [.command, .shift])
         let controller = StatusItemController(onToggleOverlay: {}, onOpenSettings: {}, onQuit: {})
@@ -234,16 +234,14 @@ final class GlobalShortcutTests: XCTestCase {
             (L10n.text("status.menu.history"), .openHistory)
         ] {
             let item = try XCTUnwrap(menu.item(withTitle: title))
-            XCTAssertEqual(item.keyEquivalent, "")
-            XCTAssertTrue(item.attributedTitle?.string.contains(configuration[action].displayShortcut) == true)
+            XCTAssertEqual(item.keyEquivalent, configuration[action].key.rawValue.lowercased())
+            XCTAssertNil(item.attributedTitle)
         }
         let quiet = try XCTUnwrap(menu.item(withTitle: L10n.text("status.menu.quiet_mode")))
-        XCTAssertTrue(quiet.attributedTitle?.string.contains(
-            L10n.text("shortcut.status.unavailable")
-        ) == true)
         XCTAssertEqual(quiet.toolTip, L10n.text("shortcut.error.used_by_other_app"))
         let composer = try XCTUnwrap(menu.item(withTitle: L10n.text("status.menu.compose")))
         XCTAssertEqual(composer.toolTip, configuration[.toggleComposer].descriptiveShortcut)
+        XCTAssertEqual(composer.keyEquivalentModifierMask, [.command, .shift])
     }
 }
 

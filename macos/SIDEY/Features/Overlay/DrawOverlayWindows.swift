@@ -130,7 +130,7 @@ private struct DrawIconBubbleView: View {
 
 /// Each tile is one logical pixel. A 24 pt canvas maps it to an integer number
 /// of backing pixels at the system display scale, without interpolation.
-private struct DrawPixelGameIcon: View {
+struct DrawPixelGameIcon: View {
     let kind: DrawKind
 
     var body: some View {

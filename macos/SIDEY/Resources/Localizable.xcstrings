@@ -2984,25 +2984,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entry (up to 80 characters)"
+            "value": "Entry (up to 15 characters)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "項目（80文字以内）"
+            "value": "項目（15文字以内）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "항목 입력 (최대 80자)"
+            "value": "항목 입력 (최대 15자)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "輸入項目（最多 80 字）"
+            "value": "輸入項目（最多 15 字）"
           }
         }
       }
@@ -3332,25 +3332,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Destination (up to 80 characters)"
+            "value": "Destination (up to 15 characters)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ゴール（80文字以内）"
+            "value": "ゴール（15文字以内）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도착 항목 (최대 80자)"
+            "value": "도착 항목 (최대 15자)"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "終點項目（最多 80 字）"
+            "value": "終點項目（最多 15 字）"
           }
         }
       }

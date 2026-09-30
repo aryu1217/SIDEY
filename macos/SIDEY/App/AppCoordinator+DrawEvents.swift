@@ -145,7 +145,5 @@ extension AppCoordinator {
 }
 
 private func validDrawLabel(_ raw: String) -> Bool {
-    let label = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    return (1...80).contains(label.count)
-        && !label.contains(where: { "\r\n\t".contains($0) })
+    DrawEntryLimits.isValidLabel(raw)
 }

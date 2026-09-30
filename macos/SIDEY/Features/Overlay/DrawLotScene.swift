@@ -52,14 +52,24 @@ final class DrawLotScene: SKScene {
 
     private func rebuildLayout() {
         guard !entries.isEmpty, size.width > 0, size.height > 0 else { return }
-        let columns = entries.count <= 4 ? 2
-            : min(entries.count, max(2, Int(ceil(sqrt(CGFloat(entries.count) * size.width / max(size.height, 1))))))
+        let gap: CGFloat = 18
+        let inset: CGFloat = 24
+        // Choose a balanced grid of cards rather than a strip of tiny labels.
+        let columns = (1...min(4, entries.count)).max { lhs, rhs in
+            func cardScale(columns: Int) -> CGFloat {
+                let rows = Int(ceil(CGFloat(entries.count) / CGFloat(columns)))
+                let width = (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)
+                let height = (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)
+                return min(width / 172, height / 152)
+            }
+            return cardScale(columns: lhs) < cardScale(columns: rhs)
+        } ?? 1
         let rows = Int(ceil(CGFloat(entries.count) / CGFloat(columns)))
-        let width = min(150, max(52, (size.width - 28) / CGFloat(columns) - 10))
-        let height = min(160, max(58, (size.height - 28) / CGFloat(rows) - 10))
+        let width = min(172, max(48, (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)))
+        let height = min(152, max(52, (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)))
         paperSize = CGSize(width: width, height: height)
-        let spacingX = min(width + 12, (size.width - width - 16) / CGFloat(max(columns - 1, 1)))
-        let spacingY = min(height + 12, (size.height - height - 16) / CGFloat(max(rows - 1, 1)))
+        let spacingX = width + gap
+        let spacingY = height + gap
         startingPositions = entries.indices.map { index in
             let row = index / columns
             let itemsInRow = min(columns, entries.count - row * columns)
@@ -174,21 +184,19 @@ private final class PaperNode: SKNode {
     private let left = SKShapeNode()
     private let flap = SKShapeNode()
     private let crease = SKShapeNode()
-    private let content: SKNode
+    private let content = SKNode()
+    private let label: DrawGameTextNode
     private let character: DrawCharacterNode?
     private var paperSize = CGSize(width: 100, height: 100)
     private var characterScale: CGFloat = 0.5
 
     init(entry: DrawGameEntry) {
-        if let member = entry.member {
-            let node = DrawCharacterNode(member: member)
-            character = node
-            content = node
-        } else {
-            character = nil
-            content = DrawGameTextNode(text: entry.label)
-        }
+        character = entry.member.map { DrawCharacterNode(member: $0, showsNameplate: false) }
+        label = DrawGameTextNode(text: entry.label, fontSize: 17,
+                                 color: DrawGamePalette.outline, showsBackground: false)
         super.init()
+        if let character { content.addChild(character) }
+        content.addChild(label)
         left.fillColor = Self.front
         left.strokeColor = DrawGamePalette.outline
         left.lineWidth = 2
@@ -218,12 +226,16 @@ private final class PaperNode: SKNode {
         creasePath.addLine(to: CGPoint(x: 0, y: size.height / 2))
         crease.path = creasePath
         if let character {
-            characterScale = size.width >= 88 && size.height >= 88 ? 1 : 0.5
+            characterScale = size.width >= 100 && size.height >= 120 ? 1 : 0.5
             character.setScale(characterScale)
-            character.position = CGPoint(x: 0, y: -size.height * 0.25)
-        } else if let text = content as? DrawGameTextNode {
-            text.fit(maxWidth: size.width * 0.76)
-            text.position = .zero
+            let spriteHeight = 48 * characterScale
+            let textHeight = max(22, size.height - spriteHeight - 32)
+            label.fit(maxWidth: size.width - 20, maxHeight: textHeight)
+            character.position = CGPoint(x: 0, y: size.height / 2 - 14 - spriteHeight)
+            label.position = CGPoint(x: 0, y: -size.height / 2 + 14 + textHeight / 2)
+        } else {
+            label.fit(maxWidth: size.width - 28, maxHeight: size.height - 32)
+            label.position = .zero
         }
         setFoldAngle(0)
     }

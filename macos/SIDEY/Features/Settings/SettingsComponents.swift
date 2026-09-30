@@ -17,25 +17,29 @@ struct ConnectionBadge: View {
     var body: some View {
         HStack(spacing: 8) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(localizedLabel).font(.caption.weight(.medium))
+            Text(localizedLabel)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
             Spacer()
         }
+        .padding(.trailing, canRetry ? 26 : 0)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .clipShape(Capsule())
         .glassEffect(in: Capsule())
         .overlay(alignment: .trailing) {
-            Button(action: onReconnect) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.caption.weight(.semibold))
-                    .frame(width: 22, height: 22)
-                    .contentShape(Circle())
+            if canRetry {
+                Button(action: onReconnect) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("connection.retry.action")
+                .accessibilityLabel("connection.retry.action")
+                .padding(.trailing, 12)
             }
-            .buttonStyle(.plain)
-            .disabled(state == .connecting)
-            .help("connection.retry.action")
-            .accessibilityLabel("connection.retry.action")
-            .padding(.trailing, 12)
         }
         .overlay {
             if state == .connecting {
@@ -44,6 +48,11 @@ struct ConnectionBadge: View {
                     .accessibilityHidden(true)
             }
         }
+    }
+
+    private var canRetry: Bool {
+        if case .failed = state { return true }
+        return false
     }
 
     private var color: Color {

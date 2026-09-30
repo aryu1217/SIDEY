@@ -200,28 +200,40 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func annotateShortcut(_ action: GlobalShortcutAction, on item: NSMenuItem) {
-        // Carbon owns dispatch. A menu key equivalent would create a second execution path.
         let status = globalShortcutStatuses[action]
         let shortcut = globalShortcuts[action]
-        let annotation = status?.menuAnnotation.map { " · \($0)" } ?? ""
-        let suffix = shortcut.displayShortcut + annotation
-        let title = item.title
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: 220)]
-        let attributedTitle = NSMutableAttributedString(string: "\(title)\t\(suffix)")
-        attributedTitle.addAttribute(
-            .paragraphStyle,
-            value: paragraph,
-            range: NSRange(location: 0, length: attributedTitle.length)
-        )
-        attributedTitle.addAttribute(
-            .foregroundColor,
-            value: NSColor.secondaryLabelColor,
-            range: NSRange(location: (title as NSString).length + 1, length: (suffix as NSString).length)
-        )
-        item.attributedTitle = attributedTitle
-        item.title = title
+        // AppKit owns the shortcut column's spacing, alignment and subdued color.
+        // The tag keeps these display equivalents out of menu keyboard dispatch below.
+        item.tag = Int(action.rawValue)
+        item.keyEquivalent = shortcut.key.rawValue.lowercased()
+        var modifiers: NSEvent.ModifierFlags = []
+        if shortcut.modifiers.contains(GlobalShortcutModifier.control) { modifiers.insert(.control) }
+        if shortcut.modifiers.contains(GlobalShortcutModifier.option) { modifiers.insert(.option) }
+        if shortcut.modifiers.contains(GlobalShortcutModifier.shift) { modifiers.insert(.shift) }
+        if shortcut.modifiers.contains(GlobalShortcutModifier.command) { modifiers.insert(.command) }
+        item.keyEquivalentModifierMask = modifiers
         item.toolTip = status?.notice ?? shortcut.descriptiveShortcut
+    }
+
+    func menuHasKeyEquivalent(
+        _ menu: NSMenu,
+        for event: NSEvent,
+        target: AutoreleasingUnsafeMutablePointer<AnyObject?>,
+        action: UnsafeMutablePointer<Selector?>
+    ) -> Bool {
+        // Carbon is the sole dispatcher for the four global shortcuts. Only local
+        // equivalents (Settings and Quit) participate in AppKit's keyboard lookup.
+        let modifiers = event.modifierFlags.intersection([.control, .option, .shift, .command])
+        guard let key = event.charactersIgnoringModifiers?.lowercased(),
+              let item = menu.items.first(where: {
+                  $0.tag == 0 && $0.isEnabled && !$0.keyEquivalent.isEmpty
+                      && $0.keyEquivalent.lowercased() == key
+                      && $0.keyEquivalentModifierMask == modifiers
+              })
+        else { return false }
+        target.pointee = item.target
+        action.pointee = item.action
+        return true
     }
 
     private func makeRoomsMenu() -> NSMenu {

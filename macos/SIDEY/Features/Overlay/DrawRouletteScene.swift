@@ -14,6 +14,7 @@ final class DrawRouletteScene: SKScene {
     private var winnerOutline: SKShapeNode?
     private var progress: CGFloat = 0
     private var lastCrossing = 0
+    private var resultCenter = CGPoint.zero
 
     init(event: DrawEvent, room: Room, size: CGSize) {
         let gameEntries = event.gameEntries(in: room)
@@ -50,6 +51,7 @@ final class DrawRouletteScene: SKScene {
 
     func setProgress(_ value: CGFloat) {
         let next = min(1, max(0, value))
+        let previous = progress
         progress = next
         // Smoothstep starts and ends with zero angular velocity; the final angle is
         // computed directly from the server winner, so there is no finishing snap.
@@ -57,7 +59,17 @@ final class DrawRouletteScene: SKScene {
         let angle = totalRotation * eased
         wheel.zRotation = angle
         winnerOutline?.isHidden = next < 1
-        winnerDisplay.isHidden = next < 1
+        if next < 1 {
+            winnerDisplay.removeAllActions()
+            winnerDisplay.isHidden = true
+            winnerDisplay.alpha = 1
+            winnerDisplay.position = resultCenter
+            wheel.removeAction(forKey: "result-dim")
+            wheel.alpha = 1
+            pointer.alpha = 1
+        } else if previous < 1 {
+            revealWinner(animated: previous > 0 && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        }
         if next == 0 || next == 1 {
             pointer.removeAction(forKey: "tick")
             pointer.zRotation = 0
@@ -79,9 +91,10 @@ final class DrawRouletteScene: SKScene {
 
     private func layoutWheel() {
         wheel.removeAllChildren()
+        winnerDisplay.removeAllActions()
         winnerDisplay.removeAllChildren()
         winnerOutline = nil
-        guard entries.count >= 2 else { return }
+        guard entries.count >= 2, size.width > 0, size.height > 0 else { return }
 
         let radius = max(32, min(size.width * 0.37, size.height * 0.36))
         let center = CGPoint(x: size.width / 2, y: size.height / 2 - 7)
@@ -155,25 +168,66 @@ final class DrawRouletteScene: SKScene {
         pointer.lineWidth = 3
         pointer.zPosition = 10
 
+        resultCenter = center
+        winnerDisplay.position = center
         if let winnerIndex, entries.indices.contains(winnerIndex) {
             let entry = entries[winnerIndex]
-            let content: SKNode
+            let cardWidth = min(330, size.width - 40)
+            let cardHeight: CGFloat = entry.member == nil ? 150 : 222
+            let card = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 22)
+            card.fillColor = DrawGamePalette.cream
+            card.strokeColor = DrawGamePalette.accent
+            card.lineWidth = 4
+            winnerDisplay.addChild(card)
+
+            let title = DrawGameTextNode(text: entry.label, fontSize: 27,
+                                         color: DrawGamePalette.outline, showsBackground: false)
+            title.fit(maxWidth: cardWidth - 30, maxHeight: entry.member == nil ? 114 : 74)
+            title.zPosition = 2
             if let member = entry.member {
-                let character = DrawCharacterNode(member: member)
-                character.setScale(radius >= 120 ? 1 : 0.5)
-                content = character
-            } else {
-                let text = DrawGameTextNode(text: entry.label)
-                text.fit(maxWidth: min(220, size.width - 32))
-                content = text
+                let character = DrawCharacterNode(member: member, showsNameplate: false)
+                // 4x the logical pixel sprite, kept crisp throughout the bounce.
+                character.setScale(2)
+                character.position = CGPoint(x: 0, y: 1)
+                character.zPosition = 2
+                winnerDisplay.addChild(character)
+                title.position.y = -56
             }
-            content.position = CGPoint(x: center.x,
-                                       y: center.y - radius - (entry.member == nil ? 24 : 18))
-            winnerDisplay.addChild(content)
+            winnerDisplay.addChild(title)
         }
         winnerDisplay.zPosition = 20
         winnerDisplay.isHidden = progress < 1
+        winnerDisplay.alpha = 1
+        wheel.removeAction(forKey: "result-dim")
+        wheel.alpha = progress < 1 || winnerIndex == nil ? 1 : 0.18
+        pointer.alpha = progress < 1 || winnerIndex == nil ? 1 : 0.25
         wheel.zRotation = totalRotation * progress * progress * (3 - 2 * progress)
+    }
+
+    private func revealWinner(animated: Bool) {
+        guard winnerIndex != nil else { return }
+        winnerDisplay.removeAllActions()
+        winnerDisplay.isHidden = false
+        winnerDisplay.position = resultCenter
+        pointer.alpha = 0.25
+        if animated {
+            wheel.run(.fadeAlpha(to: 0.18, duration: 0.22), withKey: "result-dim")
+            winnerDisplay.alpha = 0
+            winnerDisplay.position.y -= 24
+            let rise = SKAction.moveTo(y: resultCenter.y + 14, duration: 0.18)
+            rise.timingMode = .easeOut
+            let settle = SKAction.moveTo(y: resultCenter.y - 5, duration: 0.13)
+            settle.timingMode = .easeInEaseOut
+            let land = SKAction.moveTo(y: resultCenter.y, duration: 0.12)
+            land.timingMode = .easeOut
+            winnerDisplay.run(.group([
+                .fadeIn(withDuration: 0.16),
+                .sequence([rise, settle, land])
+            ]), withKey: "winner-reveal")
+        } else {
+            wheel.alpha = 0.18
+            winnerDisplay.alpha = 1
+        }
     }
 
     private func sectorPath(radius: CGFloat, start: CGFloat, end: CGFloat) -> CGPath {

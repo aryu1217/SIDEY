@@ -25,9 +25,7 @@ struct DrawSettingsView: View {
         room?.members.filter { !memberIDs.contains($0.userID) } ?? []
     }
     private func validLabel(_ raw: String) -> Bool {
-        let label = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (1...80).contains(label.count)
-            && !label.contains(where: { "\r\n\t".contains($0) })
+        DrawEntryLimits.isValidLabel(raw)
     }
     private var canCreate: Bool {
         guard (2...12).contains(entryIDs.count),
@@ -67,6 +65,7 @@ struct DrawSettingsView: View {
                             HStack {
                                 TextField("draw.entries.placeholder", text: $entry.text)
                                     .textFieldStyle(.roundedBorder)
+                                labelLength(entry.text)
                                 Button {
                                     customEntries.removeAll { $0.id == entry.id }
                                 } label: {
@@ -122,6 +121,7 @@ struct DrawSettingsView: View {
                                     set: { destinationLabels[entry.element] = $0 }
                                 ))
                                 .textFieldStyle(.roundedBorder)
+                                labelLength(destinationLabels[entry.element] ?? "")
                             }
                         }
                     }
@@ -156,16 +156,12 @@ struct DrawSettingsView: View {
                 if model.drawEventsRoomID == room?.id && !model.drawEvents.isEmpty {
                     ForEach(model.drawEvents.sorted(by: { $0.createdAt > $1.createdAt })) { event in
                         HStack(spacing: 12) {
-                            Image(systemName: event.kind.symbol)
+                            DrawPixelGameIcon(kind: event.kind)
                                 .frame(width: 30)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(verbatim: event.kind.title).font(.headline)
                                 Text(verbatim: event.resultLines(in: room).joined(separator: ", "))
                                     .lineLimit(2)
-                                if let created = event.createdDate {
-                                    Text(created, style: .relative)
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
                             }
                             Spacer()
                             Button("draw.replay") { actions.onReplayDraw(event.id) }
@@ -219,6 +215,14 @@ struct DrawSettingsView: View {
             destinationLabels = [:]
             actions.onRefreshDraws()
         }
+    }
+
+    private func labelLength(_ text: String) -> some View {
+        let count = text.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count
+        return Text(verbatim: "\(count)/\(DrawEntryLimits.maximumLabelLength)")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(count > DrawEntryLimits.maximumLabelLength ? Color.red : Color.secondary)
+            .frame(width: 42, alignment: .trailing)
     }
 }
 

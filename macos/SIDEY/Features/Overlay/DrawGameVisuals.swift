@@ -44,7 +44,7 @@ final class DrawCharacterNode: SKNode {
     private let textures: PixelCharacterTextures
     private var walking = false
 
-    init(member: RoomMember) {
+    init(member: RoomMember, showsNameplate: Bool = true) {
         textures = PixelCharacterTextureStore.shared.textures(for: member.characterID)
         super.init()
         sprite.size = CGSize(width: 48, height: 48)
@@ -69,6 +69,8 @@ final class DrawCharacterNode: SKNode {
         nameplate.strokeColor = .clear
         nameplate.zPosition = 1
         addChild(nameplate)
+        nickname.isHidden = !showsNameplate
+        nameplate.isHidden = !showsNameplate
     }
 
     required init?(coder: NSCoder) { nil }
@@ -102,16 +104,23 @@ final class DrawGameTextNode: SKNode {
     private let label = SKLabelNode(fontNamed: "AppleSDGothicNeo-SemiBold")
     private let background = SKShapeNode()
 
-    init(text: String) {
+    private let preferredFontSize: CGFloat
+
+    init(text: String, fontSize: CGFloat = 14, color: NSColor = .white,
+         showsBackground: Bool = true) {
+        preferredFontSize = fontSize
         super.init()
         label.text = text
-        label.fontSize = 14
-        label.fontColor = .white
+        label.fontSize = fontSize
+        label.fontColor = color
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
+        label.numberOfLines = 0
+        label.lineBreakMode = .byCharWrapping
         label.zPosition = 1
         background.fillColor = PixelNameplateLayout.backgroundColor
         background.strokeColor = .clear
+        background.isHidden = !showsBackground
         addChild(background)
         addChild(label)
         fit(maxWidth: 160)
@@ -119,13 +128,22 @@ final class DrawGameTextNode: SKNode {
 
     required init?(coder: NSCoder) { nil }
 
-    func fit(maxWidth: CGFloat) {
-        let available = max(20, maxWidth)
-        label.xScale = 1
-        label.xScale = min(1, (available - 12) / max(label.frame.width, 1))
+    func fit(maxWidth: CGFloat, maxHeight: CGFloat? = nil) {
+        let available = max(24, maxWidth)
+        label.position = .zero
+        label.fontSize = preferredFontSize
+        label.preferredMaxLayoutWidth = available - 12
+        if let maxHeight {
+            while label.frame.height > maxHeight && label.fontSize > 10 {
+                label.fontSize -= 1
+            }
+        }
+        // Wrap whole glyphs instead of squeezing a long entry horizontally.
+        label.position.y = -label.frame.midY
         let width = min(available, label.frame.width + 12)
-        background.path = CGPath(roundedRect: CGRect(x: -width / 2, y: -12,
-                                                      width: width, height: 24),
+        let height = max(24, label.frame.height + 10)
+        background.path = CGPath(roundedRect: CGRect(x: -width / 2, y: -height / 2,
+                                                      width: width, height: height),
                                  cornerWidth: 7, cornerHeight: 7, transform: nil)
     }
 }
