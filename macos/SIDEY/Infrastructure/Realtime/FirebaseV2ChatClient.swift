@@ -87,6 +87,12 @@ final class FirebaseV2FunctionsChatCaller: @unchecked Sendable, FirebaseV2ChatCa
 }
 
 enum FirebaseV2ChatErrorPolicy {
+    static func isUnauthenticated(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == FunctionsErrorDomain
+            && nsError.code == FunctionsErrorCode.unauthenticated.rawValue
+    }
+
     static func outcome(for error: Error) -> RealtimeChatOutcome {
         let nsError = error as NSError
         guard nsError.domain == FunctionsErrorDomain,
@@ -149,7 +155,12 @@ actor FirebaseV2ChatClient {
         bubbleCatalogIDByWireCode = mapping
     }
 
-    func send(roomID: UUID, body: String, messageID: UUID) async -> RealtimeChatOutcome {
+    func send(
+        roomID: UUID,
+        body: String,
+        messageID: UUID,
+        onUnauthenticated: (@Sendable () async -> Void)? = nil
+    ) async -> RealtimeChatOutcome {
         do {
             let response = try await caller.call(FirebaseV2ChatRequest(
                 body: body,
@@ -186,6 +197,9 @@ actor FirebaseV2ChatClient {
             ))
         } catch {
             let classified = FirebaseV2ChatErrorPolicy.outcome(for: error)
+            if FirebaseV2ChatErrorPolicy.isUnauthenticated(error) {
+                await onUnauthenticated?()
+            }
             guard classified == .reconciliationPending else { return classified }
             return await reconcileAmbiguousCommit(
                 roomID: roomID,

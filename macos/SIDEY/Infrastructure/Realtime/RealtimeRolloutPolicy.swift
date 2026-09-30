@@ -95,6 +95,16 @@ struct RealtimeRolloutRenewalResult: Equatable, Sendable {
 }
 
 enum RealtimeRolloutTiming {
+    static func earlyRefreshDelayMilliseconds(
+        serverDelay: Int64,
+        expiresIn: Int64,
+        lead: Int64
+    ) -> Int64 {
+        guard expiresIn > 0 else { return 0 }
+        let margin = min(max(lead, 0), max(1, expiresIn / 2))
+        return min(max(0, serverDelay), max(0, expiresIn - margin))
+    }
+
     static func leaseDelay(
         _ lease: RealtimeRolloutLeaseStatus?,
         observedFirebaseLease: Bool,

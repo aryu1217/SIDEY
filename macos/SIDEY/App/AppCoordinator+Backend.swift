@@ -78,6 +78,7 @@ extension AppCoordinator {
                 model.connectionState = .online
                 model.errorMessage = nil
                 backendBootstrapState = .ready
+                roomSession.bootstrapLastSuccessAt = ContinuousClock().now
                 model.preferences.keychainTransitionComplete = true
                 startRealtimeRolloutMonitoring()
                 applyRequestedOverlayVisibility()
@@ -97,6 +98,31 @@ extension AppCoordinator {
                     refreshStatusItem()
                     if launchReason == .loginItem { showSettings() }
                     advanceFirstRunTransition()
+                    return
+                }
+                if FirebaseV2BootstrapRecoveryPolicy.isTransient(error) {
+                    if let lastSuccess = roomSession.bootstrapLastSuccessAt,
+                       lastSuccess.duration(to: ContinuousClock().now) >= .seconds(30) {
+                        roomSession.bootstrapRetryCount = 0
+                    }
+                    roomSession.bootstrapLastSuccessAt = nil
+                    roomSession.bootstrapRetryCount += 1
+                    let delay = FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                        failureCount: roomSession.bootstrapRetryCount,
+                        rateLimited: false,
+                        retryAfterSeconds: nil,
+                        jitter: Double.random(in: 0...1)
+                    )
+                    model.connectionState = .connecting
+                    model.setActiveRoomRealtimeConnected(false)
+                    refreshStatusItem()
+                    do {
+                        try await Task.sleep(for: .seconds(delay))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled else { return }
+                    startBackend()
                     return
                 }
                 let message = error.localizedDescription
@@ -123,6 +149,8 @@ extension AppCoordinator {
                 by: min(max(realtimeRolloutRefreshInterval, .seconds(1)), .seconds(300))
             )
             var observedFirebaseLease = false
+            var consecutiveFailures = 0
+            var lastSuccessAt: ContinuousClock.Instant?
             defer { roomSession.rolloutTask = nil }
             while !Task.isCancelled {
                 do {
@@ -166,6 +194,7 @@ extension AppCoordinator {
                         }
                     )
                     let decision = renewal.decision
+                    lastSuccessAt = clock.now
                     policyDeadline = clock.now.advanced(
                         by: min(
                             max(.seconds(decision.cacheTTLSeconds), .seconds(1)),
@@ -218,11 +247,23 @@ extension AppCoordinator {
                         model.errorMessage = error.localizedDescription
                         refreshStatusItem()
                     }
+                    if let lastSuccessAt,
+                       lastSuccessAt.duration(to: clock.now) >= .seconds(30) {
+                        consecutiveFailures = 0
+                    }
+                    consecutiveFailures = min(consecutiveFailures + 1, 17)
+                    lastSuccessAt = nil
+                    let delay = FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                        failureCount: consecutiveFailures,
+                        rateLimited: false,
+                        retryAfterSeconds: nil,
+                        jitter: Double.random(in: 0...1)
+                    )
                     // Keep the last explicitly enabled Firebase lease selected,
-                    // retry briefly, and let its monotonic hard deadline close
+                    // retry within a bounded delay, and let its monotonic hard deadline close
                     // every outbound plane if authority cannot be renewed.
                     do {
-                        try await Task.sleep(for: .seconds(5))
+                        try await Task.sleep(for: .seconds(delay))
                     } catch {
                         return
                     }

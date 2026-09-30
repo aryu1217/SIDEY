@@ -6,6 +6,8 @@ final class RoomSessionLifetime {
     var bootstrapTask: Task<Void, Never>?
     var eventTask: Task<Void, Never>?
     var rolloutTask: Task<Void, Never>?
+    var bootstrapRetryCount = 0
+    var bootstrapLastSuccessAt: ContinuousClock.Instant?
     var bubbleExpiryTask: Task<Void, Never>?
     var pulseCooldown = CharacterPulseCooldown()
     var throwCooldown = CharacterThrowCooldown()
@@ -18,6 +20,8 @@ final class RoomSessionLifetime {
         bootstrapTask = nil
         // The stream consumer clears eventTask only after cancellation has drained.
         rolloutTask = nil
+        bootstrapRetryCount = 0
+        bootstrapLastSuccessAt = nil
         bubbleExpiryTask = nil
         switchPipeline?.cancel()
         pulseCooldown = CharacterPulseCooldown()
