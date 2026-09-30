@@ -25,6 +25,10 @@ Firebase RTDB로 송수신한다. 기존 client의 Supabase Broadcast는 혼합 
 legacy 경로다. DB 변경 알림은 식별자만 전달하고 client가 RLS를 거쳐 row를 다시 읽는다.
 연결이 복구되면 membership, presence와 최근 메시지를 다시 맞춘 뒤 online으로 전환한다.
 
+macOS 설정의 수동 재연결 버튼은 연결 실패 상태에서만 연결 상태 배지 오른쪽에
+표시한다. 연결됨·연결 중·대기 상태에는 표시하지 않는다. 자동 복구와 별도로
+초기 연결 준비 실패 후 다시 시도할 때 사용한다.
+
 혼합 버전 기간에는 client가 selector로 선택된 transport 한 곳에만 event를 발행한다.
 v2 client는 chat·typing·pulse·projectile을 Firebase로만 발행·수신하고, legacy client는
 같은 기능의 기존 Supabase 경로만 사용한다. 서버의 양방향 compatibility bridge가 두
