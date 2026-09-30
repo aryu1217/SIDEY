@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "关闭最近消息"
-        },
         "empty": {
           "description": "此群组的最近消息会显示在这里。",
           "title": "暂无消息"

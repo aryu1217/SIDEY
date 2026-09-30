@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Recente berichten sluiten"
-        },
         "empty": {
           "description": "Recente berichten in deze groep verschijnen hier.",
           "title": "Nog geen berichten"

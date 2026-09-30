@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "최근 메시지 닫기"
-        },
         "empty": {
           "description": "이 그룹의 최근 메시지가 여기에 표시됩니다.",
           "title": "아직 메시지 없음"

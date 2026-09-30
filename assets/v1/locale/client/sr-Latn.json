@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Zatvori nedavne poruke"
-        },
         "empty": {
           "description": "Ovde će se prikazati nedavne poruke iz ove grupe.",
           "title": "Još nema poruka"

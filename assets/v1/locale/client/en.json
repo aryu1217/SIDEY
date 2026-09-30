@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Close recent messages"
-        },
         "empty": {
           "description": "Recent messages from this group will appear here.",
           "title": "No messages yet"

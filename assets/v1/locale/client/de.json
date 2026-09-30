@@ -437,9 +437,6 @@
         }
       },
       "history": {
-        "close": {
-          "accessibility": "Letzte Nachrichten schließen"
-        },
         "empty": {
           "description": "Aktuelle Nachrichten aus dieser Gruppe werden hier angezeigt.",
           "title": "Noch keine Nachrichten"
