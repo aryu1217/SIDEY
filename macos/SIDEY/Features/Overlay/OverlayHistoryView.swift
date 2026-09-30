@@ -249,19 +249,19 @@ struct HistoryMessageCard: View {
     }
 
     private var messageBubble: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(entry.body)
+                .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
             deliveryStatus
         }
         .foregroundStyle(Color(nsColor: bubbleTheme.textColor))
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
         .padding(participant.isCurrentUser ? .trailing : .leading, 8)
         .frame(minWidth: bubbleTheme.decorationAssetName == nil ? 0 : 40,
-               minHeight: 40, alignment: .leading)
+               minHeight: 34, alignment: .leading)
         .background {
             HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
                 .fill(Color(nsColor: bubbleTheme.backgroundColor.withAlphaComponent(1)))
