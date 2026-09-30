@@ -9,6 +9,9 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
     [string]$PublicRepository = 'sidey-app/SIDEY',
 
+    [ValidateNotNullOrEmpty()]
+    [string]$SourceRemote = 'origin',
+
     [string]$ReleaseNotesPath,
 
     [switch]$Publish
@@ -37,10 +40,10 @@ try {
     if ($LASTEXITCODE -ne 0 -or $sourceCommit -cne [string]$manifest.sourceCommit) {
         throw 'Candidate source commit differs from current main.'
     }
-    $remoteLine = git ls-remote origin refs/heads/main
+    $remoteLine = git ls-remote $SourceRemote refs/heads/main
     if ($LASTEXITCODE -ne 0 -or @($remoteLine).Count -ne 1 -or
         ($remoteLine -split '\s+')[0] -cne $sourceCommit) {
-        throw 'Current main is not the published origin/main commit.'
+        throw "Current main is not the published $SourceRemote/main commit."
     }
     $trackedChanges = @(git status --porcelain --untracked-files=no)
     if ($LASTEXITCODE -ne 0 -or $trackedChanges.Count -gt 0) {
