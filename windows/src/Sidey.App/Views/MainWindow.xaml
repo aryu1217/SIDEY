@@ -723,7 +723,7 @@
               <StackPanel x:Name="StorePageContent" Padding="32,24" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="24">
               <StackPanel Spacing="4">
                 <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{ThemeResource TitleTextBlockStyle}" Text="{Binding Value, Source={i18n:I18n Key=store.title}, Mode=OneWay}" />
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=store.description}, Mode=OneWay}" />
+                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Value, Source={i18n:I18n Key=store.description}, Mode=OneWay}" TextWrapping="Wrap" />
               </StackPanel>
               <Grid RowSpacing="12">
                 <Grid.RowDefinitions>
