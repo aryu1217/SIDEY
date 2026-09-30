@@ -647,6 +647,119 @@ class WorkflowTests(unittest.TestCase):
                 w.check_task(task, 'task')
         self.assertNotIn('checked', w.owned_task(task, 'task'))
 
+    def test_native_pass_survives_web_main_advance_and_sync(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        tested_head = w.head(task)
+
+        def complete_then_advance(root, platform, paths, complete, skipped):
+            self.assertNotIn('windows', skipped)
+            complete('windows')
+            (self.other / 'website').mkdir()
+            (self.other / 'website/page.html').write_text('web')
+            self.commit(self.other, 'web main')
+            w.git(self.other, 'push', 'origin', 'main')
+
+        with patch.object(w, 'local_checks', side_effect=complete_then_advance):
+            with self.assertRaisesRegex(w.WorkflowError, 'changed during'):
+                w.check_task(task, 'task')
+        self.assertEqual(w.owned_task(task, 'task')['scope_results']['windows']['head'], tested_head)
+        w.sync_task(task, 'task')
+        with patch.object(w, 'local_checks') as checks:
+            checked = w.check_task(task, 'task')['checked']
+        self.assertIn('windows', checks.call_args.args[4])
+        proof = checked['scope_evidence']['windows']
+        self.assertEqual(proof['tested']['head'], tested_head)
+        self.assertTrue(proof['reused'])
+        self.assertEqual(proof['head'], w.head(task))
+
+    def test_changed_native_or_shared_input_does_not_reuse(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        with patch.object(w, 'local_checks', side_effect=lambda r, p, paths, complete, skip: complete('windows')):
+            w.check_task(task, 'task')
+        for name in ('windows/app.cs', '.editorconfig', 'scripts/sidey_version.py'):
+            with self.subTest(input=name):
+                owner = task if name.startswith('windows/') else self.other
+                source = owner / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text(name + ' changed')
+                self.commit(owner, 'input changed')
+                if owner == self.other:
+                    w.git(self.other, 'push', 'origin', 'main')
+                    w.sync_task(task, 'task')
+                with patch.object(w, 'local_checks') as checks:
+                    w.check_task(task, 'task')
+                self.assertNotIn('windows', checks.call_args.args[4])
+
+    def test_windows_distribution_web_inputs_invalidate_fingerprint(self):
+        task = self.start(platform='windows')
+        before = w.scope_input_fingerprint(task, 'windows')
+        for name in ('website/windows-latest.json', 'website/windows/update.json'):
+            with self.subTest(input=name):
+                source = task / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('{}')
+                self.commit(task, 'distribution input')
+                after = w.scope_input_fingerprint(task, 'windows')
+                self.assertNotEqual(before, after)
+                before = after
+
+    def test_failed_native_check_is_not_saved(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        with patch.object(w, 'local_checks', side_effect=w.WorkflowError('native failed')):
+            with self.assertRaisesRegex(w.WorkflowError, 'native failed'):
+                w.check_task(task, 'task')
+        self.assertNotIn('windows', w.owned_task(task, 'task').get('scope_results', {}))
+
+    def test_scope_command_changes_invalidate_only_the_matching_platform(self):
+        script = self.primary / 'scripts/skills/workflow.py'
+        script.parent.mkdir(parents=True)
+        template = "def run_scope_checks(root, scope):\n    if scope == 'macos':\n        run(root, 'mac')\n    elif scope == 'windows':\n        run(root, '{windows}')\n    elif scope == 'web':\n        run(root, '{web}')\n    else:\n        raise ValueError(scope)\n"
+        script.write_text(template.format(windows='windows-one', web='web-one'))
+        self.commit(self.primary, 'initial routes')
+        initial = w.scope_input_fingerprint(self.primary, 'windows')
+        script.write_text(template.format(windows='windows-one', web='web-two'))
+        self.commit(self.primary, 'web route')
+        self.assertEqual(initial, w.scope_input_fingerprint(self.primary, 'windows'))
+        script.write_text(template.format(windows='windows-two', web='web-two'))
+        self.commit(self.primary, 'windows route')
+        self.assertNotEqual(initial, w.scope_input_fingerprint(self.primary, 'windows'))
+
+    def test_local_legacy_evidence_rebinds_only_identical_inputs(self):
+        task = self.start(platform='windows')
+        (task / 'windows').mkdir()
+        (task / 'windows/app.cs').write_text('native')
+        self.commit(task, 'native')
+        tested_head = w.head(task)
+        proof = {'schema': 1, 'scope': 'windows', 'status': 'passed',
+                 'head': tested_head, 'snapshot': w.snapshot(task),
+                 'base': w.fetch_main(task), 'host': 'win32',
+                 'legacy_completed_check': True}
+        file = self.root / 'observed.json'
+        file.write_text(json.dumps(proof))
+        (self.other / 'README.md').write_text('unrelated documentation')
+        self.commit(self.other, 'docs')
+        w.git(self.other, 'push', 'origin', 'main')
+        w.sync_task(task, 'task')
+        with patch.object(w, 'local_checks') as checks:
+            result = w.check_task(task, 'task', [file])
+        self.assertIn('windows', checks.call_args.args[4])
+        self.assertEqual(result['checked']['scope_evidence']['windows']['tested']['head'], tested_head)
+        (task / 'windows/app.cs').write_text('changed native input')
+        self.commit(task, 'native changed')
+        with patch.object(w, 'local_checks') as checks:
+            with self.assertRaisesRegex(w.WorkflowError, 'scope inputs changed'):
+                w.check_task(task, 'task', [file])
+        checks.assert_not_called()
+
     def test_check_invalidates_when_source_changes_during_checks(self):
         task = self.start()
         with patch.object(w, 'local_checks', side_effect=lambda *_: (task / 'new.txt').write_text('new')):
@@ -681,7 +794,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(checked['scopes'], ['macos', 'shared', 'web', 'windows'])
         self.assertEqual(set(checked['scope_evidence']), {'macos', 'windows', 'web'})
 
-        (task / 'README.md').write_text('later change\n')
+        (task / '.editorconfig').write_text('later shared build input\n')
         self.commit(task, 'later change')
         with patch.object(w, 'local_checks') as checks:
             with self.assertRaisesRegex(w.WorkflowError, 'Stale or invalid scope evidence'):

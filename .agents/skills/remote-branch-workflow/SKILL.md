@@ -109,3 +109,11 @@ The final local commit and remote branch head must match. Any intentional
 uncommitted files must be named explicitly; otherwise the task worktree must
 be clean. Only then may the normal pull request, integration, finish, or
 cleanup workflow continue under its own authorization and checks.
+
+## Validation after newer main
+
+Sync newer main while preserving completed scope evidence. Run `workflow.py check`
+to bind the new exact task head. It reuses passed scopes with identical tracked
+build/test input fingerprints and reruns only changed scopes. Preserve the tested
+HEAD and host in the report; a new main SHA, unrelated docs, or other-platform
+changes alone do not require another native test run. Failed scopes are never reused.

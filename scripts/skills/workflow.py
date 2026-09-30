@@ -6,6 +6,7 @@ State is local to the Git common directory. No stash, reset or force push.
 from __future__ import annotations
 
 import argparse
+import ast
 from contextlib import contextmanager
 import hashlib
 import json
@@ -360,6 +361,116 @@ def snapshot(root):
     return digest.hexdigest()
 
 
+def scope_route_ast(route, scope):
+    """Select this scope's maintained commands; keep any common statements."""
+    selected = []
+    for node in route.body:
+        candidate = node
+        while (isinstance(candidate, ast.If)
+               and isinstance(candidate.test, ast.Compare)
+               and isinstance(candidate.test.left, ast.Name)
+               and candidate.test.left.id == 'scope'
+               and len(candidate.test.ops) == 1
+               and isinstance(candidate.test.ops[0], ast.Eq)
+               and len(candidate.test.comparators) == 1
+               and isinstance(candidate.test.comparators[0], ast.Constant)):
+            if candidate.test.comparators[0].value == scope:
+                selected.extend(candidate.body)
+                break
+            if len(candidate.orelse) != 1:
+                selected.append(node)
+                break
+            candidate = candidate.orelse[0]
+        else:
+            selected.append(node)
+    return ast.dump(ast.Module(body=selected, type_ignores=[]), include_attributes=False)
+
+
+def scope_input_fingerprint(root, scope, revision='HEAD'):
+    """Hash tracked build/test inputs, independent of unrelated commit identity."""
+    digest = hashlib.sha256(b'sidey-scope-inputs-v1\0' + scope.encode())
+    records = git(root, 'ls-tree', '-r', '-z', '--full-tree', revision).split('\0')
+    for record in records:
+        if not record:
+            continue
+        metadata, name = record.split('\t', 1)
+        if is_contributor_architecture_path(name) or name.startswith('docs/'):
+            continue
+        if name in {'README.md', 'CONTRIBUTING.md'} or name.startswith(('macos/docs/', 'windows/docs/')):
+            continue
+        if scope in ('macos', 'windows'):
+            other = 'windows' if scope == 'macos' else 'macos'
+            if name.startswith((other + '/', 'scripts/' + other + '/', 'scripts/pages/')):
+                continue
+            windows_web_inputs = {
+                'website/src/pages/ko/terms.md',
+                'website/windows-latest.json', 'website/windows/update.json',
+            }
+            if name.startswith('website/') and not (scope == 'windows' and name in windows_web_inputs):
+                continue
+            if name in {'release/' + other + '.json', 'release/app-store-localizations.json'}:
+                continue
+        elif scope == 'web' and name.startswith(('macos/', 'windows/', 'scripts/macos/', 'scripts/windows/')):
+            continue
+        if name == 'scripts/skills/workflow.py':
+            # Ownership/state changes do not alter native execution. Changes to
+            # the maintained scope command itself do invalidate its evidence.
+            module = ast.parse(git(root, 'show', revision + ':' + name))
+            route = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'run_scope_checks')
+            metadata = scope_route_ast(route, scope)
+        elif name.startswith(('scripts/skills/', 'scripts/tests/')):
+            # Repository validation/ownership tests run as the shared scope.
+            continue
+        elif name == 'release/version.json' and scope in ('macos', 'windows'):
+            version = json.loads(git(root, 'show', revision + ':' + name))
+            version.pop('macBuild' if scope == 'windows' else 'windowsBuild', None)
+            metadata = json.dumps(version, sort_keys=True)
+        digest.update(name.encode() + b'\0' + metadata.encode() + b'\0')
+    return digest.hexdigest()
+
+
+def scope_evidence(root, scope, checked_head, source_snapshot, base):
+    return {
+        'schema': 2, 'scope': scope, 'status': 'passed', 'head': checked_head,
+        'snapshot': source_snapshot, 'base': base, 'host': sys.platform,
+        'inputs': scope_input_fingerprint(root, scope, checked_head), 'time': time.time(),
+    }
+
+
+def rebind_scope_evidence(root, evidence, checked_head, source_snapshot, base):
+    """Retain tested provenance; bind only identical inputs to the current head."""
+    scope = evidence.get('scope')
+    tested = evidence.get('tested') or evidence
+    if (evidence.get('schema') not in (1, 2) or evidence.get('status') != 'passed'
+            or not isinstance(tested, dict) or tested.get('scope') != scope):
+        raise WorkflowError('Stale or invalid scope evidence')
+    host = tested.get('host')
+    valid_host = scope == 'web' or (scope == 'macos' and host == 'darwin') or (
+        scope == 'windows' and isinstance(host, str) and host.startswith('win'))
+    tested_head = tested.get('head')
+    if (tested.get('status') != 'passed' or not valid_host
+            or not isinstance(tested_head, str) or not re.fullmatch(r'[0-9a-f]{40}', tested_head)
+            or not isinstance(tested.get('base'), str) or not re.fullmatch(r'[0-9a-f]{40}', tested['base'])):
+        raise WorkflowError('Stale or invalid scope evidence')
+    clean_snapshot = hashlib.sha256(tested_head.encode()).hexdigest()
+    if tested.get('snapshot') != clean_snapshot or not is_ancestor(root, tested.get('base', ''), tested_head) or not is_ancestor(root, tested_head, checked_head):
+        raise WorkflowError('Stale or invalid scope evidence')
+    inputs = scope_input_fingerprint(root, scope, tested_head)
+    if tested.get('schema') == 2:
+        if tested.get('inputs') != inputs:
+            raise WorkflowError('Stale or invalid scope evidence')
+    elif tested.get('schema') != 1:
+        raise WorkflowError('Stale or invalid scope evidence')
+    if inputs != scope_input_fingerprint(root, scope, checked_head):
+        raise WorkflowError('Stale or invalid scope evidence: scope inputs changed')
+    return {
+        **evidence, 'schema': 2, 'head': checked_head, 'snapshot': source_snapshot,
+        'base': base, 'inputs': inputs,
+        'tested': {**tested, 'schema': 2, 'inputs': inputs},
+        'reused': tested_head != checked_head,
+    }
+
+
 def owned_task(root, task_id):
     task = read_state(root).get(task_id)
     wrong_worktree = task and task['worktree'] != str(root.resolve())
@@ -420,7 +531,7 @@ def run_scope_checks(root, scope):
         raise WorkflowError(f'Unsupported validation scope: {scope}')
 
 
-def local_checks(root, platform, paths=()):
+def local_checks(root, platform, paths=(), scope_completed=None, skip_scopes=()):
     run(root, 'git', 'diff', '--check', capture=False)
     run(
         root, sys.executable, '-X', 'utf8',
@@ -430,8 +541,10 @@ def local_checks(root, platform, paths=()):
         root, sys.executable, '-X', 'utf8', '-m', 'unittest',
         'discover', '-s', 'scripts/skills/release-notes/tests', capture=False,
     )
-    if platform in ('macos', 'windows') and platform in required_scopes(paths):
+    if platform in ('macos', 'windows') and platform in required_scopes(paths) and platform not in skip_scopes:
         run_scope_checks(root, platform)
+        if scope_completed:
+            scope_completed(platform)
     if platform == 'shared':
         run(
             root,
@@ -462,22 +575,12 @@ def verify_scope(root, scope, expected_head, output=None):
     before = snapshot(root)
     run_scope_checks(root, scope)
     if (
-        fetch_main(root) != remote
-        or head(root) != expected_head
+        head(root) != expected_head
         or dirty_paths(root)
         or snapshot(root) != before
     ):
         raise WorkflowError('Source or main changed during scope verification')
-    evidence = {
-        'schema': 1,
-        'scope': scope,
-        'status': 'passed',
-        'head': expected_head,
-        'snapshot': before,
-        'base': remote,
-        'host': sys.platform,
-        'time': time.time(),
-    }
+    evidence = scope_evidence(root, scope, expected_head, before, remote)
     destination = output or (
         common_dir(root) / 'sidey-workflow' / 'evidence'
         / f'{scope}-{expected_head}.json'
@@ -488,7 +591,7 @@ def verify_scope(root, scope, expected_head, output=None):
     return {'evidence': str(destination), **evidence}
 
 
-def validate_scope_evidence(paths, scopes, checked_head, source_snapshot, base):
+def validate_scope_evidence(paths, scopes, checked_head, source_snapshot, base, root=None, require_all=True):
     """Bind every affected external scope to one passing final-source run."""
     expected = set(scopes)
     found = {}
@@ -501,6 +604,9 @@ def validate_scope_evidence(paths, scopes, checked_head, source_snapshot, base):
         scope = evidence.get('scope') if isinstance(evidence, dict) else None
         if scope not in expected or scope in found:
             raise WorkflowError(f'Unexpected or duplicate scope evidence: {scope}')
+        if root is not None:
+            found[scope] = rebind_scope_evidence(root, evidence, checked_head, source_snapshot, base)
+            continue
         host = evidence.get('host')
         valid_host = (
             scope == 'web'
@@ -518,7 +624,7 @@ def validate_scope_evidence(paths, scopes, checked_head, source_snapshot, base):
             raise WorkflowError(f'Stale or invalid scope evidence: {source}')
         found[scope] = evidence
     missing = expected - found.keys()
-    if missing:
+    if missing and require_all:
         raise WorkflowError('Missing final-head scope evidence: ' + ', '.join(sorted(missing)))
     return found
 
@@ -545,9 +651,30 @@ def check_task(root, task_id, evidence_paths=()):
     )
     external_scopes = set(scopes) - {'shared', local_scope}
     evidence = validate_scope_evidence(
-        evidence_paths, external_scopes, checked_head, before, remote,
+        evidence_paths, set(scopes) - {'shared'}, checked_head, before, remote,
+        root, False,
     )
-    local_checks(root, task['platform'], paths)
+    for scope, recorded in task.get('scope_results', {}).items():
+        if scope in scopes and scope not in evidence:
+            try:
+                evidence[scope] = rebind_scope_evidence(root, recorded, checked_head, before, remote)
+            except WorkflowError:
+                pass
+    missing = external_scopes - evidence.keys()
+    if missing:
+        raise WorkflowError('Missing final-head scope evidence: ' + ', '.join(sorted(missing)))
+
+    def remember(scope):
+        if head(root) != checked_head or dirty_paths(root) or snapshot(root) != before:
+            raise WorkflowError('Source changed during checks; results invalidated')
+        evidence[scope] = scope_evidence(root, scope, checked_head, before, remote)
+        task['scope_results'] = dict(evidence)
+        update_task(root, task_id, task)
+
+    # Imported or external passes survive a later unrelated freshness failure.
+    task['scope_results'] = dict(evidence)
+    update_task(root, task_id, task)
+    local_checks(root, task['platform'], paths, remember, tuple(evidence))
     source_changed = (
         fetch_main(root) != remote
         or head(root) != checked_head

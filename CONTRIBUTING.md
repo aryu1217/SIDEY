@@ -114,7 +114,7 @@ provides the agent procedure for this work.
 
 Commit all implementation, then review the full diff against the task base.
 Every affected macOS, Windows, or web scope selected by `required_scopes(paths)`
-must pass on the exact final HEAD before the task check succeeds. A failed,
+needs passing evidence bound to the final HEAD before the task check succeeds. A failed,
 skipped, stale, or unavailable required check does not pass. Run a platform
 task's matching native tests locally on its owning host. For a shared task
 affecting macOS, Windows, or web, generate portable evidence on a matching
@@ -127,8 +127,12 @@ python3 scripts/skills/workflow.py check <task> --evidence <json> [--evidence <j
 
 macOS scope validation requires a Mac; Windows requires a Windows host; web
 runs the website pnpm tests. The task check binds every required result to the
-exact HEAD, base, and source snapshot. If source changes, commit it and rerun
-the affected checks and evidence generation. For a platform task without
+exact HEAD, base, and source snapshot. Passing scope results are saved before
+the final main-freshness check. After syncing newer main, the workflow reuses
+a result only when its tracked build/test input fingerprint is unchanged,
+retaining the tested HEAD and matching-host provenance. Rerun only scopes whose
+inputs changed; unrelated documentation or another platform does not invalidate
+a native result. Portable evidence uses the same fingerprint comparison. For a platform task without
 portable evidence, run `python3 scripts/skills/workflow.py check <task>` on
 its owning host. A shared task with no affected non-shared scope uses the same
 plain command.

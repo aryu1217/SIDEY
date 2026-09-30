@@ -15,6 +15,11 @@ Identify the platform, exact target commit, distribution or scheme, integrated t
 applicable, and the behavior the user expects to observe. Distinguish a current-main review
 from an explicitly requested preview.
 
+Completed validation scopes may be reused after a main update when the workflow
+verifies identical tracked build/test input fingerprints. Report both tested and
+current HEADs; rerun only affected scopes. Reusing tests does not prove startup
+or observations of a new executable: preserve actual runtime provenance.
+
 ## macOS
 
 Use the verified opener exposed by `scripts/skills/workflow.py`. For an already integrated task awaiting

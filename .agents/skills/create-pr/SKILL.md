@@ -34,7 +34,10 @@ task, not a new task.
    HEAD. Require a clean worktree and a committed task head.
 2. Review the full diff and commit range against the current base. Reject
    unrelated paths, prohibited platform mixing and unreviewed changes.
-3. Confirm that required checks passed for this exact HEAD. A failed, skipped,
+3. Confirm the workflow checked record attests this exact HEAD. A passed scope
+   may come from an earlier tested HEAD only when the workflow verifies identical
+   tracked build/test inputs and preserves its provenance. Sync newer main and
+   reuse unaffected scopes; rerun only changed scopes. A failed, skipped,
    unavailable or stale check blocks publication.
 4. Write a title that passes
    `scripts/skills/commit/validate_commit_message.py --subject`.
@@ -61,7 +64,8 @@ message settings; do not pass custom squash subject or body overrides.
 If an open PR already targets this logical task's owning repository, base, and
 branch, update it by default. Make same-task follow-up fixes, tests, or
 documentation in the existing worktree, commit, review the complete diff, rerun
-required validation for the new exact HEAD, and push under the applicable
+required validation for the new exact HEAD, reusing only scopes whose input
+fingerprints remain identical, and push under the applicable
 authorization and workflow checks. Refresh the PR description when needed to
 describe the complete final change. Do not create a replacement docs or test PR.
 
