@@ -439,7 +439,6 @@ public partial class App : Application
         try
         {
             MainWindow window = EnsureMainWindow();
-            window.ShowUpdates();
             if (window.ViewModel.IsCheckingForUpdates)
                 return;
             AvailableUpdate? update = await window.ViewModel.CheckForUpdatesOnStartupAsync(
@@ -449,6 +448,8 @@ public partial class App : Application
                         PostUpdateNotification(found.Version);
                 },
                 onUpdateReady: ready => PostUpdateReadyToInstallNotification(ready.Version));
+            if (update is not null && !_shuttingDown && ReferenceEquals(_mainWindow, window))
+                window.ShowUpdates();
             if (update is null && !_shuttingDown)
                 _tray?.NotifyLatestVersion();
         }
