@@ -102,18 +102,15 @@ def finish():
     current = source_state()
     if any(current[key] != state[key] for key in current):
         raise RuntimeError('Build inputs changed during compilation; rebuild before reviewing')
-    destination = Path(env['TARGET_BUILD_DIR']) / env['UNLOCALIZED_RESOURCES_FOLDER_PATH']
-    write_json(destination / 'SideyBuildReceipt.json', state)
-    # Xcode's Run pre-action does not reliably prepare a ticket for the newly
-    # compiled build. Issue it after the executable and receipt are produced.
-    entitlements_path = env.get('CODE_SIGN_ENTITLEMENTS')
-    if state['configuration'] == 'Debug' and entitlements_path:
-        entitlements = plistlib.loads((Path(env['SRCROOT']) / entitlements_path).read_bytes())
+    # Xcode's build script cannot write to the app's sandbox container. Seal a
+    # one-use launch proof into the signed Debug bundle instead.
+    if state['configuration'] == 'Debug' and env.get('CODE_SIGN_ENTITLEMENTS'):
         app = Path(env['TARGET_BUILD_DIR']) / env['FULL_PRODUCT_NAME']
         executable = app / 'Contents/MacOS' / env['EXECUTABLE_NAME']
-        directory = directory_for_bundle(state['bundle_id'],
-                                         bool(entitlements.get('com.apple.security.app-sandbox')))
-        issue_ticket(app, state, executable, directory)
+        state.update(session=str(uuid.uuid4()), executable=str(executable.resolve()),
+                     issued_at=time.time())
+    destination = Path(env['TARGET_BUILD_DIR']) / env['UNLOCALIZED_RESOURCES_FOLDER_PATH']
+    write_json(destination / 'SideyBuildReceipt.json', state)
 
 
 def read_build(app):

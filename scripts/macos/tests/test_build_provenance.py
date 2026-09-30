@@ -15,7 +15,7 @@ from open_current import verify_running
 
 
 class ProvenanceTests(unittest.TestCase):
-    def test_debug_build_issues_sandbox_ticket_after_receipt(self):
+    def test_signed_debug_build_embeds_one_use_launch_proof(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             subprocess.run(['git', 'init', str(root)], check=True, capture_output=True)
@@ -33,15 +33,15 @@ class ProvenanceTests(unittest.TestCase):
                    'FULL_PRODUCT_NAME': 'SIDEY.app', 'EXECUTABLE_NAME': 'SIDEY',
                    'CODE_SIGN_ENTITLEMENTS': 'Config/SIDEY.entitlements', 'SRCROOT': str(root)}
             original = p.source_state
-            with patch.dict(os.environ, env), patch.object(p, 'source_state', side_effect=lambda: original(root)), \
-                 patch.object(p, 'issue_ticket') as issue_ticket:
+            with patch.dict(os.environ, env), patch.object(p, 'source_state', side_effect=lambda: original(root)):
                 p.begin()
                 state = json.loads((root / 'derived/SideyBuildReceipt.json').read_text())
                 p.finish()
-            self.assertTrue((app / 'Contents/Resources/SideyBuildReceipt.json').exists())
-            issue_ticket.assert_called_once_with(
-                app, state, app / 'Contents/MacOS/SIDEY',
-                p.directory_for_bundle('app.sidey.desktop.appstore', True))
+            receipt = json.loads((app / 'Contents/Resources/SideyBuildReceipt.json').read_text())
+            self.assertEqual(receipt['build_id'], state['build_id'])
+            self.assertEqual(receipt['executable'], str((app / 'Contents/MacOS/SIDEY').resolve()))
+            self.assertTrue(receipt['session'])
+            self.assertGreater(receipt['issued_at'], 0)
 
     def test_xcode_schemes_do_not_use_unreliable_run_preactions(self):
         for name in ('SIDEY', 'SIDEYFeedback', 'SIDEYStoreReview'):

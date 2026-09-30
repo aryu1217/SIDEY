@@ -1,7 +1,7 @@
 import AppKit
 import Darwin
 
-/// Debug launch proof is prepared outside the sandbox by the CLI/Xcode launch action.
+/// Debug launch proof comes from the CLI ticket or the signed Xcode build receipt.
 /// The executable's compiled build ID, never a disk-only bundle version, identifies it.
 @MainActor
 final class BuildReview {
@@ -36,9 +36,15 @@ final class BuildReview {
         #if DEBUG
         let path = directory.appendingPathComponent("\(SideyBuildStamp.buildID).ticket.json")
         do {
-            let data = try Data(contentsOf: path)
-            // A consumed ticket cannot authorize Run Without Building a second time.
-            try FileManager.default.removeItem(at: path)
+            let embedded = !FileManager.default.fileExists(atPath: path.path)
+            let source = embedded
+                ? Bundle.main.url(forResource: "SideyBuildReceipt", withExtension: "json") ?? path
+                : path
+            let data = try Data(contentsOf: source)
+            if !embedded {
+                // A consumed CLI ticket cannot authorize a second launch.
+                try FileManager.default.removeItem(at: path)
+            }
             let candidate = try JSONDecoder().decode(Ticket.self, from: data)
             let age = Date().timeIntervalSince1970 - candidate.issued_at
             let checks: [String: Bool] = [
@@ -55,6 +61,17 @@ final class BuildReview {
             guard failed.isEmpty else {
                 NSLog("SIDEY build review: mismatched fields %@", failed.joined(separator: ", "))
                 throw CocoaError(.fileReadCorruptFile)
+            }
+            if embedded {
+                // The bundle is signed and read-only. Consume its proof in the
+                // app's writable container so Run Without Building cannot reuse it.
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let consumed = directory.appendingPathComponent("\(candidate.session).consumed")
+                let descriptor = open(consumed.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+                guard descriptor >= 0 else {
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+                }
+                close(descriptor)
             }
             ticket = candidate
             return true
