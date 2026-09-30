@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Añadimos compatibilidad con Windows ARM64 y mejoramos la fiabilidad de las actualizaciones y las conexiones entre amigos."
+        ],
+        "new": [
+          "Ahora hay instaladores y actualizaciones automáticas para Windows ARM64.",
+          "Puedes configurar la descarga e instalación automáticas (activadas de forma predeterminada) y los avisos de nuevas versiones; las actualizaciones automáticas se omiten en conexiones de uso medido."
+        ],
+        "changed": [
+          "Las actualizaciones compatibles descargan solo los archivos modificados para reducir el tamaño de la descarga y recurren al instalador completo cuando es necesario.",
+          "Al volver a abrir los mensajes recientes, se muestran primero los mensajes en caché para reducir la espera.",
+          "Puedes contraer y expandir los ajustes de actualización y consultar más fácilmente el progreso de la descarga y si la instalación está lista."
+        ],
+        "fixed": [
+          "Corregimos la interrupción de conexiones de grupos que funcionaban correctamente cuando cambiaban los miembros o había problemas de conexión en otro grupo.",
+          "Restablecimos la recepción de mensajes tras errores temporales de autenticación o conexión y corregimos la desaparición de mensajes recién enviados por resultados de consultas que llegaban tarde.",
+          "Corregimos la pérdida del borrador cuando se rechaza el envío durante la recuperación de la conexión.",
+          "Corregimos que comprobar actualizaciones abriera la ventana de ajustes cuando ya tenías la última versión.",
+          "Corregimos el ajuste de línea de las instrucciones largas de la tienda para que se adapten al ancho de la ventana."
+        ],
+        "notes": [
+          "El instalador no tiene firma de código, por lo que ajustes de seguridad como Windows Smart App Control pueden impedir su ejecución."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nuevos personajes y elementos que se pueden tirar, con mejoras en mensajes recientes, configuraciones y conexiones entre amigos."

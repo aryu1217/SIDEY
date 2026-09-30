@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Adicionámos suporte para Windows ARM64 e melhorámos a fiabilidade das atualizações e das ligações entre amigos."
+        ],
+        "new": [
+          "Estão disponíveis instaladores e atualizações automáticas para Windows ARM64.",
+          "Pode configurar a transferência e instalação automáticas (ativadas por predefinição) e as notificações de novas versões; as atualizações automáticas são ignoradas em ligações com tráfego limitado."
+        ],
+        "changed": [
+          "As atualizações compatíveis transferem apenas os ficheiros alterados para reduzir o tamanho da transferência, recorrendo ao instalador completo quando necessário.",
+          "Ao reabrir as mensagens recentes, são apresentadas primeiro as mensagens em cache para reduzir a espera.",
+          "As definições de atualização podem ser recolhidas e expandidas, e é mais fácil verificar o progresso da transferência e se a instalação está pronta."
+        ],
+        "fixed": [
+          "Corrigimos a interrupção de ligações de grupos que funcionavam corretamente quando os membros mudavam ou outro grupo tinha problemas de ligação.",
+          "Restabelecemos a receção de mensagens após erros temporários de autenticação ou ligação e corrigimos resultados de consultas atrasados que removiam uma mensagem acabada de enviar.",
+          "Corrigimos a perda do rascunho quando o envio é recusado durante a recuperação da ligação.",
+          "Corrigimos a abertura da janela de definições ao procurar atualizações quando já está instalada a versão mais recente.",
+          "Corrigimos a quebra de linha das instruções longas da loja para se adaptarem à largura da janela."
+        ],
+        "notes": [
+          "O instalador não tem assinatura de código, pelo que definições de segurança como o Windows Smart App Control podem impedir a sua execução."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Novas personagens e brinquedos para atirar, com melhorias nas mensagens recentes, nas definições e nas ligações entre amigos."

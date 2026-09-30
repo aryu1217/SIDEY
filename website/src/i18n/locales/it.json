@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Aggiunto il supporto per Windows ARM64 e migliorata l’affidabilità degli aggiornamenti e delle connessioni tra amici."
+        ],
+        "new": [
+          "Ora sono disponibili programmi di installazione e aggiornamenti automatici per Windows ARM64.",
+          "Puoi configurare download e installazione automatici (attivi per impostazione predefinita) e notifiche delle nuove versioni; gli aggiornamenti automatici vengono saltati sulle connessioni a consumo."
+        ],
+        "changed": [
+          "Gli aggiornamenti supportati scaricano solo i file modificati per ridurre le dimensioni del download e, se necessario, passano al programma di installazione completo.",
+          "Quando riapri i messaggi recenti, vengono mostrati prima quelli nella cache per ridurre l’attesa.",
+          "Le impostazioni degli aggiornamenti possono essere compresse ed espanse, ed è più semplice controllare l’avanzamento del download e se l’installazione è pronta."
+        ],
+        "fixed": [
+          "Corrette le interruzioni delle connessioni funzionanti dei gruppi quando cambiano i membri o un altro gruppo ha problemi di connessione.",
+          "Ripristinata la ricezione dei messaggi dopo errori temporanei di autenticazione o connessione e corretto il problema per cui risultati di richieste in ritardo rimuovevano un messaggio appena inviato.",
+          "Corretta la perdita della bozza quando l’invio viene rifiutato durante il ripristino della connessione.",
+          "Corretta l’apertura della finestra delle impostazioni quando si controllano gli aggiornamenti e si dispone già della versione più recente.",
+          "Corretto il ritorno a capo delle istruzioni lunghe del negozio per adattarle alla larghezza della finestra."
+        ],
+        "notes": [
+          "Il programma di installazione non è firmato digitalmente, quindi impostazioni di sicurezza come Windows Smart App Control potrebbero impedirne l’esecuzione."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nuovi personaggi e oggetti da lanciare, con miglioramenti ai messaggi recenti, alle impostazioni e alle connessioni tra amici."

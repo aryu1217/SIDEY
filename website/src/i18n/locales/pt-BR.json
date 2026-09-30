@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Adicionamos suporte ao Windows ARM64 e melhoramos a confiabilidade das atualizações e das conexões entre amigos."
+        ],
+        "new": [
+          "Agora há instaladores e atualizações automáticas para Windows ARM64.",
+          "Você pode configurar o download e a instalação automáticos (ativados por padrão) e as notificações de novas versões; as atualizações automáticas são ignoradas em conexões limitadas."
+        ],
+        "changed": [
+          "As atualizações compatíveis baixam apenas os arquivos alterados para reduzir o tamanho do download e usam o instalador completo quando necessário.",
+          "Ao reabrir as mensagens recentes, as mensagens em cache aparecem primeiro para reduzir a espera.",
+          "As configurações de atualização podem ser recolhidas e expandidas, e ficou mais fácil verificar o progresso do download e se a instalação está pronta."
+        ],
+        "fixed": [
+          "Corrigimos a interrupção de conexões de grupos que funcionavam normalmente quando os membros mudavam ou outro grupo tinha problemas de conexão.",
+          "Restabelecemos o recebimento de mensagens após erros temporários de autenticação ou conexão e corrigimos resultados de consultas atrasados que removiam uma mensagem recém-enviada.",
+          "Corrigimos a perda do rascunho quando o envio é recusado durante a recuperação da conexão.",
+          "Corrigimos a abertura da janela de configurações ao verificar atualizações quando a versão mais recente já está instalada.",
+          "Corrigimos a quebra de linha de instruções longas da loja para se ajustarem à largura da janela."
+        ],
+        "notes": [
+          "O instalador não tem assinatura de código, então configurações de segurança como o Windows Smart App Control podem impedir sua execução."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Novas personagens e brinquedos para jogar, com melhorias nas mensagens recentes, nas configurações e nas conexões entre amigos."

@@ -58,7 +58,7 @@ test("downloads show published versions and link both platform histories on the 
   const windows = JSON.parse(readFileSync(new URL("../src/data/release-notes/recent.json", import.meta.url)))[0];
   const macos = JSON.parse(readFileSync(new URL("../src/data/release-notes/macos.json", import.meta.url)))[0];
   assert.equal(macos.version, "2.0.0", "published Mac App Store version");
-  assert.equal(windows.version, "2.1.0", "published Windows version");
+  assert.equal(windows.version, "2.2640.12", "published Windows version");
   assert.match(windows.asset.sha256, /^[a-f0-9]{64}$/);
   for (const locale of locales) {
     const route = routeFor(locale);
@@ -802,6 +802,22 @@ test("localized refund policies cover every paid customization category", () => 
   for (const [locale, phrases] of Object.entries(expectations)) {
     const html = read(`${locale}/refund/index.html`);
     for (const phrase of phrases) assert.ok(html.includes(phrase), `${locale}: ${phrase}`);
+  }
+});
+
+test("Windows 2.2640.12 release links resolve to localized anchors and retain the signing warning", () => {
+  const version = "2.2640.12";
+  const note = readFileSync(new URL(`../../docs/releases/windows-v${version}.md`, import.meta.url), "utf8");
+  for (const locale of ["ko", "en", "ja", "zh-hant"]) {
+    assert.ok(note.includes(`https://sidey-app.github.io/SIDEY/${locale}/whats-new/windows/#v${version}`));
+    const html = read(`${locale}/whats-new/windows/index.html`);
+    assert.equal(html.split(`id="v${version}"`).length - 1, 1, `${locale}: unique release anchor`);
+  }
+  for (const locale of locales) {
+    const copy = bundles[locale].releases.windows[version];
+    assert.equal(copy.notes.length, 1, `${locale}: installation risk retained`);
+    assert.match(copy.notes[0], /Windows Smart App Control/);
+    assert.ok(read(`${routeFor(locale)}/whats-new/windows/index.html`).includes(escapeHTML(copy.notes[0])));
   }
 });
 

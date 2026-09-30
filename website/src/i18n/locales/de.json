@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Unterstützung für Windows ARM64 hinzugefügt und die Zuverlässigkeit von Updates und Verbindungen zwischen Freunden verbessert."
+        ],
+        "new": [
+          "Installationsprogramme und automatische Updates sind jetzt für Windows ARM64 verfügbar.",
+          "Automatischer Download und Installation (standardmäßig aktiviert) sowie Benachrichtigungen über neue Versionen lassen sich einstellen; bei getakteten Verbindungen werden automatische Updates übersprungen."
+        ],
+        "changed": [
+          "Unterstützte Updates laden nur geänderte Dateien herunter, um die Downloadgröße zu verringern, und greifen bei Bedarf auf das vollständige Installationsprogramm zurück.",
+          "Beim erneuten Öffnen der letzten Nachrichten werden zuerst zwischengespeicherte Nachrichten angezeigt, um die Wartezeit zu verkürzen.",
+          "Die Update-Einstellungen lassen sich ein- und ausklappen, und Downloadfortschritt sowie Installationsbereitschaft sind leichter erkennbar."
+        ],
+        "fixed": [
+          "Behoben, dass funktionierende Gruppenverbindungen bei Mitgliederänderungen oder Verbindungsproblemen einer anderen Gruppe unterbrochen wurden.",
+          "Der Nachrichtenempfang nach vorübergehenden Authentifizierungs- oder Verbindungsfehlern wurde wiederhergestellt und das Verschwinden gerade gesendeter Nachrichten durch verspätete Abfrageergebnisse behoben.",
+          "Behoben, dass Entwürfe verloren gingen, wenn das Senden während der Wiederherstellung der Verbindung abgelehnt wurde.",
+          "Behoben, dass die Suche nach Updates das Einstellungsfenster öffnete, obwohl bereits die neueste Version installiert war.",
+          "Der Zeilenumbruch langer Hinweise im Shop wurde an die Fensterbreite angepasst."
+        ],
+        "notes": [
+          "Das Installationsprogramm ist nicht mit einer Codesignatur versehen, daher können Sicherheitseinstellungen wie Windows Smart App Control die Ausführung blockieren."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Neue Charaktere und Wurfgegenstände, mit Verbesserungen an aktuellen Nachrichten, Einstellungen und Verbindungen zwischen Freunden."

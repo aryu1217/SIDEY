@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Ajout de la prise en charge de Windows ARM64 et amélioration de la fiabilité des mises à jour et des connexions entre amis."
+        ],
+        "new": [
+          "Des programmes d’installation et des mises à jour automatiques sont désormais disponibles pour Windows ARM64.",
+          "Vous pouvez configurer le téléchargement et l’installation automatiques (activés par défaut) et les notifications de nouvelles versions ; les mises à jour automatiques sont ignorées sur les connexions limitées."
+        ],
+        "changed": [
+          "Les mises à jour compatibles ne téléchargent que les fichiers modifiés pour réduire le volume téléchargé, avec un recours au programme d’installation complet si nécessaire.",
+          "À la réouverture des messages récents, les messages en cache s’affichent d’abord pour réduire l’attente.",
+          "Les paramètres de mise à jour peuvent être repliés et dépliés, et la progression du téléchargement ainsi que la disponibilité de l’installation sont plus faciles à vérifier."
+        ],
+        "fixed": [
+          "Correction de l’interruption des connexions fonctionnelles des groupes lors d’un changement de membres ou de problèmes de connexion dans un autre groupe.",
+          "Rétablissement de la réception des messages après des erreurs temporaires d’authentification ou de connexion et correction de la disparition de messages venant d’être envoyés à cause de résultats de requêtes tardifs.",
+          "Correction de la perte du brouillon lorsque l’envoi est refusé pendant le rétablissement de la connexion.",
+          "Correction de l’ouverture de la fenêtre des paramètres lors d’une recherche de mises à jour alors que la dernière version est déjà installée.",
+          "Correction du retour à la ligne des longues explications de la boutique pour les adapter à la largeur de la fenêtre."
+        ],
+        "notes": [
+          "Le programme d’installation n’est pas signé numériquement ; des paramètres de sécurité tels que Windows Smart App Control peuvent donc bloquer son exécution."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nouveaux personnages et objets à lancer, avec des améliorations des messages récents, des paramètres et des connexions entre amis."

@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Dodata je podrška za Windows ARM64 i poboljšana pouzdanost ažuriranja i veza između prijatelja."
+        ],
+        "new": [
+          "Dostupni su instalacioni programi i automatska ažuriranja za Windows ARM64.",
+          "Možete da podesite automatsko preuzimanje i instalaciju (podrazumevano uključeni) i obaveštenja o novim verzijama; automatska ažuriranja se preskaču na vezama sa ograničenim prenosom podataka."
+        ],
+        "changed": [
+          "Podržana ažuriranja preuzimaju samo izmenjene datoteke radi manjeg obima preuzimanja, a po potrebi koriste ceo instalacioni program.",
+          "Pri ponovnom otvaranju nedavnih poruka prvo se prikazuju keširane poruke kako bi čekanje bilo kraće.",
+          "Podešavanja ažuriranja mogu da se skupe i prošire, a napredak preuzimanja i spremnost za instalaciju lakše se proveravaju."
+        ],
+        "fixed": [
+          "Ispravljeno je prekidanje ispravnih veza grupa pri promeni članova ili problemima sa vezom u drugoj grupi.",
+          "Obnovljen je prijem poruka posle privremenih grešaka pri potvrdi identiteta ili povezivanju i ispravljeno nestajanje upravo poslatih poruka zbog zakasnelih rezultata upita.",
+          "Ispravljen je gubitak nacrta kada je slanje odbijeno tokom oporavka veze.",
+          "Ispravljeno je otvaranje prozora podešavanja pri proveri ažuriranja kada je najnovija verzija već instalirana.",
+          "Ispravljeno je prelamanje dugih uputstava u prodavnici prema širini prozora."
+        ],
+        "notes": [
+          "Instalacioni program nema potpis koda, pa bezbednosna podešavanja kao što je Windows Smart App Control mogu da blokiraju njegovo pokretanje."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Novi likovi i predmeti za bacanje, uz poboljšanja nedavnih poruka, podešavanja i veza između prijatelja."

@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Dodano obsługę Windows ARM64 i zwiększono niezawodność aktualizacji oraz połączeń między znajomymi."
+        ],
+        "new": [
+          "Dostępne są instalatory i automatyczne aktualizacje dla Windows ARM64.",
+          "Możesz skonfigurować automatyczne pobieranie i instalowanie (domyślnie włączone) oraz powiadomienia o nowych wersjach; automatyczne aktualizacje są pomijane przy połączeniach taryfowych."
+        ],
+        "changed": [
+          "Obsługiwane aktualizacje pobierają tylko zmienione pliki, zmniejszając rozmiar pobierania, a w razie potrzeby używają pełnego instalatora.",
+          "Po ponownym otwarciu ostatnich wiadomości najpierw wyświetlane są wiadomości z pamięci podręcznej, co skraca oczekiwanie.",
+          "Ustawienia aktualizacji można zwijać i rozwijać, a postęp pobierania i gotowość do instalacji są łatwiejsze do sprawdzenia."
+        ],
+        "fixed": [
+          "Naprawiono przerywanie działających połączeń grup przy zmianie członków lub problemach z połączeniem w innej grupie.",
+          "Przywrócono odbieranie wiadomości po tymczasowych błędach uwierzytelniania lub połączenia i naprawiono znikanie właśnie wysłanych wiadomości wskutek opóźnionych wyników zapytań.",
+          "Naprawiono utratę wersji roboczej, gdy wysyłanie zostaje odrzucone podczas przywracania połączenia.",
+          "Naprawiono otwieranie okna ustawień przy sprawdzaniu aktualizacji, gdy najnowsza wersja jest już zainstalowana.",
+          "Naprawiono zawijanie długich objaśnień w sklepie tak, aby mieściły się w szerokości okna."
+        ],
+        "notes": [
+          "Instalator nie ma podpisu kodu, więc ustawienia zabezpieczeń, takie jak Windows Smart App Control, mogą zablokować jego uruchomienie."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nowe postacie i przedmioty, które można rzucać, z ulepszeniami ostatnich wiadomości, ustawień i połączeń między przyjaciółmi."

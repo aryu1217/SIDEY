@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Added ARM64 Windows support and made updates and connections between friends more reliable."
+        ],
+        "new": [
+          "Installers and automatic updates are now available for ARM64 Windows.",
+          "You can configure automatic downloads and installation (on by default) and new-version notifications; automatic updates are skipped on metered connections."
+        ],
+        "changed": [
+          "Supported updates download only changed files to reduce download size, with a full-installer fallback when needed.",
+          "Reopening recent messages shows cached messages first to reduce waiting.",
+          "Update settings can be collapsed and expanded, and download progress and installation readiness are easier to check."
+        ],
+        "fixed": [
+          "Fixed healthy group connections being disrupted when membership changes or another group has connection problems.",
+          "Restored message reception after temporary authentication or connection errors and fixed delayed query results removing a message you just sent.",
+          "Fixed drafts being lost when sending is rejected during connection recovery.",
+          "Fixed checking for updates opening the settings window when you already have the latest version.",
+          "Fixed long store guidance wrapping to fit the window width."
+        ],
+        "notes": [
+          "The installer is not code-signed, so security settings such as Windows Smart App Control may block it from running."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "New characters and tossable items, with improvements to recent messages, settings, and connections between friends."

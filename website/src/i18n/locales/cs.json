@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Přidali jsme podporu Windows ARM64 a zvýšili spolehlivost aktualizací a spojení mezi přáteli."
+        ],
+        "new": [
+          "K dispozici jsou instalační programy a automatické aktualizace pro Windows ARM64.",
+          "Můžete nastavit automatické stahování a instalaci (ve výchozím nastavení zapnuto) i oznámení o nových verzích; u připojení účtovaných podle objemu dat se automatické aktualizace přeskočí."
+        ],
+        "changed": [
+          "Podporované aktualizace stahují jen změněné soubory, aby se snížil objem stahování, a v případě potřeby použijí úplný instalační program.",
+          "Při opětovném otevření nedávných zpráv se nejprve zobrazí zprávy z mezipaměti, což zkracuje čekání.",
+          "Nastavení aktualizací lze sbalit a rozbalit a snáze zkontrolujete průběh stahování i připravenost k instalaci."
+        ],
+        "fixed": [
+          "Opravili jsme přerušování funkčních spojení skupin při změně členů nebo potížích s připojením jiné skupiny.",
+          "Obnovili jsme příjem zpráv po dočasných chybách ověřování či připojení a opravili mizení právě odeslaných zpráv způsobené opožděnými výsledky dotazů.",
+          "Opravili jsme ztrátu rozepsané zprávy, když je odeslání odmítnuto během obnovování připojení.",
+          "Opravili jsme otevírání okna nastavení při kontrole aktualizací, pokud už máte nejnovější verzi.",
+          "Opravili jsme zalamování dlouhých pokynů v obchodě podle šířky okna."
+        ],
+        "notes": [
+          "Instalační program nemá podpis kódu, takže jeho spuštění mohou blokovat bezpečnostní nastavení, například Windows Smart App Control."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nové postavy a přehazovatelné předměty s vylepšeními posledních zpráv, nastavení a spojení mezi přáteli."

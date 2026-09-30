@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Ondersteuning voor Windows ARM64 toegevoegd en updates en verbindingen tussen vrienden betrouwbaarder gemaakt."
+        ],
+        "new": [
+          "Er zijn nu installatieprogramma’s en automatische updates voor Windows ARM64.",
+          "Je kunt automatisch downloaden en installeren (standaard ingeschakeld) en meldingen over nieuwe versies instellen; automatische updates worden overgeslagen bij verbindingen met een datalimiet."
+        ],
+        "changed": [
+          "Ondersteunde updates downloaden alleen gewijzigde bestanden om de downloadgrootte te beperken en gebruiken zo nodig het volledige installatieprogramma.",
+          "Wanneer je recente berichten opnieuw opent, verschijnen eerst de berichten uit de cache zodat je minder hoeft te wachten.",
+          "Je kunt de update-instellingen in- en uitklappen en makkelijker zien hoe ver de download is en of de installatie klaarstaat."
+        ],
+        "fixed": [
+          "Opgelost dat werkende groepsverbindingen werden onderbroken als het lidmaatschap veranderde of een andere groep verbindingsproblemen had.",
+          "De ontvangst van berichten na tijdelijke verificatie- of verbindingsfouten hersteld en opgelost dat vertraagde opvraagresultaten een pas verzonden bericht verwijderden.",
+          "Opgelost dat je concept verloren ging wanneer verzenden werd geweigerd tijdens het herstellen van de verbinding.",
+          "Opgelost dat controleren op updates het instellingenvenster opende terwijl je al de nieuwste versie had.",
+          "Lange toelichtingen in de winkel worden nu correct afgebroken volgens de breedte van het venster."
+        ],
+        "notes": [
+          "Het installatieprogramma is niet digitaal ondertekend, waardoor beveiligingsinstellingen zoals Windows Smart App Control het uitvoeren ervan kunnen blokkeren."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Nieuwe personages en werpbare items, met verbeteringen aan recente berichten, instellingen en verbindingen tussen vrienden."

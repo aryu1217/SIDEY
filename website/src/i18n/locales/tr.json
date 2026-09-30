@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Windows ARM64 desteği eklendi; güncellemeler ve arkadaşlar arasındaki bağlantılar daha güvenilir hâle getirildi."
+        ],
+        "new": [
+          "Windows ARM64 için yükleyiciler ve otomatik güncellemeler destekleniyor.",
+          "Otomatik indirme ve yüklemeyi (varsayılan olarak açık) ve yeni sürüm bildirimlerini ayarlayabilirsiniz; tarifeli bağlantılarda otomatik güncellemeler atlanır."
+        ],
+        "changed": [
+          "Desteklenen güncellemelerde indirme boyutunu azaltmak için yalnızca değişen dosyalar indirilir; gerektiğinde tam yükleyiciye geçilir.",
+          "Son mesajları yeniden açtığınızda beklemeyi azaltmak için önce önbellekteki mesajlar gösterilir.",
+          "Güncelleme ayarları daraltılıp genişletilebilir; indirme ilerlemesini ve yüklemeye hazır olup olmadığını kontrol etmek kolaylaştırıldı."
+        ],
+        "fixed": [
+          "Üyeler değiştiğinde veya başka bir grupta bağlantı sorunu olduğunda sağlıklı grup bağlantılarının kesilmesi düzeltildi.",
+          "Geçici kimlik doğrulama veya bağlantı hatalarından sonra mesaj alımı yeniden sağlandı ve geciken sorgu sonuçlarının yeni gönderilen mesajı silmesi düzeltildi.",
+          "Bağlantı kurtarılırken gönderim reddedildiğinde taslağın kaybolması düzeltildi.",
+          "En güncel sürüm zaten yüklüyken güncelleme kontrolünün ayarlar penceresini açması düzeltildi.",
+          "Mağazadaki uzun açıklamaların pencere genişliğine göre satırlara bölünmesi düzeltildi."
+        ],
+        "notes": [
+          "Yükleyici kod imzalı değildir; Windows Smart App Control gibi güvenlik ayarları çalışmasını engelleyebilir."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Son mesajlar, ayarlar ve arkadaşlar arasındaki bağlantılarda iyileştirmeler içeren yeni karakterler ve atılabilir öğeler."

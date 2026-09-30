@@ -332,6 +332,30 @@
   },
   "releases": {
     "windows": {
+      "2.2640.12": {
+        "introduction": [
+          "Am adăugat suport pentru Windows ARM64 și am îmbunătățit fiabilitatea actualizărilor și a conexiunilor dintre prieteni."
+        ],
+        "new": [
+          "Sunt disponibile programe de instalare și actualizări automate pentru Windows ARM64.",
+          "Poți configura descărcarea și instalarea automată (activate implicit) și notificările despre versiuni noi; actualizările automate sunt omise pentru conexiunile tarifate după consum."
+        ],
+        "changed": [
+          "Actualizările compatibile descarcă numai fișierele modificate pentru a reduce volumul descărcării și folosesc programul complet de instalare când este necesar.",
+          "La redeschiderea mesajelor recente, sunt afișate mai întâi mesajele din cache pentru a reduce așteptarea.",
+          "Setările de actualizare pot fi restrânse și extinse, iar progresul descărcării și disponibilitatea instalării sunt mai ușor de verificat."
+        ],
+        "fixed": [
+          "Am remediat întreruperea conexiunilor funcționale ale grupurilor când se schimbă membrii sau alt grup are probleme de conectare.",
+          "Am restabilit primirea mesajelor după erori temporare de autentificare sau conectare și am remediat dispariția mesajelor abia trimise din cauza rezultatelor întârziate ale interogărilor.",
+          "Am remediat pierderea ciornei când trimiterea este respinsă în timpul restabilirii conexiunii.",
+          "Am remediat deschiderea ferestrei de setări la verificarea actualizărilor când ai deja cea mai nouă versiune.",
+          "Am remediat încadrarea pe rânduri a instrucțiunilor lungi din magazin în funcție de lățimea ferestrei."
+        ],
+        "notes": [
+          "Programul de instalare nu are semnătură de cod, așa că setări de securitate precum Windows Smart App Control îi pot bloca rularea."
+        ]
+      },
       "2.1.0": {
         "introduction": [
           "Personaje noi și elemente care pot fi aruncate, cu îmbunătățiri ale mesajelor recente, setărilor și conexiunilor dintre prieteni."
