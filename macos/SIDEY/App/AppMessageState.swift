@@ -42,7 +42,10 @@ final class AppMessageState {
         activeRoomID: UUID?,
         equippedBubbleStyleID: String?
     ) {
-        messageOutbox.stage(id: id, roomID: roomID, senderID: senderID, body: body, createdAt: now)
+        messageOutbox.stage(
+            id: id, roomID: roomID, senderID: senderID, body: body,
+            createdAt: now, bubbleStyleID: equippedBubbleStyleID
+        )
         if revealBubble, roomID == activeRoomID {
             bubbleLedger.show(
                 senderID: senderID,

@@ -202,6 +202,15 @@ struct HistoryMessageCard: View {
     let entry: MessageLedgerEntry
     let participant: MessageHistoryParticipant
 
+    private var bubbleTheme: PixelBubbleTheme { PixelBubbleTheme.resolve(entry.bubbleStyleID) }
+    private var bubbleBorder: Color {
+        // The default bubble stays white in both appearances; give it a visible
+        // outline against the light history background rather than a glass edge.
+        bubbleTheme.id == nil
+            ? Color(red: 0.55, green: 0.57, blue: 0.61)
+            : Color(nsColor: bubbleTheme.textColor).opacity(0.22)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 4) {
             if participant.isCurrentUser { Spacer(minLength: 24) }
@@ -246,11 +255,34 @@ struct HistoryMessageCard: View {
                 .textSelection(.enabled)
             deliveryStatus
         }
-        .padding(.vertical, 10)
+        .foregroundStyle(Color(nsColor: bubbleTheme.textColor))
+        .padding(.top, bubbleTheme.decorationAssetName == nil ? 10 : 18)
+        .padding(.bottom, 10)
         .padding(.horizontal, 12)
         .padding(participant.isCurrentUser ? .trailing : .leading, 8)
-        .frame(minHeight: 40, alignment: .leading)
-        .glassEffect(in: HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser))
+        .frame(minWidth: bubbleTheme.decorationAssetName == nil ? 0 : 56,
+               minHeight: 40, alignment: .leading)
+        .background {
+            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
+                .fill(Color(nsColor: bubbleTheme.backgroundColor.withAlphaComponent(1)))
+        }
+        .overlay {
+            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
+                .stroke(bubbleBorder, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: participant.isCurrentUser ? .topLeading : .topTrailing) {
+            if let image = HistoryBubbleDecoration.image(for: bubbleTheme) {
+                Image(nsImage: image)
+                    .interpolation(.none)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                    .padding(.horizontal, 8)
+                    .offset(y: -16)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 
     @ViewBuilder
@@ -259,17 +291,32 @@ struct HistoryMessageCard: View {
         case .pending:
             Label(L10n.text("message.delivery.pending"), systemImage: "clock")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color(nsColor: bubbleTheme.textColor).opacity(0.75))
         case .failed:
             Label(
                 L10n.text("message.delivery.failed"),
                 systemImage: "exclamationmark.triangle.fill"
             )
                 .font(.caption2)
-                .foregroundStyle(.red)
+                .foregroundStyle(bubbleTheme.id == "bubble_starry_cat" ? Color.yellow : Color.red)
         case .confirmed:
             EmptyView()
         }
+    }
+}
+
+@MainActor
+private enum HistoryBubbleDecoration {
+    private static var images: [String: NSImage] = [:]
+
+    static func image(for theme: PixelBubbleTheme) -> NSImage? {
+        guard let name = theme.decorationAssetName else { return nil }
+        if let image = images[name] { return image }
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Bubbles")
+                ?? Bundle.main.url(forResource: name, withExtension: "png"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        images[name] = image
+        return image
     }
 }
 
@@ -278,7 +325,7 @@ private struct HistoryMessageBubbleShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         let tailWidth: CGFloat = 8
-        let radius = min(14, rect.height / 2)
+        let radius = min(9, rect.height / 2)
         let left = rect.minX + tailWidth
         let right = rect.maxX
         let top = rect.minY
@@ -296,10 +343,8 @@ private struct HistoryMessageBubbleShape: Shape {
         path.addQuadCurve(to: CGPoint(x: left, y: bottom - radius),
                           control: CGPoint(x: left, y: bottom))
         path.addLine(to: CGPoint(x: left, y: tailCenter + 5))
-        path.addQuadCurve(to: CGPoint(x: rect.minX, y: tailCenter + 5),
-                          control: CGPoint(x: left - 3, y: tailCenter + 6))
-        path.addQuadCurve(to: CGPoint(x: left, y: tailCenter - 5),
-                          control: CGPoint(x: left - 2, y: tailCenter + 1))
+        path.addLine(to: CGPoint(x: rect.minX, y: tailCenter))
+        path.addLine(to: CGPoint(x: left, y: tailCenter - 5))
         path.addLine(to: CGPoint(x: left, y: top + radius))
         path.addQuadCurve(to: CGPoint(x: left + radius, y: top),
                           control: CGPoint(x: left, y: top))

@@ -301,6 +301,7 @@ struct OutgoingMessage: Equatable, Identifiable, Sendable {
     let body: String
     let createdAt: Date
     var state: OutgoingMessageState
+    var bubbleStyleID: String? = nil
 }
 
 struct MessageOutbox: Equatable, Sendable {
@@ -313,7 +314,8 @@ struct MessageOutbox: Equatable, Sendable {
         roomID: UUID,
         senderID: UUID,
         body: String,
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        bubbleStyleID: String? = nil
     ) {
         guard !entries.contains(where: { $0.id == id }) else { return }
         entries.append(OutgoingMessage(
@@ -322,7 +324,8 @@ struct MessageOutbox: Equatable, Sendable {
             senderID: senderID,
             body: body,
             createdAt: createdAt,
-            state: .pending
+            state: .pending,
+            bubbleStyleID: bubbleStyleID
         ))
     }
 

@@ -234,7 +234,8 @@ enum MessageHistoryMerge {
                 senderID: message.senderID,
                 body: message.body,
                 createdAt: message.createdAt,
-                state: .confirmed
+                state: .confirmed,
+                bubbleStyleID: message.bubbleStyleID
             )
         }
         for entry in ledger.entries where entry.roomID == roomID && entry.createdAt >= cutoff {
@@ -248,7 +249,8 @@ enum MessageHistoryMerge {
                 senderID: message.senderID,
                 body: message.body,
                 createdAt: message.createdAt,
-                state: message.state == .pending ? .pending : .failed
+                state: message.state == .pending ? .pending : .failed,
+                bubbleStyleID: message.bubbleStyleID
             )
         }
         return byID.values.sorted(by: displayOrder)
