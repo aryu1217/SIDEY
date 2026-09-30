@@ -1,5 +1,21 @@
 import SwiftUI
 
+struct ConnectionControls: View {
+    let state: BackendConnectionState
+    let onReconnect: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ConnectionBadge(state: state)
+            Button("connection.retry.action", action: onReconnect)
+                .buttonStyle(.glass)
+                .controlSize(.small)
+                .disabled(state == .connecting)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+}
+
 struct ConnectionBadge: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let state: BackendConnectionState

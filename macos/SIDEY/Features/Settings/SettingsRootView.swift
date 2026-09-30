@@ -30,6 +30,7 @@ struct SettingsActions {
     var onCharacterImpact: (String, TimeInterval) -> Void = { _, _ in }
     var onStopCharacterSounds: () -> Void = {}
     var onGlobalShortcutChanged: (GlobalShortcutAction, GlobalShortcutBinding) -> Void = { _, _ in }
+    var onReconnect: () -> Void = {}
 
     static let empty = SettingsActions(
         onOverlayVisibilityChanged: { _ in },
@@ -100,7 +101,10 @@ struct SettingsRootView: View {
             .navigationTitle(Text(verbatim: "SIDEY"))
             .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 280)
             .safeAreaInset(edge: .bottom) {
-                ConnectionBadge(state: model.connectionState)
+                ConnectionControls(
+                    state: model.connectionState,
+                    onReconnect: actions.onReconnect
+                )
                     .padding(16)
             }
         } detail: {

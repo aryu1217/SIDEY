@@ -29,13 +29,22 @@ struct ProfileSettingsView: View {
                 title: "profile.nickname.label",
                 description: "profile.nickname.description"
             ) {
-                TextField("profile.nickname.placeholder", text: $model.nickname)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: .infinity)
-                    .onChange(of: model.nickname) { _, value in
-                        let limited = ProfileValidator.limitedNicknameDraft(value)
-                        if limited != value { model.nickname = limited }
+                VStack(alignment: .trailing, spacing: 10) {
+                    TextField("profile.nickname.placeholder", text: $model.nickname)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: model.nickname) { _, value in
+                            let limited = ProfileValidator.limitedNicknameDraft(value)
+                            if limited != value { model.nickname = limited }
+                        }
+                    if model.hasNicknameChanges {
+                        Button("profile.nickname.save") {
+                            PendingTextInputCommitter.commitThen(actions.onSaveProfile)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .disabled(model.groupMutationsDisabled || !validNickname)
                     }
+                }
             }
             Divider()
             VStack(alignment: .leading, spacing: 6) {
@@ -56,17 +65,6 @@ struct ProfileSettingsView: View {
             Text("profile.duplicates_allowed")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if model.hasNicknameChanges {
-                HStack {
-                    Spacer()
-                    Button("profile.nickname.save") {
-                        PendingTextInputCommitter.commitThen(actions.onSaveProfile)
-                    }
-                        .buttonStyle(.glassProminent)
-                        .disabled(model.groupMutationsDisabled || !validNickname)
-                }
-            }
-
             if showsCosmeticEquipment {
                 Divider()
                 ProfileCosmeticEquipmentSection(

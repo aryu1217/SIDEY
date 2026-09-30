@@ -102,6 +102,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func makeMenu() -> NSMenu {
         let menu = NSMenu(title: AppPresentation.displayName)
         menu.delegate = self
+        menu.minimumWidth = 350
         let overlay = NSMenuItem(
             title: L10n.text(
                 overlayVisible ? "status.menu.overlay.hide" : "status.menu.overlay.show"
@@ -206,7 +207,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let annotation = status?.menuAnnotation.map { " · \($0)" } ?? ""
         let suffix = shortcut.displayShortcut + annotation
         let title = item.title
-        item.attributedTitle = NSAttributedString(string: "\(title)    \(suffix)")
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: 310)]
+        let attributedTitle = NSMutableAttributedString(string: "\(title)\t\(suffix)")
+        attributedTitle.addAttribute(
+            .paragraphStyle,
+            value: paragraph,
+            range: NSRange(location: 0, length: attributedTitle.length)
+        )
+        attributedTitle.addAttribute(
+            .foregroundColor,
+            value: NSColor.secondaryLabelColor,
+            range: NSRange(location: (title as NSString).length + 1, length: (suffix as NSString).length)
+        )
+        item.attributedTitle = attributedTitle
         item.title = title
         item.toolTip = status?.notice ?? shortcut.descriptiveShortcut
     }

@@ -100,7 +100,8 @@ final class AppCoordinator {
             },
             onGlobalShortcutChanged: { [weak self] action, binding in
                 self?.setGlobalShortcut(action, binding: binding)
-            }
+            },
+            onReconnect: { [weak self] in self?.reconnectBackend() }
         ),
         onClose: { [weak self] in self?.settingsDidClose() }
     )

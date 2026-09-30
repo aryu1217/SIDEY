@@ -42,7 +42,10 @@ struct OnboardingView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                    ConnectionBadge(state: model.connectionState)
+                    ConnectionControls(
+                        state: model.connectionState,
+                        onReconnect: actions.onReconnect
+                    )
                         .frame(width: 260)
                 }
                 .frame(maxWidth: .infinity)

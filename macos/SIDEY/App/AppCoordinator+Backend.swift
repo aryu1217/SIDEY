@@ -1,6 +1,19 @@
 import AppKit
 
 extension AppCoordinator {
+    func reconnectBackend() {
+        guard !model.authenticationRequired,
+              !model.accountOperationInProgress,
+              model.connectionState != .connecting
+        else { return }
+        roomSession.switchPipeline.cancel()
+        roomSession.rolloutTask?.cancel()
+        roomSession.rolloutTask = nil
+        stopAllTyping()
+        model.errorMessage = nil
+        startBackend()
+    }
+
     func startBackend() {
         // Static configuration failures cannot recover in-process. A previous
         // transport factory failure can: Keychain access, rollout selection,
