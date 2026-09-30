@@ -14,6 +14,14 @@ from open_current import verify_running
 
 
 class ProvenanceTests(unittest.TestCase):
+    def test_ticket_directory_uses_sandbox_for_current_codesign_output(self):
+        output = (b'[Dict]\n\t[Key] com.apple.security.app-sandbox\n'
+                  b'\t[Value]\n\t\t[Bool] true\n')
+        with patch('build_provenance.subprocess.run', return_value=subprocess.CompletedProcess([], 0, output)):
+            directory = p.ticket_directory(Path('/tmp/SIDEY.app'), 'app.sidey.desktop.appstore')
+        self.assertEqual(directory, Path.home() / 'Library/Containers/app.sidey.desktop.appstore/Data/'
+                         'Library/Application Support/SIDEY/BuildReview')
+
     def test_untracked_source_counts_but_personal_state_and_cache_do_not(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

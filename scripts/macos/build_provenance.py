@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import subprocess
 import time
 import uuid
@@ -127,12 +128,23 @@ def verify(app, root=ROOT, target=None, configuration=None):
 
 def ticket_directory(app, bundle_id):
     # The sandboxed process reads only its own container. It never reads the repository.
-    result = subprocess.run(['/usr/bin/codesign', '-d', '--entitlements', ':-', str(app)],
+    result = subprocess.run(['/usr/bin/codesign', '-d', '--entitlements', '-', str(app)],
                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if result.returncode:
+        raise RuntimeError(f'Cannot inspect app entitlements: {app}')
     try:
         entitlements = plistlib.loads(result.stdout)
     except Exception:
-        entitlements = {}
+        # Current codesign renders entitlements as a human-readable dictionary by default.
+        # The former ":-" output can be empty even for a sandboxed app.
+        rendered = result.stdout.decode('utf-8')
+        if rendered and not rendered.startswith('[Dict]'):
+            raise RuntimeError(f'Unrecognized app entitlements: {app}')
+        match = re.search(r'(?m)^\s*\[Key\] com\.apple\.security\.app-sandbox\s*\n'
+                          r'\s*\[Value\]\s*\n\s*\[Bool\] (true|false)\s*$', rendered)
+        if 'com.apple.security.app-sandbox' in rendered and match is None:
+            raise RuntimeError(f'Cannot determine app sandbox entitlement: {app}')
+        entitlements = {'com.apple.security.app-sandbox': match.group(1) == 'true'} if match else {}
     home = Path.home()
     if entitlements.get('com.apple.security.app-sandbox'):
         home /= f'Library/Containers/{bundle_id}/Data'
