@@ -64,6 +64,27 @@ namespace Sidey.Installer
             }
         }
 
+        public static string UpdateLaunchWarning(int windowsLanguage)
+        {
+            switch (MatchSystemLanguage(windowsLanguage))
+            {
+                case 1041:
+                    return "このファイルはSIDEYの自動更新用です。SIDEYアプリ内で更新するか、手動で更新する場合はSetupインストーラーをダウンロードして実行してください。";
+                case 1042:
+                    return "이 파일은 SIDEY의 자동 업데이트용입니다. SIDEY 앱에서 업데이트하거나, 수동으로 업데이트하려면 Setup 설치 파일을 다운로드하여 실행하세요.";
+                case 1049:
+                    return "Этот файл используется SIDEY для автоматических обновлений. Обновите SIDEY через приложение или скачайте и запустите установщик Setup для обновления вручную.";
+                case 1058:
+                    return "Цей файл використовується SIDEY для автоматичних оновлень. Оновіть SIDEY через застосунок або завантажте й запустіть інсталятор Setup для оновлення вручну.";
+                case 2052:
+                    return "此文件用于 SIDEY 的自动更新。请在 SIDEY 应用内更新，或下载并运行 Setup 安装程序以手动更新。";
+                case 1028:
+                    return "此檔案用於 SIDEY 的自動更新。請在 SIDEY 應用程式內更新，或下載並執行 Setup 安裝程式以手動更新。";
+                default:
+                    return "This file is used by SIDEY for automatic updates. Update from within SIDEY, or download and run Setup for a manual update.";
+            }
+        }
+
         public static InstallerLanguage[] Ordered(int windowsLanguage)
         {
             int systemLanguage = MatchSystemLanguage(windowsLanguage);

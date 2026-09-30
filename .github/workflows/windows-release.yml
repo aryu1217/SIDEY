@@ -139,30 +139,36 @@ jobs:
       - name: Build Setup EXE candidate
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
-          dotnet publish windows/src/Sidey.App/Sidey.App.csproj `
-            --configuration Release `
-            --runtime win-x64 `
-            --self-contained true `
-            --no-restore `
-            -p:PublishSingleFile=false `
-            --output build/windows/publish
-          ./scripts/windows/tests/Test-SelfContainedPublish.ps1 -PublishDirectory ./build/windows/publish
-          ./scripts/windows/New-WindowsInstaller.ps1 `
-            -PublishDirectory ./build/windows/publish `
-            -OutputDirectory ./build/windows/artifacts `
-            -ProductVersion '${{ steps.versions.outputs.product_version }}' `
-            -ReleaseVersion '${{ steps.versions.outputs.release_version }}' `
-            -MakensisPath '${{ steps.nsis.outputs.makensis_path }}'
+          foreach ($architecture in @('x64', 'arm64')) {
+            $publishDirectory = "build/windows/publish-$architecture"
+            $platform = if ($architecture -eq 'arm64') { 'ARM64' } else { 'x64' }
+            dotnet publish windows/src/Sidey.App/Sidey.App.csproj `
+              --configuration Release `
+              --runtime "win-$architecture" `
+              "-p:Platform=$platform" `
+              --self-contained true `
+              -p:PublishSingleFile=false `
+              --output $publishDirectory
+            ./scripts/windows/tests/Test-SelfContainedPublish.ps1 `
+              -PublishDirectory $publishDirectory -Architecture $architecture
+            ./scripts/windows/New-WindowsInstaller.ps1 `
+              -PublishDirectory $publishDirectory `
+              -OutputDirectory ./build/windows/artifacts `
+              -ProductVersion '${{ steps.versions.outputs.product_version }}' `
+              -ReleaseVersion '${{ steps.versions.outputs.release_version }}' `
+              -Architecture $architecture `
+              -MakensisPath '${{ steps.nsis.outputs.makensis_path }}'
+          }
 
       - name: Upload Windows candidate
         uses: actions/upload-artifact@v5
         with:
           name: windows-release-candidate-${{ steps.versions.outputs.release_version }}
           path: |
-            build/windows/artifacts/${{ steps.versions.outputs.installer_name }}
-            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Update.exe
-            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Update.json
-            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Payload.bin
+            build/windows/artifacts/SIDEY-Windows-*-v${{ steps.versions.outputs.release_version }}-Setup.exe
+            build/windows/artifacts/SIDEY-Windows-*-v${{ steps.versions.outputs.release_version }}-Update.exe
+            build/windows/artifacts/SIDEY-Windows-*-v${{ steps.versions.outputs.release_version }}-Update.json
+            build/windows/artifacts/SIDEY-Windows-*-v${{ steps.versions.outputs.release_version }}-Payload.bin
           if-no-files-found: error
           retention-days: 7
 
@@ -222,12 +228,11 @@ jobs:
           $tag = '${{ needs.validate.outputs.tag }}'
           $installerName = '${{ needs.validate.outputs.installer_name }}'
           $releaseVersion = '${{ needs.validate.outputs.release_version }}'
-          $expectedAssetNames = @(
-            $installerName,
-            "SIDEY-Windows-x64-v$releaseVersion-Update.exe",
-            "SIDEY-Windows-x64-v$releaseVersion-Update.json",
-            "SIDEY-Windows-x64-v$releaseVersion-Payload.bin"
-          )
+          $expectedAssetNames = @(foreach ($architecture in @('x64', 'arm64')) {
+            foreach ($suffix in @('Setup.exe', 'Update.exe', 'Update.json', 'Payload.bin')) {
+              "SIDEY-Windows-$architecture-v$releaseVersion-$suffix"
+            }
+          })
           $candidates = @($expectedAssetNames | ForEach-Object {
             $assetPath = Join-Path ./release-assets $_
             if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
@@ -256,8 +261,8 @@ jobs:
             throw "Release verification expected a regular draft: $tag"
           }
           $assetNames = @($release.assets | ForEach-Object { [string]$_.name })
-          if ($assetNames.Count -ne 4 -or @(Compare-Object $expectedAssetNames $assetNames -CaseSensitive).Count -ne 0) {
-            throw 'Draft release must contain exactly the four canonical Windows update assets.'
+          if ($assetNames.Count -ne 8 -or @(Compare-Object $expectedAssetNames $assetNames -CaseSensitive).Count -ne 0) {
+            throw 'Draft release must contain exactly the eight x64 and ARM64 Windows assets.'
           }
 
           New-Item -ItemType Directory -Path ./release-verify -Force | Out-Null

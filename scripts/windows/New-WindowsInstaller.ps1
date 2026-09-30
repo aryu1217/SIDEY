@@ -14,11 +14,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ReleaseVersion,
 
-    [string]$MakensisPath
+    [string]$MakensisPath,
+
+    [ValidateSet('x64', 'arm64')]
+    [string]$Architecture = 'x64'
 )
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+$Architecture = $Architecture.ToLowerInvariant()
 Import-Module (Join-Path $PSScriptRoot 'Sidey.PowerShell.psm1') -Force
 $repositoryRootPath = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $publishDirectoryPath = (Resolve-Path -LiteralPath $PublishDirectory).Path
@@ -30,7 +34,7 @@ $hostExecutablePath = Join-Path $runtimeDirectory 'SIDEY.Host.exe'
 $legacyExecutablePath = Join-Path $publishDirectoryPath 'Sidey.App.exe'
 $setupScriptPath = Join-Path $repositoryRootPath 'windows/installer/Sidey.Setup/Sidey.Setup.nsi'
 & (Join-Path $PSScriptRoot 'tests/Test-SelfContainedPublish.ps1') `
-    -PublishDirectory $publishDirectoryPath
+    -PublishDirectory $publishDirectoryPath -Architecture $Architecture
 
 function Get-SideyRelativePath {
     param(
@@ -451,6 +455,7 @@ Invoke-SideyNativeCommand `
         "/DAPP_VERSION=$ProductVersion",
         "/DAPP_UPDATE_VERSION=$expectedUpdateVersion",
         "/DAPP_FILE_VERSION=$publishedFileVersion",
+        "/DAPP_ARCHITECTURE=$Architecture",
         "/DOUTPUT_DIR=$installerBuildDirectory",
         "/DPUBLISH_DIR=$publishDirectoryPath",
         "/DPAYLOAD_INSTALL_INCLUDE=$installInclude",
@@ -469,12 +474,12 @@ if (-not (Test-Path -LiteralPath $builtSetupPath -PathType Leaf)) {
     throw 'NSIS did not produce the full Setup EXE.'
 }
 
-$setupName = "SIDEY-Windows-x64-v${ReleaseVersion}-Setup.exe"
+$setupName = "SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Setup.exe"
 $setupFilePath = Join-Path $outputDirectoryPath $setupName
 Copy-Item -LiteralPath $builtSetupPath -Destination $setupFilePath -Force
-$updateName = "SIDEY-Windows-x64-v${ReleaseVersion}-Update.exe"
+$updateName = "SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Update.exe"
 $updateFilePath = Join-Path $outputDirectoryPath $updateName
-$payloadFilePath = Join-Path $outputDirectoryPath "SIDEY-Windows-x64-v${ReleaseVersion}-Payload.bin"
+$payloadFilePath = Join-Path $outputDirectoryPath "SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Payload.bin"
 $fileListPath = Join-Path $installerBuildDirectory 'SideyIncrementalFiles.tsv'
 $descriptor = & (Join-Path $PSScriptRoot 'New-WindowsIncrementalPayload.ps1') `
     -PublishDirectory $publishDirectoryPath -PayloadPath $payloadFilePath `
@@ -497,6 +502,7 @@ Invoke-SideyNativeCommand `
         "/DAPP_VERSION=$ProductVersion",
         "/DAPP_UPDATE_VERSION=$expectedUpdateVersion",
         "/DAPP_FILE_VERSION=$publishedFileVersion",
+        "/DAPP_ARCHITECTURE=$Architecture",
         "/DOUTPUT_DIR=$installerBuildDirectory",
         "/DPUBLISH_DIR=$publishDirectoryPath",
         "/DPAYLOAD_INSTALL_INCLUDE=$installInclude",
@@ -514,7 +520,7 @@ $descriptor['updater'] = [ordered]@{
     sha256 = (Get-FileHash -LiteralPath $updateFilePath -Algorithm SHA256).Hash.ToLowerInvariant()
     size = (Get-Item -LiteralPath $updateFilePath).Length
 }
-$descriptorPath = Join-Path $outputDirectoryPath "SIDEY-Windows-x64-v${ReleaseVersion}-Update.json"
+$descriptorPath = Join-Path $outputDirectoryPath "SIDEY-Windows-${Architecture}-v${ReleaseVersion}-Update.json"
 $descriptorJson = $descriptor | ConvertTo-Json -Depth 6
 if ($utf8WithoutBom.GetByteCount($descriptorJson) -gt 4MB) {
     throw 'Incremental descriptor exceeds the client manifest size limit.'
