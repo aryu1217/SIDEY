@@ -79,6 +79,9 @@ struct DrawLadderLayout {
 
 @MainActor
 final class DrawLadderScene: SKScene {
+    static let controlsAnchorY: CGFloat = 8
+    private static let railEdge = NSColor(srgbRed: 0.39, green: 0.35, blue: 0.49, alpha: 1)
+    private static let railFill = NSColor(srgbRed: 0.89, green: 0.86, blue: 0.97, alpha: 1)
     private struct Segment {
         let from: CGPoint
         let to: CGPoint
@@ -90,6 +93,7 @@ final class DrawLadderScene: SKScene {
     private let layout: DrawLadderLayout
     private var gameNodes: [SKNode] = []
     private var routes: [[Segment]] = []
+    private var destinationMarkers: [SKShapeNode] = []
     private let rungOutline = SKShapeNode()
     private let rungInner = SKShapeNode()
     private let highlight = SKShapeNode()
@@ -133,6 +137,12 @@ final class DrawLadderScene: SKScene {
             let node = gameNodes[index]
             node.position = point
             let moving = fraction > 0 && fraction < 1
+            let destination = layout.destinationForParticipant[index]
+            if destinationMarkers.indices.contains(destination) {
+                let marker = destinationMarkers[destination]
+                marker.strokeColor = fraction == 1 ? DrawGamePalette.accent : Self.railEdge
+                marker.lineWidth = fraction == 1 ? 2.5 : 1.5
+            }
             if let character = node as? DrawCharacterNode {
                 character.setWalking(moving, facing: horizontal ? facing : 1)
                 if previous < progress, progress - previous < 0.2,
@@ -152,15 +162,16 @@ final class DrawLadderScene: SKScene {
         removeAllChildren()
         gameNodes.removeAll()
         routes.removeAll()
-        guard !entries.isEmpty else { return }
+        destinationMarkers.removeAll()
+        guard !entries.isEmpty, size.width > 0, size.height > 0 else { return }
 
         let count = entries.count
-        let side: CGFloat = 36
+        let side = min(90, max(28, size.width / CGFloat(max(2, count * 2))))
         let width = max(1, size.width - side * 2)
         let spacing = count == 1 ? 0 : width / CGFloat(count - 1)
-        let lanes = (0..<count).map { side + CGFloat($0) * spacing }
+        let lanes = (0..<count).map { count == 1 ? size.width / 2 : side + CGFloat($0) * spacing }
         let top = max(100, size.height - 80)
-        let bottom: CGFloat = min(78, max(38, top - 50))
+        let bottom: CGFloat = min(112, max(78, top - 80))
         let usable = max(1, top - bottom)
         func rowY(_ row: Int) -> CGFloat {
             top - usable * CGFloat(row + 1) / CGFloat(layout.rowCount + 1)
@@ -178,13 +189,13 @@ final class DrawLadderScene: SKScene {
             rungPath.addLine(to: CGPoint(x: lanes[rung.leftLane + 1], y: y))
         }
         let railOutline = SKShapeNode(path: railPath)
-        railOutline.strokeColor = DrawGamePalette.outline
+        railOutline.strokeColor = Self.railEdge
         railOutline.lineWidth = 7
         railOutline.lineCap = .round
         railOutline.zPosition = 0
         addChild(railOutline)
         let railInner = SKShapeNode(path: railPath)
-        railInner.strokeColor = DrawGamePalette.cream
+        railInner.strokeColor = Self.railFill
         railInner.lineWidth = 3
         railInner.lineCap = .round
         railInner.zPosition = 1
@@ -192,14 +203,14 @@ final class DrawLadderScene: SKScene {
         rungOutline.path = rungPath
         rungOutline.name = "ladder-rungs"
         rungOutline.isHidden = progress == 0
-        rungOutline.strokeColor = DrawGamePalette.outline
+        rungOutline.strokeColor = Self.railEdge
         rungOutline.lineWidth = 7
         rungOutline.lineCap = .round
         rungOutline.zPosition = 0
         addChild(rungOutline)
         rungInner.path = rungPath
         rungInner.isHidden = progress == 0
-        rungInner.strokeColor = DrawGamePalette.cream
+        rungInner.strokeColor = Self.railFill
         rungInner.lineWidth = 3
         rungInner.lineCap = .round
         rungInner.zPosition = 1
@@ -211,22 +222,39 @@ final class DrawLadderScene: SKScene {
         highlight.zPosition = 2
         addChild(highlight)
 
-        let textSize = min(CGFloat(12), max(8, spacing * 0.28))
+        let labelWidth = min(170, max(24, spacing - 10))
         for index in 0..<count {
-            let label = SKLabelNode(fontNamed: "AppleSDGothicNeo-SemiBold")
-            let destination = event.ladderLabels?[safe: index] ?? ""
-            label.text = destination
-            label.fontSize = textSize
-            label.fontColor = DrawGamePalette.cream
-            label.horizontalAlignmentMode = .center
-            label.verticalAlignmentMode = .center
-            label.position = CGPoint(x: lanes[index], y: max(16, bottom - 54))
+            let start = SKShapeNode(ellipseOf: CGSize(width: min(26, max(12, spacing * 0.38)), height: 8))
+            start.position = CGPoint(x: lanes[index], y: top)
+            start.fillColor = DrawGamePalette.cream
+            start.strokeColor = Self.railEdge
+            start.lineWidth = 1.5
+            start.zPosition = 2
+            addChild(start)
+
+            let destination = SKShapeNode(ellipseOf: CGSize(width: min(44, max(18, spacing * 0.6)), height: 12))
+            destination.position = CGPoint(x: lanes[index], y: bottom - 2)
+            destination.fillColor = DrawGamePalette.colors[index % DrawGamePalette.colors.count]
+            destination.strokeColor = Self.railEdge
+            destination.lineWidth = 1.5
+            destination.zPosition = 2
+            addChild(destination)
+            destinationMarkers.append(destination)
+
+            let label = DrawGameTextNode(text: event.ladderLabels?[safe: index] ?? "", fontSize: 12,
+                                         color: DrawGamePalette.outline, showsBackground: false)
+            label.fit(maxWidth: labelWidth, maxHeight: 44)
+            let labelHeight = max(30, min(62, label.calculateAccumulatedFrame().height + 8))
+            let center = CGPoint(x: lanes[index], y: Self.controlsAnchorY + labelHeight / 2)
+            let tag = SKShapeNode(rectOf: CGSize(width: labelWidth, height: labelHeight), cornerRadius: 8)
+            tag.position = center
+            tag.fillColor = DrawGamePalette.cream
+            tag.strokeColor = Self.railEdge
+            tag.lineWidth = 1
+            tag.zPosition = 2
+            addChild(tag)
+            label.position = center
             label.zPosition = 3
-            // Long user-entered labels may be identical and must remain in
-            // their distinct server slots. Scale to fit rather than truncate.
-            if spacing > 0, label.frame.width > spacing - 4 {
-                label.xScale = max(0.35, (spacing - 4) / label.frame.width)
-            }
             addChild(label)
         }
 

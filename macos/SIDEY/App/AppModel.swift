@@ -41,6 +41,10 @@ final class AppModel {
     var rooms: [Room] = []
     var drawEvents: [DrawEvent] = []
     var drawEventsRoomID: UUID?
+    var drawHistoryRoomID: UUID?
+    var drawHistoryEvents: [DrawEvent] = []
+    var drawHistoryLoading = false
+    var drawHistoryError: String?
     var drawOperationInProgress = false
     var visibleDrawEvents: [DrawEvent] {
         guard let roomID = activeRoom?.id, drawEventsRoomID == roomID else { return [] }
@@ -51,7 +55,15 @@ final class AppModel {
     var hasProfile = false
     let treeMovement = TreeMovementState()
     var currentUserID: UUID? {
-        didSet { if oldValue != currentUserID { treeMovement.reset() } }
+        didSet {
+            if oldValue != currentUserID {
+                treeMovement.reset()
+                drawHistoryRoomID = nil
+                drawHistoryEvents = []
+                drawHistoryLoading = false
+                drawHistoryError = nil
+            }
+        }
     }
     var errorMessage: String?
     var historySendError: String?

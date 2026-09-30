@@ -30,6 +30,7 @@ struct SettingsActions {
     var onCloseDraw: (UUID) -> Void = { _ in }
     var onDeleteDraw: (UUID) -> Void = { _ in }
     var onRefreshDraws: () -> Void = {}
+    var onSelectDrawHistoryRoom: (UUID) -> Void = { _ in }
 
     var onCharacterSoundEffectsChanged: (Bool) -> Void = { _ in }
     var onCharacterImpact: (String, TimeInterval) -> Void = { _, _ in }

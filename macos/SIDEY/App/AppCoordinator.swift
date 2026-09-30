@@ -92,7 +92,8 @@ final class AppCoordinator {
             onReplayDraw: { [weak self] id in self?.replayDrawEvent(id) },
             onCloseDraw: { [weak self] id in self?.closeDrawEvent(id) },
             onDeleteDraw: { [weak self] id in self?.deleteDrawEvent(id) },
-            onRefreshDraws: { [weak self] in self?.refreshDrawEvents() },
+            onRefreshDraws: { [weak self] in self?.refreshDrawHistory() },
+            onSelectDrawHistoryRoom: { [weak self] id in self?.selectDrawHistoryRoom(id) },
             onCharacterSoundEffectsChanged: { [weak self] enabled in
                 guard let self else { return }
                 self.model.preferences.characterSoundEffectsEnabled = enabled
@@ -143,6 +144,7 @@ final class AppCoordinator {
     var drawRefreshTask: Task<Void, Never>?
     var drawRefreshGeneration = 0
     var drawOpenGeneration = 0
+    var drawHistoryRefreshGeneration = 0
     var drawResultWindowStorage: DrawResultWindowController?
     var drawResultWindow: DrawResultWindowController {
         if let drawResultWindowStorage { return drawResultWindowStorage }

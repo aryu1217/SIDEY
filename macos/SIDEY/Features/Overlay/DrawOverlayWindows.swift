@@ -1,5 +1,4 @@
 import AppKit
-import QuartzCore
 import SwiftUI
 
 private final class DrawIconPanel: NSPanel {
@@ -16,8 +15,11 @@ final class DrawIconBubbleController {
     private let hostingView: NSHostingView<DrawIconBubbleView>
     private let onOpen: (UUID) -> Void
     private var events: [DrawEvent]
-    private var wasChatBubbleVisible = false
+    private var previousChatBubbleSize: CGSize?
     private var lastRequestedFrame: CGRect?
+    private var frameTransitionTask: Task<Void, Never>?
+    private var transitionStartFrame: CGRect?
+    private var transitionStartedAt: TimeInterval = 0
 
     init(events: [DrawEvent], onOpen: @escaping (UUID) -> Void) {
         self.events = events
@@ -52,7 +54,7 @@ final class DrawIconBubbleController {
             hostingView.rootView = DrawIconBubbleView(events: events, onOpen: onOpen)
         }
         guard visible, !events.isEmpty, let characterFrame, let visibleFrame else {
-            panel.orderOut(nil)
+            hide()
             return
         }
         let size = Self.size(for: events.count)
@@ -75,24 +77,76 @@ final class DrawIconBubbleController {
             }
         }
         let frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
+        let chatBubbleSize = chatBubbleFrame.map {
+            CGSize(width: $0.width.rounded(), height: $0.height.rounded())
+        }
         if lastRequestedFrame != frame {
-            let chatChanged = (chatBubbleFrame != nil) != wasChatBubbleVisible
-            if chatChanged, panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.22
-                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    panel.animator().setFrame(frame, display: true)
+            let chatLayoutChanged = chatBubbleSize != previousChatBubbleSize
+            lastRequestedFrame = frame
+            if panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+               chatLayoutChanged || frameTransitionTask != nil {
+                if chatLayoutChanged || frameTransitionTask == nil {
+                    transitionStartFrame = panel.frame
+                    transitionStartedAt = ProcessInfo.processInfo.systemUptime
                 }
+                startFrameTransitionIfNeeded()
             } else {
+                cancelFrameTransition()
                 panel.setFrame(frame, display: true)
             }
-            lastRequestedFrame = frame
         }
-        wasChatBubbleVisible = chatBubbleFrame != nil
+        previousChatBubbleSize = chatBubbleSize
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
-    func hide() { panel.orderOut(nil) }
+    func hide() {
+        cancelFrameTransition()
+        lastRequestedFrame = nil
+        previousChatBubbleSize = nil
+        if panel.isVisible { panel.orderOut(nil) }
+    }
+
+    private func startFrameTransitionIfNeeded() {
+        guard frameTransitionTask == nil else { return }
+        // Character and chat geometry arrive separately on every scene update.
+        // Keep one writer for the panel frame: new reports update the target,
+        // rather than fighting an in-flight AppKit frame animation.
+        frameTransitionTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard self?.advanceFrameTransition() == true else { return }
+                do { try await Task.sleep(for: .seconds(1.0 / 30)) }
+                catch { return }
+            }
+        }
+    }
+
+    private func advanceFrameTransition() -> Bool {
+        guard let start = transitionStartFrame, let target = lastRequestedFrame else {
+            frameTransitionTask = nil
+            return false
+        }
+        let progress = min(1, max(0, (ProcessInfo.processInfo.systemUptime - transitionStartedAt) / 0.22))
+        let eased = CGFloat(progress * progress * (3 - 2 * progress))
+        let frame = CGRect(
+            x: start.minX + (target.minX - start.minX) * eased,
+            y: start.minY + (target.minY - start.minY) * eased,
+            width: target.width,
+            height: target.height
+        )
+        panel.setFrame(frame, display: true)
+        if progress == 1 {
+            transitionStartFrame = nil
+            frameTransitionTask = nil
+            return false
+        }
+        return true
+    }
+
+    private func cancelFrameTransition() {
+        frameTransitionTask?.cancel()
+        frameTransitionTask = nil
+        transitionStartFrame = nil
+    }
 }
 
 private struct DrawIconBubbleView: View {

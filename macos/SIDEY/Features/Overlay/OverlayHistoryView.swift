@@ -203,11 +203,17 @@ struct HistoryMessageCard: View {
     let participant: MessageHistoryParticipant
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 4) {
             if participant.isCurrentUser { Spacer(minLength: 24) }
             if !participant.isCurrentUser { avatar }
-            messageBubble
-                .frame(maxWidth: 440)
+            VStack(alignment: participant.isCurrentUser ? .trailing : .leading, spacing: 4) {
+                messageBubble
+                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 16)
+            .frame(maxWidth: 440, alignment: participant.isCurrentUser ? .trailing : .leading)
             if participant.isCurrentUser { avatar }
             if !participant.isCurrentUser { Spacer(minLength: 24) }
         }
@@ -216,43 +222,35 @@ struct HistoryMessageCard: View {
     }
 
     private var avatar: some View {
-        Image(nsImage: PixelCharacterPreviewImage.image(
-            for: PixelCharacterCatalog.definition(for: participant.characterID)
-        ))
-        .interpolation(.none)
-        .resizable()
-        .frame(width: 48, height: 48)
-        .accessibilityHidden(true)
+        VStack(spacing: 3) {
+            Text(participant.nickname)
+                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(participant.nickname)
+            Image(nsImage: PixelCharacterPreviewImage.image(
+                for: PixelCharacterCatalog.definition(for: participant.characterID)
+            ))
+            .interpolation(.none)
+            .resizable()
+            .frame(width: 48, height: 48)
+            .accessibilityHidden(true)
+        }
+        .frame(width: 72)
     }
 
     private var messageBubble: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 7) {
-                Text(participant.nickname)
-                    .font(.system(.callout, design: .rounded, weight: .semibold))
-                    .lineLimit(1)
-                if participant.isCurrentUser {
-                    Text(L10n.text("profile.current_user.badge"))
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.tint)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.12), in: Capsule())
-                }
-                Spacer(minLength: 8)
-                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
             Text(entry.body)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-
             deliveryStatus
         }
-        .padding(12)
-        .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .padding(participant.isCurrentUser ? .trailing : .leading, 8)
+        .frame(minHeight: 40, alignment: .leading)
+        .glassEffect(in: HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser))
     }
 
     @ViewBuilder
@@ -272,6 +270,46 @@ struct HistoryMessageCard: View {
         case .confirmed:
             EmptyView()
         }
+    }
+}
+
+private struct HistoryMessageBubbleShape: Shape {
+    let tailOnRight: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let tailWidth: CGFloat = 8
+        let radius = min(14, rect.height / 2)
+        let left = rect.minX + tailWidth
+        let right = rect.maxX
+        let top = rect.minY
+        let bottom = rect.maxY
+        let tailCenter = min(top + 24, bottom - radius - 5)
+        var path = Path()
+        path.move(to: CGPoint(x: left + radius, y: top))
+        path.addLine(to: CGPoint(x: right - radius, y: top))
+        path.addQuadCurve(to: CGPoint(x: right, y: top + radius),
+                          control: CGPoint(x: right, y: top))
+        path.addLine(to: CGPoint(x: right, y: bottom - radius))
+        path.addQuadCurve(to: CGPoint(x: right - radius, y: bottom),
+                          control: CGPoint(x: right, y: bottom))
+        path.addLine(to: CGPoint(x: left + radius, y: bottom))
+        path.addQuadCurve(to: CGPoint(x: left, y: bottom - radius),
+                          control: CGPoint(x: left, y: bottom))
+        path.addLine(to: CGPoint(x: left, y: tailCenter + 5))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: tailCenter + 5),
+                          control: CGPoint(x: left - 3, y: tailCenter + 6))
+        path.addQuadCurve(to: CGPoint(x: left, y: tailCenter - 5),
+                          control: CGPoint(x: left - 2, y: tailCenter + 1))
+        path.addLine(to: CGPoint(x: left, y: top + radius))
+        path.addQuadCurve(to: CGPoint(x: left + radius, y: top),
+                          control: CGPoint(x: left, y: top))
+        path.closeSubpath()
+        if tailOnRight {
+            return path.applying(CGAffineTransform(
+                a: -1, b: 0, c: 0, d: 1, tx: rect.minX + rect.maxX, ty: 0
+            ))
+        }
+        return path
     }
 }
 

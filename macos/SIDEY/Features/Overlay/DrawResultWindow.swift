@@ -31,6 +31,7 @@ final class DrawResultWindowController {
     private var playback = DrawPlaybackState()
     private var event: DrawEvent?
     private var roomID: UUID?
+    private var followsActiveRoom = true
 
     init() {
         stagePanel = DrawResultPanel(
@@ -61,9 +62,10 @@ final class DrawResultWindowController {
         })
     }
 
-    func show(event: DrawEvent, room: Room, screenIdentifier: String?) {
+    func show(event: DrawEvent, room: Room, screenIdentifier: String?, followsActiveRoom: Bool = true) {
         close()
         self.event = event
+        self.followsActiveRoom = followsActiveRoom
         roomID = room.id
         self.screenIdentifier = screenIdentifier
         playback = DrawPlaybackState()
@@ -89,10 +91,15 @@ final class DrawResultWindowController {
         controlsPanel.contentView = nil
         event = nil
         roomID = nil
+        followsActiveRoom = true
     }
 
     func closeIfRoomChanged(to roomID: UUID?) {
-        if let current = self.roomID, current != roomID { close() }
+        if followsActiveRoom, let current = self.roomID, current != roomID { close() }
+    }
+
+    func closeIfRoomUnavailable(in roomIDs: Set<UUID>) {
+        if let roomID, !roomIDs.contains(roomID) { close() }
     }
 
     func updateScreen(_ identifier: String?) {
@@ -105,6 +112,7 @@ final class DrawResultWindowController {
         playbackTask?.cancel()
         playback.progress = 0
         playback.phase = .playing
+        reposition()
         let reducedMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let duration: TimeInterval
         if reducedMotion {
@@ -126,6 +134,7 @@ final class DrawResultWindowController {
                 playback.progress = reducedMotion && fraction < 1 ? 0 : fraction
                 if fraction >= 1 {
                     playback.phase = .complete
+                    reposition()
                     playbackTask = nil
                     return
                 }
@@ -144,10 +153,26 @@ final class DrawResultWindowController {
         let stage = CGRect(x: frame.midX - width / 2,
                            y: frame.midY - height / 2 + 24,
                            width: width, height: height)
-        stagePanel.setFrame(stage, display: true)
-        let controls = CGRect(x: frame.midX - 160, y: max(frame.minY + 8, stage.minY - 67),
+        if stagePanel.frame != stage { stagePanel.setFrame(stage, display: true) }
+        let drawingBottom: CGFloat
+        switch event?.kind {
+        case .lot:
+            drawingBottom = DrawLotScene.controlsAnchorY(
+                entryCount: event?.gameEntryCount ?? 2, size: stage.size,
+                completed: playback.phase == .complete
+            )
+        case .roulette:
+            let radius = max(32, min(width * 0.37, height * 0.36))
+            drawingBottom = height / 2 - 7 - radius - 3
+        case .ladder:
+            drawingBottom = DrawLadderScene.controlsAnchorY
+        case nil:
+            drawingBottom = 0
+        }
+        let controls = CGRect(x: frame.midX - 160,
+                              y: max(frame.minY + 8, stage.minY + drawingBottom - 12 - 64),
                               width: 320, height: 64)
-        controlsPanel.setFrame(controls, display: true)
+        if controlsPanel.frame != controls { controlsPanel.setFrame(controls, display: true) }
     }
 }
 

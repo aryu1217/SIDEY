@@ -422,15 +422,21 @@ final class OverlayWindowGroup {
             $0.identifier == preference.screenIdentifier || $0.legacySignature == preference.screenIdentifier
         })
         resolved.screenIdentifier = screen.identifier
-        currentScreenIdentifier = screen.identifier
         let frames = OverlayRegionLayout.frames(for: resolved, on: screen)
+        let geometryChanged = currentScreenIdentifier != screen.identifier
+            || activityFrame != frames.activityFrame || renderFrame != frames.renderFrame
+        currentScreenIdentifier = screen.identifier
         activityFrame = frames.activityFrame
         renderFrame = frames.renderFrame
-        currentUserLocalFrame = nil
-        characterLocalFrames.removeAll()
-        chatBubbleLocalFrames.removeAll()
-        hotspotWindow.setFrame(nil)
-        resetThrowTargeting()
+        if geometryChanged {
+            // Reapplying visibility after a snapshot must not briefly erase
+            // valid anchors and hide every draw bubble until the next frame.
+            currentUserLocalFrame = nil
+            characterLocalFrames.removeAll()
+            chatBubbleLocalFrames.removeAll()
+            hotspotWindow.setFrame(nil)
+            resetThrowTargeting()
+        }
         worldWindow.setLayout(
             renderFrame: frames.renderFrame,
             localActivityFrame: frames.localActivityFrame

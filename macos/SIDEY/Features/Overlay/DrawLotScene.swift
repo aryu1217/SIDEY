@@ -50,35 +50,19 @@ final class DrawLotScene: SKScene {
         render()
     }
 
+    static func controlsAnchorY(entryCount: Int, size: CGSize, completed: Bool) -> CGFloat {
+        let grid = DrawLotGridLayout(entryCount: entryCount, size: size)
+        if completed {
+            return size.height / 2 - min(12, size.height * 0.04) - grid.paperSize.height * 1.45 / 2
+        }
+        return (grid.positions.map(\.y).min() ?? size.height / 2) - grid.paperSize.height / 2
+    }
+
     private func rebuildLayout() {
         guard !entries.isEmpty, size.width > 0, size.height > 0 else { return }
-        let gap: CGFloat = 18
-        let inset: CGFloat = 24
-        // Choose a balanced grid of cards rather than a strip of tiny labels.
-        let columns = (1...min(4, entries.count)).max { lhs, rhs in
-            func cardScale(columns: Int) -> CGFloat {
-                let rows = Int(ceil(CGFloat(entries.count) / CGFloat(columns)))
-                let width = (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)
-                let height = (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)
-                return min(width / 172, height / 152)
-            }
-            return cardScale(columns: lhs) < cardScale(columns: rhs)
-        } ?? 1
-        let rows = Int(ceil(CGFloat(entries.count) / CGFloat(columns)))
-        let width = min(172, max(48, (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)))
-        let height = min(152, max(52, (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)))
-        paperSize = CGSize(width: width, height: height)
-        let spacingX = width + gap
-        let spacingY = height + gap
-        startingPositions = entries.indices.map { index in
-            let row = index / columns
-            let itemsInRow = min(columns, entries.count - row * columns)
-            let column = index % columns
-            return CGPoint(
-                x: size.width / 2 + (CGFloat(column) - CGFloat(itemsInRow - 1) / 2) * spacingX,
-                y: size.height / 2 + (CGFloat(rows - 1) / 2 - CGFloat(row)) * spacingY
-            )
-        }
+        let grid = DrawLotGridLayout(entryCount: entries.count, size: size)
+        paperSize = grid.paperSize
+        startingPositions = grid.positions
 
         if papers.count != entries.count {
             removeAllChildren()
@@ -167,6 +151,41 @@ final class DrawLotScene: SKScene {
     }
 }
 
+private struct DrawLotGridLayout {
+    let paperSize: CGSize
+    let positions: [CGPoint]
+
+    init(entryCount: Int, size: CGSize) {
+        let gap: CGFloat = 18
+        let inset: CGFloat = 24
+        // Choose a balanced grid of cards rather than a strip of tiny labels.
+        let columns = (1...max(1, min(4, entryCount))).max { lhs, rhs in
+            func cardScale(columns: Int) -> CGFloat {
+                let rows = max(1, Int(ceil(CGFloat(entryCount) / CGFloat(columns))))
+                let width = (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)
+                let height = (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)
+                return min(width / 172, height / 152)
+            }
+            return cardScale(columns: lhs) < cardScale(columns: rhs)
+        } ?? 1
+        let rows = max(1, Int(ceil(CGFloat(entryCount) / CGFloat(columns))))
+        let width = min(172, max(48, (size.width - inset * 2 - CGFloat(columns - 1) * gap) / CGFloat(columns)))
+        let height = min(152, max(52, (size.height - inset * 2 - CGFloat(rows - 1) * gap) / CGFloat(rows)))
+        self.paperSize = CGSize(width: width, height: height)
+        let spacingX = width + gap
+        let spacingY = height + gap
+        positions = (0..<entryCount).map { index in
+            let row = index / columns
+            let itemsInRow = min(columns, entryCount - row * columns)
+            let column = index % columns
+            return CGPoint(
+                x: size.width / 2 + (CGFloat(column) - CGFloat(itemsInRow - 1) / 2) * spacingX,
+                y: size.height / 2 + (CGFloat(rows - 1) / 2 - CGFloat(row)) * spacingY
+            )
+        }
+    }
+}
+
 private struct PaperPlan {
     let phase: CGFloat
     let orbit: CGFloat
@@ -178,12 +197,17 @@ private struct PaperPlan {
 
 @MainActor
 private final class PaperNode: SKNode {
-    private static let front = NSColor(srgbRed: 1, green: 0.97, blue: 0.86, alpha: 1)
-    private static let back = NSColor(srgbRed: 0.79, green: 0.70, blue: 0.57, alpha: 1)
-    private static let foldedFront = NSColor(srgbRed: 0.91, green: 0.84, blue: 0.70, alpha: 1)
+    private static let front = NSColor(srgbRed: 1, green: 0.985, blue: 0.94, alpha: 1)
+    private static let back = NSColor(srgbRed: 0.83, green: 0.79, blue: 0.96, alpha: 1)
+    private static let foldedFront = NSColor(srgbRed: 0.94, green: 0.91, blue: 0.84, alpha: 1)
+    private static let edge = NSColor(srgbRed: 0.50, green: 0.43, blue: 0.62, alpha: 1)
     private let left = SKShapeNode()
     private let flap = SKShapeNode()
+    private let leftEdge = SKShapeNode()
+    private let flapEdge = SKShapeNode()
     private let crease = SKShapeNode()
+    private let corner = SKShapeNode()
+    private let seal = SKShapeNode()
     private let content = SKNode()
     private let label: DrawGameTextNode
     private let character: DrawCharacterNode?
@@ -198,20 +222,36 @@ private final class PaperNode: SKNode {
         if let character { content.addChild(character) }
         content.addChild(label)
         left.fillColor = Self.front
-        left.strokeColor = DrawGamePalette.outline
-        left.lineWidth = 2
+        left.strokeColor = .clear
         left.zPosition = 0
         addChild(left)
-        flap.strokeColor = DrawGamePalette.outline
-        flap.lineWidth = 2
+        flap.strokeColor = .clear
         flap.zPosition = 1
         addChild(flap)
+        for edge in [leftEdge, flapEdge] {
+            edge.strokeColor = Self.edge
+            edge.lineWidth = 1.5
+            edge.lineCap = .round
+            edge.fillColor = .clear
+            addChild(edge)
+        }
+        leftEdge.zPosition = 0.5
+        flapEdge.zPosition = 1.5
         content.zPosition = 2
         addChild(content)
-        crease.strokeColor = DrawGamePalette.outline.withAlphaComponent(0.45)
+        crease.strokeColor = Self.edge.withAlphaComponent(0.2)
         crease.lineWidth = 1
-        crease.zPosition = 4
+        crease.zPosition = 1.6
         addChild(crease)
+        corner.fillColor = Self.foldedFront
+        corner.strokeColor = Self.edge.withAlphaComponent(0.4)
+        corner.lineWidth = 1
+        corner.zPosition = 0
+        content.addChild(corner)
+        seal.fillColor = Self.front
+        seal.strokeColor = .clear
+        seal.zPosition = 4
+        addChild(seal)
     }
 
     required init?(coder: NSCoder) { nil }
@@ -219,12 +259,43 @@ private final class PaperNode: SKNode {
     func setSize(_ size: CGSize) {
         paperSize = size
         let halfWidth = size.width / 2
-        left.path = CGPath(rect: CGRect(x: -halfWidth, y: -size.height / 2,
-                                        width: halfWidth, height: size.height), transform: nil)
+        let halfHeight = size.height / 2
+        let radius = min(10, size.width * 0.08)
+        let leftPath = CGMutablePath()
+        leftPath.move(to: CGPoint(x: 0, y: -halfHeight))
+        leftPath.addLine(to: CGPoint(x: -halfWidth + radius, y: -halfHeight))
+        leftPath.addQuadCurve(to: CGPoint(x: -halfWidth, y: -halfHeight + radius),
+                              control: CGPoint(x: -halfWidth, y: -halfHeight))
+        leftPath.addLine(to: CGPoint(x: -halfWidth, y: halfHeight - radius))
+        leftPath.addQuadCurve(to: CGPoint(x: -halfWidth + radius, y: halfHeight),
+                              control: CGPoint(x: -halfWidth, y: halfHeight))
+        leftPath.addLine(to: CGPoint(x: 0, y: halfHeight))
+        leftEdge.path = leftPath.copy()
+        leftPath.closeSubpath()
+        left.path = leftPath
         let creasePath = CGMutablePath()
-        creasePath.move(to: CGPoint(x: 0, y: -size.height / 2))
-        creasePath.addLine(to: CGPoint(x: 0, y: size.height / 2))
+        for y in stride(from: -halfHeight + 8, through: halfHeight - 8, by: 7) {
+            creasePath.move(to: CGPoint(x: 0, y: y))
+            creasePath.addLine(to: CGPoint(x: 0, y: min(y + 3, halfHeight - 8)))
+        }
         crease.path = creasePath
+        let dogEar = min(14, size.width * 0.1)
+        let cornerPath = CGMutablePath()
+        cornerPath.move(to: CGPoint(x: halfWidth - dogEar - 3, y: halfHeight - 3))
+        cornerPath.addLine(to: CGPoint(x: halfWidth - 3, y: halfHeight - dogEar - 3))
+        cornerPath.addLine(to: CGPoint(x: halfWidth - dogEar - 3, y: halfHeight - dogEar - 3))
+        cornerPath.closeSubpath()
+        corner.path = cornerPath
+        let sealRadius = min(10, size.width * 0.07)
+        let sealPath = CGMutablePath()
+        for index in 0..<8 {
+            let angle = CGFloat(index) * .pi / 4
+            let radius = index.isMultiple(of: 2) ? sealRadius : sealRadius * 0.42
+            let point = CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
+            if index == 0 { sealPath.move(to: point) } else { sealPath.addLine(to: point) }
+        }
+        sealPath.closeSubpath()
+        seal.path = sealPath
         if let character {
             characterScale = size.width >= 100 && size.height >= 120 ? 1 : 0.5
             character.setScale(characterScale)
@@ -245,15 +316,31 @@ private final class PaperNode: SKNode {
         let edgeX = paperSize.width * 0.5 * cosine
         let perspective = abs(sin(angle)) * paperSize.height * 0.09
         let edgeInset = abs(sin(angle)) * paperSize.height * 0.08
+        let halfHeight = paperSize.height / 2
+        let cornerRadius = min(10, paperSize.width * 0.08)
+        let horizontalRadius = cornerRadius * cosine
+        let lowerEdge = -halfHeight + edgeInset + perspective
+        let upperEdge = halfHeight - edgeInset + perspective
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: 0, y: -paperSize.height / 2))
-        path.addLine(to: CGPoint(x: edgeX, y: -paperSize.height / 2 + edgeInset + perspective))
-        path.addLine(to: CGPoint(x: edgeX, y: paperSize.height / 2 - edgeInset + perspective))
-        path.addLine(to: CGPoint(x: 0, y: paperSize.height / 2))
+        path.move(to: CGPoint(x: 0, y: -halfHeight))
+        path.addLine(to: CGPoint(x: edgeX - horizontalRadius, y: lowerEdge))
+        path.addQuadCurve(to: CGPoint(x: edgeX, y: lowerEdge + cornerRadius),
+                          control: CGPoint(x: edgeX, y: lowerEdge))
+        path.addLine(to: CGPoint(x: edgeX, y: upperEdge - cornerRadius))
+        path.addQuadCurve(to: CGPoint(x: edgeX - horizontalRadius, y: upperEdge),
+                          control: CGPoint(x: edgeX, y: upperEdge))
+        path.addLine(to: CGPoint(x: 0, y: halfHeight))
+        flapEdge.path = path.copy()
         path.closeSubpath()
         flap.path = path
+        if cosine < 0 { flapEdge.path = path }
         flap.fillColor = cosine < 0 ? Self.back : (angle == 0 ? Self.front : Self.foldedFront)
         flap.zPosition = cosine < 0 ? 3 : 1
+        flapEdge.zPosition = cosine < 0 ? 3.5 : 1.5
+        seal.position = CGPoint(x: edgeX / 2, y: perspective / 2)
+        seal.xScale = max(0.01, abs(cosine))
+        seal.alpha = max(0, -cosine)
+        crease.alpha = max(0, cosine)
         // The character is printed inside the paper. The closed back hides it.
         content.alpha = max(0, min(1, cosine * 2))
     }

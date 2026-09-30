@@ -728,6 +728,15 @@ extension AppCoordinator {
             model.clearBubbles()
         }
         model.apply(snapshot: snapshot, currentUserID: currentUserID)
+        drawResultWindowStorage?.closeIfRoomUnavailable(in: Set(model.rooms.map(\.id)))
+        if let historyRoomID = model.drawHistoryRoomID,
+           !model.rooms.contains(where: { $0.id == historyRoomID }) {
+            drawHistoryRefreshGeneration += 1
+            model.drawHistoryRoomID = nil
+            model.drawHistoryEvents = []
+            model.drawHistoryLoading = false
+            model.drawHistoryError = nil
+        }
         drawResultWindowStorage?.closeIfRoomChanged(to: model.activeRoom?.id)
         if model.drawEventsRoomID != model.activeRoom?.id {
             model.drawEvents = []

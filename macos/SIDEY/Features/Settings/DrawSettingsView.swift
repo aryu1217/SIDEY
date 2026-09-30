@@ -11,6 +11,9 @@ struct DrawSettingsView: View {
     @State private var pendingDeleteID: UUID?
 
     private var room: Room? { model.activeRoom }
+    private var historyEvents: [DrawEvent] {
+        model.drawHistoryEvents.sorted(by: { $0.createdAt > $1.createdAt })
+    }
     private var createTitle: LocalizedStringResource {
         switch kind {
         case .lot: "draw.create.lot"
@@ -59,7 +62,7 @@ struct DrawSettingsView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("draw.entries.title").font(.headline)
+                    Text(kind == .ladder ? L10n.text("draw.ladder.start_entries") : L10n.text("draw.entries.title")).font(.headline)
                     if entryMode == .custom {
                         ForEach($customEntries) { $entry in
                             HStack {
@@ -150,21 +153,37 @@ struct DrawSettingsView: View {
                 systemImage: "clock.arrow.circlepath"
             ) {
                 HStack {
+                    Picker("draw.history.group", selection: Binding(
+                        get: { model.drawHistoryRoomID },
+                        set: { if let id = $0 { actions.onSelectDrawHistoryRoom(id) } }
+                    )) {
+                        ForEach(model.rooms) { group in
+                            Text(verbatim: group.name).tag(Optional(group.id))
+                        }
+                    }
+                    .frame(maxWidth: 280)
+                    .disabled(model.rooms.isEmpty)
                     Spacer()
+                    if model.drawHistoryLoading { ProgressView().controlSize(.small) }
                     Button("draw.refresh", action: actions.onRefreshDraws)
+                        .disabled(model.drawHistoryRoomID == nil || model.drawHistoryLoading)
                 }
-                if model.drawEventsRoomID == room?.id && !model.drawEvents.isEmpty {
-                    ForEach(model.drawEvents.sorted(by: { $0.createdAt > $1.createdAt })) { event in
+                if let error = model.drawHistoryError {
+                    Text(verbatim: error).foregroundStyle(.secondary)
+                }
+                if !model.drawHistoryEvents.isEmpty {
+                    ForEach(historyEvents) { event in
                         HStack(spacing: 12) {
                             DrawPixelGameIcon(kind: event.kind)
                                 .frame(width: 30)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(verbatim: event.kind.title).font(.headline)
-                                Text(verbatim: event.resultLines(in: room).joined(separator: ", "))
-                                    .lineLimit(2)
+                                Text(verbatim: L10n.format("draw.history.entry_count", event.gameEntryCount))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("draw.replay") { actions.onReplayDraw(event.id) }
+                            Button("draw.history.open") { actions.onReplayDraw(event.id) }
                             if event.creatorID == model.currentUserID {
                                 Button {
                                     pendingDeleteID = event.id
@@ -185,9 +204,9 @@ struct DrawSettingsView: View {
                                 Button("draw.end") { actions.onCloseDraw(event.id) }
                             }
                         }
-                        if event.id != model.drawEvents.last?.id { Divider() }
+                        if event.id != historyEvents.last?.id { Divider() }
                     }
-                } else {
+                } else if !model.drawHistoryLoading && model.drawHistoryError == nil {
                     Text("draw.history.empty").foregroundStyle(.secondary)
                 }
             }
@@ -213,8 +232,17 @@ struct DrawSettingsView: View {
             memberIDs = room?.members.map(\.userID).filter { initial.contains($0) } ?? []
             customEntries = [DrawTextEntry(), DrawTextEntry()]
             destinationLabels = [:]
-            actions.onRefreshDraws()
         }
+        .task(id: model.rooms.map(\.id)) {
+            if let selected = model.drawHistoryRoomID,
+               model.rooms.contains(where: { $0.id == selected }) {
+                actions.onRefreshDraws()
+            } else if let id = room?.id ?? model.rooms.first?.id {
+                pendingDeleteID = nil
+                actions.onSelectDrawHistoryRoom(id)
+            }
+        }
+        .onChange(of: model.drawHistoryRoomID) { _, _ in pendingDeleteID = nil }
     }
 
     private func labelLength(_ text: String) -> some View {
