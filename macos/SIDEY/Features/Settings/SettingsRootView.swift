@@ -25,7 +25,7 @@ struct SettingsActions {
     var onRemoveRoomMember: (UUID, UUID) -> Void
     var onLeaveRoom: (UUID) -> Void
     var onDeleteRoom: (UUID) -> Void
-    var onCreateDraw: (DrawKind, [UUID], [String]?, [String]?) -> Void = { _, _, _, _ in }
+    var onCreateDraw: (DrawKind, [UUID], [String]?, [String]?, String) -> Void = { _, _, _, _, _ in }
     var onReplayDraw: (UUID) -> Void = { _ in }
     var onCloseDraw: (UUID) -> Void = { _ in }
     var onDeleteDraw: (UUID) -> Void = { _ in }

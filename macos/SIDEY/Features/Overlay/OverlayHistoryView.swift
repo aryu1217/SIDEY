@@ -277,8 +277,7 @@ struct HistoryMessageCard: View {
                     .interpolation(.none)
                     .resizable()
                     .frame(width: 16, height: 16)
-                    .padding(.horizontal, 8)
-                    .offset(y: -8)
+                    .offset(x: participant.isCurrentUser ? -8 : 8, y: -8)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }

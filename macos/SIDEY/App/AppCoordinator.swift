@@ -85,9 +85,9 @@ final class AppCoordinator {
             onRemoveRoomMember: { [weak self] roomID, userID in self?.removeRoomMember(roomID, userID: userID) },
             onLeaveRoom: { [weak self] roomID in self?.leaveRoom(roomID) },
             onDeleteRoom: { [weak self] roomID in self?.deleteRoom(roomID) },
-            onCreateDraw: { [weak self] kind, participants, entries, labels in
+            onCreateDraw: { [weak self] kind, participants, entries, labels, title in
                 self?.createDrawEvent(kind: kind, participants: participants,
-                                      entryLabels: entries, ladderLabels: labels)
+                                      entryLabels: entries, ladderLabels: labels, title: title)
             },
             onReplayDraw: { [weak self] id in self?.replayDrawEvent(id) },
             onCloseDraw: { [weak self] id in self?.closeDrawEvent(id) },

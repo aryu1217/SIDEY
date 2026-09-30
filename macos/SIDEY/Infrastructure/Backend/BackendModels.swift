@@ -581,6 +581,35 @@ struct CreateDrawEventV2Parameters: Encodable, Sendable {
     }
 }
 
+struct CreateDrawEventV3Parameters: Encodable, Sendable {
+    let roomID: UUID
+    let kind: String
+    let participantIDs: [UUID]
+    let entryLabels: [String]?
+    let ladderLabels: [String]?
+    let title: String?
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(roomID, forKey: .roomID)
+        try values.encode(kind, forKey: .kind)
+        try values.encode(participantIDs, forKey: .participantIDs)
+        // This required RPC argument must be JSON null for participant mode.
+        try values.encode(entryLabels, forKey: .entryLabels)
+        try values.encode(ladderLabels, forKey: .ladderLabels)
+        try values.encode(title, forKey: .title)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case roomID = "p_room_id"
+        case kind = "p_kind"
+        case participantIDs = "p_participants"
+        case entryLabels = "p_entry_labels"
+        case ladderLabels = "p_ladder_labels"
+        case title = "p_title"
+    }
+}
+
 struct DrawRoomParameters: Encodable, Sendable {
     let roomID: UUID
     enum CodingKeys: String, CodingKey { case roomID = "p_room_id" }
@@ -753,6 +782,7 @@ enum SideyBackendError: LocalizedError, Equatable {
     case authenticationRequired
     case drawActiveLimitReached
     case drawRateLimitReached
+    case invalidDrawTitle
     case remote(diagnostic: String)
 
     var errorDescription: String? {
@@ -783,6 +813,7 @@ enum SideyBackendError: LocalizedError, Equatable {
         case .authenticationRequired: L10n.text("backend.error.authentication_required")
         case .drawActiveLimitReached: L10n.text("draw.limit_reached")
         case .drawRateLimitReached: L10n.text("draw.rate_limit_reached")
+        case .invalidDrawTitle: L10n.text("draw.title.invalid")
         case .remote: L10n.text("backend.error.generic")
         }
     }
@@ -812,6 +843,7 @@ enum SideyBackendError: LocalizedError, Equatable {
         case "authentication_required": .authenticationRequired
         case "draw_active_limit_reached": .drawActiveLimitReached
         case "draw_rate_limit_reached": .drawRateLimitReached
+        case "invalid_draw_title": .invalidDrawTitle
         default: .remote(diagnostic: code)
         }
     }
@@ -837,7 +869,8 @@ enum SideyBackendError: LocalizedError, Equatable {
             "invalid_message",
             "authentication_required",
             "draw_active_limit_reached",
-            "draw_rate_limit_reached"
+            "draw_rate_limit_reached",
+            "invalid_draw_title"
         ]
         if let code = knownCodes.first(where: { diagnostic.contains($0) }) {
             return business(code: code)

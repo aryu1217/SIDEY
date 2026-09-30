@@ -162,8 +162,8 @@ private struct DrawIconBubbleView: View {
                             .frame(width: 34, height: 32)
                     }
                     .buttonStyle(.plain)
-                    .help(event.kind.title)
-                    .accessibilityLabel(event.kind.title)
+                    .help(event.displayTitle)
+                    .accessibilityLabel(event.displayTitle)
                 }
             }
             .padding(.horizontal, 6)

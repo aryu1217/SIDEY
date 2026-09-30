@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 final class HistoryWindowController: NSWindowController, NSWindowDelegate {
-    static let contentSize = CGSize(width: 560, height: 420)
+    static let contentSize = CGSize(width: 560, height: 600)
     private let model: AppModel
     private let onTypingChanged: (Bool) -> Void
     private(set) var historyStore: MessageHistoryStore
@@ -36,6 +36,15 @@ final class HistoryWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.minSize = CGSize(width: 440, height: 300)
         window.center()
+        if let screen = window.screen ?? NSScreen.main {
+            let visible = screen.visibleFrame.insetBy(dx: 8, dy: 8)
+            var frame = window.frame
+            frame.size.width = min(frame.width, visible.width)
+            frame.size.height = min(frame.height, visible.height)
+            frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+            frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+            window.setFrame(frame, display: false)
+        }
         super.init(window: window)
         window.contentView = NSHostingView(rootView: OverlayHistoryView(
             model: model,

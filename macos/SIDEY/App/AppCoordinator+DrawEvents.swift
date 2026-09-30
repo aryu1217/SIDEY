@@ -42,12 +42,14 @@ extension AppCoordinator {
         }
     }
 
-    func createDrawEvent(kind: DrawKind, participants: [UUID], entryLabels: [String]?, ladderLabels: [String]?) {
+    func createDrawEvent(kind: DrawKind, participants: [UUID], entryLabels: [String]?, ladderLabels: [String]?, title: String = "") {
+        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let entryCount = entryLabels?.count ?? participants.count
         guard !model.drawOperationInProgress,
               let backend,
               let room = model.activeRoom,
               (2...12).contains(entryCount),
+              normalizedTitle.isEmpty || validDrawLabel(normalizedTitle),
               (entryLabels == nil || participants.isEmpty),
               Set(participants).count == participants.count,
               Set(participants).isSubset(of: Set(room.members.map(\.userID))),
@@ -65,7 +67,8 @@ extension AppCoordinator {
                     kind: kind,
                     participantIDs: participants,
                     entryLabels: entryLabels,
-                    ladderLabels: ladderLabels
+                    ladderLabels: ladderLabels,
+                    title: normalizedTitle.isEmpty ? nil : normalizedTitle
                 )
                 refreshDrawEvents()
                 model.presentSuccess(L10n.text("draw.created"))

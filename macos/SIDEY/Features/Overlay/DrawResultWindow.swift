@@ -174,9 +174,10 @@ final class DrawResultWindowController {
         case nil:
             drawingBottom = 0
         }
+        let controlsHeight: CGFloat = event?.title == nil ? 64 : 88
         let controls = CGRect(x: frame.midX - 160,
-                              y: max(frame.minY + 8, stage.minY + drawingBottom - 12 - 64),
-                              width: 320, height: 64)
+                              y: max(frame.minY + 8, stage.minY + drawingBottom - 12 - controlsHeight),
+                              width: 320, height: controlsHeight)
         if controlsPanel.frame != controls { controlsPanel.setFrame(controls, display: true) }
     }
 }
@@ -188,22 +189,33 @@ private struct DrawGameControlsView: View {
     let onClose: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onStart) {
-                Label(playback.phase == .complete ? L10n.text("draw.replay") : L10n.text("draw.start"),
-                      systemImage: playback.phase == .complete ? "arrow.clockwise" : "play.fill")
+        VStack(spacing: 8) {
+            if event.title != nil {
+                Text(verbatim: event.displayTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .glassEffect(in: Capsule())
             }
-            .disabled(playback.phase == .playing)
-            .buttonStyle(.glassProminent)
-            Button(action: onClose) {
-                Label(L10n.text("draw.close_result"), systemImage: "xmark")
+            HStack(spacing: 10) {
+                Button(action: onStart) {
+                    Label(playback.phase == .complete ? L10n.text("draw.replay") : L10n.text("draw.start"),
+                          systemImage: playback.phase == .complete ? "arrow.clockwise" : "play.fill")
+                }
+                .disabled(playback.phase == .playing)
+                .buttonStyle(.glassProminent)
+                Button(action: onClose) {
+                    Label(L10n.text("draw.close_result"), systemImage: "xmark")
+                }
+                .buttonStyle(.glass)
             }
-            .buttonStyle(.glass)
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, event.title == nil ? 12 : 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(event.kind.title)
+        .accessibilityLabel(event.displayTitle)
         .accessibilityValue(
             playback.phase == .playing ? L10n.text("draw.animating") :
                 playback.phase == .complete ? L10n.text("draw.result.title") : event.kind.title

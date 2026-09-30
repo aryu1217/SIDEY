@@ -73,6 +73,7 @@ struct DrawEvent: Codable, Equatable, Identifiable, Sendable {
     let roomID: UUID
     let creatorID: UUID
     let kind: DrawKind
+    let title: String?
     let participantIDs: [UUID]
     let entryLabels: [String]?
     let ladderLabels: [String]?
@@ -86,11 +87,12 @@ struct DrawEvent: Codable, Equatable, Identifiable, Sendable {
     init(id: UUID, roomID: UUID, creatorID: UUID, kind: DrawKind,
          participantIDs: [UUID], ladderLabels: [String]?, result: DrawResult,
          createdAt: String, iconExpiresAt: String, closedAt: String?,
-         openedAt: String?, iconVisible: Bool, entryLabels: [String]? = nil) {
+         openedAt: String?, iconVisible: Bool, entryLabels: [String]? = nil, title: String? = nil) {
         self.id = id
         self.roomID = roomID
         self.creatorID = creatorID
         self.kind = kind
+        self.title = title
         self.participantIDs = participantIDs
         self.entryLabels = entryLabels
         self.ladderLabels = ladderLabels
@@ -103,7 +105,7 @@ struct DrawEvent: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, result
+        case id, kind, result, title
         case roomID = "room_id"
         case creatorID = "creator_id"
         case participantIDs = "participant_ids"
@@ -114,6 +116,11 @@ struct DrawEvent: Codable, Equatable, Identifiable, Sendable {
         case closedAt = "closed_at"
         case openedAt = "opened_at"
         case iconVisible = "icon_visible"
+    }
+
+    var displayTitle: String {
+        let text = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? kind.title : text
     }
 
     var createdDate: Date? { try? PostgresTimestampDecoder.decode(createdAt) }

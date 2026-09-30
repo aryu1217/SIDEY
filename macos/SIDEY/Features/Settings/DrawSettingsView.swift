@@ -4,6 +4,7 @@ struct DrawSettingsView: View {
     @Bindable var model: AppModel
     let actions: SettingsActions
     @State private var kind: DrawKind = .lot
+    @State private var drawTitle = ""
     @State private var entryMode: DrawEntryMode = .custom
     @State private var memberIDs: [UUID] = []
     @State private var customEntries: [DrawTextEntry] = [DrawTextEntry(), DrawTextEntry()]
@@ -33,7 +34,9 @@ struct DrawSettingsView: View {
     private var canCreate: Bool {
         guard (2...12).contains(entryIDs.count),
               model.connectionState == .online,
-              !model.drawOperationInProgress else { return false }
+              !model.drawOperationInProgress,
+              drawTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || validLabel(drawTitle)
+        else { return false }
         if entryMode == .members {
             guard Set(memberIDs).count == memberIDs.count,
                   Set(memberIDs).isSubset(of: Set(room?.members.map(\.userID) ?? [])) else { return false }
@@ -55,6 +58,13 @@ struct DrawSettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+
+                    HStack {
+                        TextField("draw.title.placeholder", text: $drawTitle)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("draw.title.label")
+                        labelLength(drawTitle)
+                    }
 
                     Picker("draw.entries.mode", selection: $entryMode) {
                         Text("draw.entries.custom").tag(DrawEntryMode.custom)
@@ -135,7 +145,7 @@ struct DrawSettingsView: View {
                         let entries = entryMode == .custom
                             ? customEntries.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
                             : nil
-                        actions.onCreateDraw(kind, entryMode == .members ? memberIDs : [], entries, values)
+                        actions.onCreateDraw(kind, entryMode == .members ? memberIDs : [], entries, values, drawTitle)
                     } label: {
                         if model.drawOperationInProgress { ProgressView() }
                         Text(createTitle)
@@ -179,8 +189,8 @@ struct DrawSettingsView: View {
                             DrawPixelGameIcon(kind: event.kind)
                                 .frame(width: 30)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(verbatim: event.kind.title).font(.headline)
-                                Text(verbatim: L10n.format("draw.history.entry_count", event.gameEntryCount))
+                                Text(verbatim: event.displayTitle).font(.headline)
+                                Text(verbatim: event.kind.title + " · " + L10n.format("draw.history.entry_count", event.gameEntryCount))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -234,6 +244,7 @@ struct DrawSettingsView: View {
             memberIDs = room?.members.map(\.userID).filter { initial.contains($0) } ?? []
             customEntries = [DrawTextEntry(), DrawTextEntry()]
             destinationLabels = [:]
+            drawTitle = ""
         }
         .task(id: model.rooms.map(\.id)) {
             if let selected = model.drawHistoryRoomID,

@@ -142,29 +142,17 @@ actor SideyBackend {
         kind: DrawKind,
         participantIDs: [UUID],
         entryLabels: [String]?,
-        ladderLabels: [String]?
+        ladderLabels: [String]?,
+        title: String? = nil
     ) async throws -> DrawEvent {
         _ = try await authenticatedSession()
         do {
-            if let entryLabels {
-                return try await client.rpc(
-                    "create_draw_event_v2",
-                    params: CreateDrawEventV2Parameters(
-                        roomID: roomID,
-                        kind: kind.rawValue,
-                        participantIDs: participantIDs,
-                        entryLabels: entryLabels,
-                        ladderLabels: ladderLabels
-                    )
-                ).execute().value
-            }
             return try await client.rpc(
-                "create_draw_event",
-                params: CreateDrawEventParameters(
-                    roomID: roomID,
-                    kind: kind.rawValue,
-                    participantIDs: participantIDs,
-                    ladderLabels: ladderLabels
+                "create_draw_event_v3",
+                params: CreateDrawEventV3Parameters(
+                    roomID: roomID, kind: kind.rawValue,
+                    participantIDs: participantIDs, entryLabels: entryLabels,
+                    ladderLabels: ladderLabels, title: title
                 )
             ).execute().value
         } catch {
