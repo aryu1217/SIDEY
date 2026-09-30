@@ -1,6 +1,7 @@
 using System.Reflection;
 using Sidey.Core.Abstractions;
 using Sidey.Core.Domain;
+using Sidey.Infrastructure.Backend;
 using Sidey.Presentation.Services;
 
 namespace Sidey.Platform.Windows.Tests;
@@ -25,6 +26,26 @@ public sealed class ChatCoordinatorTests
         Assert.Equal(0, fixture.Backend.Fetches);
         Assert.Empty(fixture.Messages.Entries);
         Assert.Empty(fixture.Bubbles.Bubbles);
+    }
+
+    [Fact]
+    public async Task HealthyActiveRoomCanSendWhileAnotherRoomSubscriptionRecovers()
+    {
+        await using ChatFixture fixture = new();
+        SetField(fixture.Coordinator, "_state", fixture.Coordinator.State with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(false, true, true)
+            {
+                SocketConnected = true,
+            },
+        });
+        fixture.Backend.Send = (id, roomId, body) => Task.FromResult(
+            new ChatMessage(id, roomId, fixture.Profile.Id, body, DateTimeOffset.UtcNow));
+
+        await fixture.Coordinator.SendMessageAsync(fixture.Room.Id, "Active room still works");
+
+        Assert.Equal(1, fixture.Backend.Sends);
+        Assert.Single(fixture.Messages.Entries);
     }
 
     [Fact]
@@ -141,6 +162,30 @@ public sealed class ChatCoordinatorTests
         Assert.Equal(2, fixture.Coordinator.State.Messages.Count);
         Assert.Contains(fixture.Coordinator.State.Messages,
             entry => entry.Id == secondId && entry.State == MessageDeliveryState.Pending);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecoverySnapshotRespectsWhenLocalSendWasConfirmed(bool fetchedAfterSend)
+    {
+        await using ChatFixture fixture = new();
+        fixture.Backend.Send = (id, roomId, body) => Task.FromResult(
+            new ChatMessage(id, roomId, fixture.Profile.Id, body, DateTimeOffset.UtcNow));
+        await fixture.Coordinator.SendMessageAsync(fixture.Room.Id, "Local send");
+
+        fixture.Backend.Events = Replay(new RecoveredMessagesReceived(
+            fixture.Profile.Id, fixture.Room.Id, fixture.Room.RealtimeEpoch, [],
+            fetchedAfterSend ? long.MaxValue : 0));
+        await (Task)typeof(AppCoordinator)
+            .GetMethod("PumpBackendEventsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(fixture.Coordinator, null)!;
+
+        if (fetchedAfterSend)
+            Assert.Empty(fixture.Coordinator.State.Messages);
+        else
+            Assert.Equal(MessageDeliveryState.Confirmed,
+                Assert.Single(fixture.Coordinator.State.Messages).State);
     }
 
     private static async IAsyncEnumerable<BackendEvent> Replay(BackendEvent backendEvent)

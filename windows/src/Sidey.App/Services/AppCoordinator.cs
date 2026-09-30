@@ -40,6 +40,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
     private readonly DiagnosticDataExporter _diagnosticDataExporter = new();
     private readonly IActivityMonitor _activityMonitor = new WindowsActivityMonitor();
     private readonly MessageLedger _messages = new();
+    private readonly Lock _localMessageReconciliationGate = new();
+    private readonly Dictionary<Guid, (ChatMessage Message, long ConfirmedAt)> _localConfirmations = [];
     private readonly ActiveBubbleLedger _bubbles = new();
     private readonly CharacterPulseCooldown _pulseCooldown = new();
     private readonly CharacterThrowCooldown _throwCooldown = new();
@@ -1010,6 +1012,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             _previewSnapshot = null;
             _localPresence = PresenceState.Online;
             _messages.Clear();
+            lock (_localMessageReconciliationGate)
+                _localConfirmations.Clear();
             _bubbles.Clear();
             _typing.Clear();
             _basePresence.Clear();
@@ -1124,7 +1128,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             throw new InvalidOperationException(I18n.Get("composer.group.required"));
         }
 
-        if (!_state.RealtimeConnection.IsReady || !_state.RealtimeConnection.ActiveRoomTransportConnected)
+        if (!_state.ActiveRoomReady)
         {
             StartupDiagnostics.Stage("chat-send-rejected reason=not-ready");
             throw new ChatNotReadyException();
@@ -1152,7 +1156,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                 roomId,
                 normalized,
                 cancellationToken);
-            _messages.Confirm(confirmed);
+            ConfirmLocalMessage(confirmed);
             PublishState();
             StartupDiagnostics.Stage("chat-send-confirmed");
         }
@@ -1190,7 +1194,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                     roomId, before: null, limit: 50, cancellationToken);
                 if (page.Messages.FirstOrDefault(message => message.Id == id) is { } committed)
                 {
-                    _messages.Confirm(committed);
+                    ConfirmLocalMessage(committed);
                     PublishState();
                     StartupDiagnostics.Stage("chat-send-reconciled-after-error");
                     return;
@@ -1770,9 +1774,10 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
     private async Task PumpBackendEventsAsync()
     {
+        RoomSessionLifetime eventSession = _roomSession;
         try
         {
-            await foreach (BackendEvent backendEvent in RequiredBackend().SubscribeAsync(_roomSession.Token))
+            await foreach (BackendEvent backendEvent in RequiredBackend().SubscribeAsync(eventSession.Token))
             {
                 switch (backendEvent)
                 {
@@ -1783,7 +1788,11 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                         bool isActiveRoom = message.Message.RoomId == _state.ActiveRoomId;
                         StartupDiagnostics.Stage(
                             $"realtime-message-received active={isActiveRoom.ToString().ToLowerInvariant()}");
-                        _messages.Confirm(message.Message);
+                        lock (_localMessageReconciliationGate)
+                        {
+                            _localConfirmations.Remove(message.Message.Id);
+                            _messages.Confirm(message.Message);
+                        }
                         StartupDiagnostics.Stage("message-ledger-confirmed");
                         if (isActiveRoom)
                         {
@@ -1806,17 +1815,26 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                         ApplyWorldSnapshot("message");
                         break;
                     case BackendEvent.MessageDeleted deleted:
-                        _messages.Remove(deleted.RoomId, deleted.MessageId);
+                        lock (_localMessageReconciliationGate)
+                        {
+                            _localConfirmations.Remove(deleted.MessageId);
+                            _messages.Remove(deleted.RoomId, deleted.MessageId);
+                        }
                         _bubbles.Remove(deleted.MessageId);
                         PublishState();
                         ApplyWorldSnapshot();
                         break;
                     case BackendEvent.MessagesReplaced replaced:
-                        StartupDiagnostics.Stage(
-                            $"realtime-messages-reconciled active={(replaced.RoomId == _state.ActiveRoomId).ToString().ToLowerInvariant()}");
-                        _messages.ReplaceConfirmed(replaced.RoomId, replaced.Messages);
-                        PublishState();
-                        ApplyWorldSnapshot();
+                        ApplyReconciledMessages(replaced.RoomId, replaced.Messages);
+                        break;
+                    case RecoveredMessagesReceived recovered:
+                        if (!eventSession.IsCancellationRequested && ReferenceEquals(eventSession, _roomSession)
+                            && recovered.UserId == _state.Profile?.Id
+                            && _state.Rooms.Any(room => room.Id == recovered.RoomId && room.RealtimeEpoch == recovered.RoomEpoch))
+                        {
+                            ApplyReconciledMessages(
+                                recovered.RoomId, recovered.Messages, recovered.FetchStartedTimestamp);
+                        }
                         break;
                     case BackendEvent.PresenceChanged presence:
                         StartupDiagnostics.Stage(
@@ -1914,6 +1932,50 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         }
     }
 
+    private void ConfirmLocalMessage(ChatMessage message)
+    {
+        lock (_localMessageReconciliationGate)
+        {
+            bool alreadyConfirmed = _messages.Entries.Any(entry =>
+                entry.Id == message.Id && entry.State == MessageDeliveryState.Confirmed);
+            _messages.Confirm(message);
+            if (alreadyConfirmed)
+                return;
+            _localConfirmations[message.Id] = (message, Stopwatch.GetTimestamp());
+            while (_localConfirmations.Count > 5 * MessageLedger.MaximumConfirmedPerRoom)
+                _localConfirmations.Remove(_localConfirmations.MinBy(pair => pair.Value.ConfirmedAt).Key);
+        }
+    }
+
+    private void ApplyReconciledMessages(
+        Guid roomId, IReadOnlyList<ChatMessage> messages, long? fetchStartedTimestamp = null)
+    {
+        StartupDiagnostics.Stage(
+            $"realtime-messages-reconciled active={(roomId == _state.ActiveRoomId).ToString().ToLowerInvariant()}");
+        lock (_localMessageReconciliationGate)
+        {
+            IReadOnlyList<ChatMessage> replacement = messages;
+            if (fetchStartedTimestamp is { } startedAt)
+            {
+                var merged = messages.ToList();
+                var knownIds = messages.Select(message => message.Id).ToHashSet();
+                foreach ((Guid id, (ChatMessage message, long confirmedAt)) in _localConfirmations.ToArray())
+                {
+                    if (message.RoomId != roomId)
+                        continue;
+                    if (knownIds.Contains(id) || confirmedAt < startedAt)
+                        _localConfirmations.Remove(id);
+                    else
+                        merged.Add(message);
+                }
+                replacement = merged;
+            }
+            _messages.ReplaceConfirmed(roomId, replacement);
+        }
+        PublishState();
+        ApplyWorldSnapshot();
+    }
+
     private async Task PumpActivityAsync()
     {
         await foreach (PresenceState presence in _activityMonitor.ObserveAsync(_roomSession.Token))
@@ -1985,9 +2047,9 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
     {
         bool activeRoomConnectionChanged =
             status.ActiveRoomTransportConnected != _state.ActiveRoomConnected;
-        bool transportConnectionLost =
-            _state.RealtimeConnection.TransportConnected && !status.TransportConnected;
-        if ((activeRoomConnectionChanged || transportConnectionLost)
+        bool socketConnectionLost =
+            _state.RealtimeConnection.SocketConnected && !status.SocketConnected;
+        if ((activeRoomConnectionChanged || socketConnectionLost)
             && !status.ActiveRoomTransportConnected)
         {
             _typing.Clear();
@@ -1995,8 +2057,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
         Guid? currentUserId = _state.Profile?.Id;
         Guid? activeRoomId = _state.ActiveRoomId;
-        IReadOnlyList<Room> rooms = activeRoomConnectionChanged || transportConnectionLost
-            ? [.. _state.Rooms.Select(room => !status.TransportConnected || room.Id == activeRoomId ? room with
+        IReadOnlyList<Room> rooms = activeRoomConnectionChanged || socketConnectionLost
+            ? [.. _state.Rooms.Select(room => !status.SocketConnected || room.Id == activeRoomId ? room with
             {
                 Members = [.. room.Members.Select(member =>
                 {
@@ -2016,7 +2078,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                         return member;
                     }
 
-                    if (!status.TransportConnected && member.UserId != currentUserId)
+                    if (!status.SocketConnected && member.UserId != currentUserId)
                     {
                         _basePresence[key] = PresenceState.Offline;
                     }
@@ -2206,9 +2268,14 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                 }
             }
         }
+        Guid? pendingRoomId = _roomSession.SwitchPipeline?.PendingRoomId;
+        Guid? realtimeRoomId = pendingRoomId is { } pending
+            && snapshot.Rooms.Any(room => room.Id == pending)
+                ? pending
+                : _state.ActiveRoomId;
         await RequiredBackend().SynchronizeRealtimeRoomsAsync(
             RoomEpochs(snapshot.Rooms),
-            _state.ActiveRoomId,
+            realtimeRoomId,
             _localPresence,
             cancellationToken);
         if (_overlay is null

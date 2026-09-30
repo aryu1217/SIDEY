@@ -6,6 +6,51 @@ namespace Sidey.Platform.Windows.Tests;
 public sealed class FirebaseRtdbUrlBuilderTests
 {
     [Fact]
+    public async Task RateLimitedStreamPreservesServerRetryAfter()
+    {
+        var urls = new FirebaseRtdbUrlBuilder(new Uri("https://sidey.firebaseio.com/"));
+        var server = new FakeFirebaseServer((_, _) =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(120));
+            return response;
+        });
+        await using var client = FirebaseRtdbRestClient.CreateForTesting(urls, server.SendRawAsync);
+        FirebaseRtdbRequestException failure = await Assert.ThrowsAsync<FirebaseRtdbRequestException>(
+            () => client.OpenEventStreamAsync("/v2/t/user", "token"));
+        Assert.Equal(TimeSpan.FromSeconds(120), failure.RetryAfter);
+    }
+
+    [Fact]
+    public async Task RequestScopedClientsDoNotDisposeSharedHttpConnectionPool()
+    {
+        var handler = new PoolHandler();
+        using var http = new HttpClient(handler);
+        var urls = new FirebaseRtdbUrlBuilder(new Uri("https://sidey.firebaseio.com/"));
+        for (int index = 0; index < 2; index++)
+        {
+            await using var client = new FirebaseRtdbRestClient(urls, http);
+            await client.WriteAsync(HttpMethod.Delete, "/v2/t/user", "token", null);
+        }
+        Assert.Equal(2, handler.Requests);
+        Assert.False(handler.Disposed);
+        http.Dispose();
+        Assert.True(handler.Disposed);
+    }
+
+    private sealed class PoolHandler : HttpMessageHandler
+    {
+        public int Requests { get; private set; }
+        public bool Disposed { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+        }
+        protected override void Dispose(bool disposing) { Disposed = true; base.Dispose(disposing); }
+    }
+
+    [Fact]
     public void DatabasePathsAreEncodedOnceAndAlwaysEndInJson()
     {
         var urls = new FirebaseRtdbUrlBuilder(new Uri("https://sidey.firebaseio.com/"));

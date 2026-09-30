@@ -79,7 +79,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
 
     private void ApplyComposerState() => Composer.ApplyRoom(_state.ActiveRoomId,
         _state.ActiveRoomId is not null && !_state.NeedsOnboarding && _state.GroupOperation == GroupOperation.Idle,
-        _state.RealtimeConnection.IsReady && _state.RealtimeConnection.ActiveRoomTransportConnected);
+        _state.ActiveRoomReady);
 
     public ObservableCollection<HistoryEntryViewModel> Items { get; } = [];
 
@@ -93,7 +93,7 @@ public sealed partial class HistoryWindowViewModel : ObservableObject, IDisposab
         ObjectDisposedException.ThrowIf(_disposed, this);
         bool scopeChanged = HistoryScopeFor(_state, _state.ActiveRoomId)
             != HistoryScopeFor(state, state.ActiveRoomId);
-        bool historyInvalidated = state.RealtimeConnection.IsReady != _state.RealtimeConnection.IsReady;
+        bool historyInvalidated = state.ActiveRoomReady != _state.ActiveRoomReady;
         if (state.Profile?.Id != _state.Profile?.Id
             || historyInvalidated)
         {

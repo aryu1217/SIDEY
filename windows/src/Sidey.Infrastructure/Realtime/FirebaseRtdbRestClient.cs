@@ -25,6 +25,14 @@ internal sealed class FirebaseRtdbRestClient : IAsyncDisposable
             cancellationToken);
     }
 
+    internal FirebaseRtdbRestClient(FirebaseRtdbUrlBuilder urls, HttpClient httpClient)
+    {
+        _urls = urls ?? throw new ArgumentNullException(nameof(urls));
+        ArgumentNullException.ThrowIfNull(httpClient);
+        _sendAsync = (request, cancellationToken) => httpClient.SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+    }
+
     private FirebaseRtdbRestClient(
         FirebaseRtdbUrlBuilder urls,
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> testSender)
@@ -233,7 +241,8 @@ internal sealed class FirebaseRtdbRestClient : IAsyncDisposable
         throw new FirebaseRtdbRequestException(
             kind,
             response.StatusCode,
-            $"Firebase RTDB request failed with status {(int)response.StatusCode}.");
+            $"Firebase RTDB request failed with status {(int)response.StatusCode}.",
+            retryAfter: RealtimeRestRetryPolicy.RetryAfter(response));
     }
 }
 

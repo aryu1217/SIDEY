@@ -14,6 +14,73 @@ public sealed class FirebaseRealtimeCredentialProviderTests
     private static readonly DateTimeOffset s_initialTime =
         DateTimeOffset.Parse("2026-01-01T00:00:00Z");
 
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task StalledErrorBodyPreservesRetryAfterAtAcquisitionDeadline(HttpStatusCode status)
+    {
+        StoredSupabaseSession session = SupabaseSession(s_userId, Guid.NewGuid(), "supabase-a");
+        var handler = new StalledBodyHandler { Status = status };
+        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var time = new DeadlineTimeProvider();
+        var provider = new FirebaseRealtimeCredentialProvider(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, time);
+        Task<FirebaseRealtimeCredential> pending = provider.GetCredentialAsync().AsTask();
+        await handler.BodyStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        time.ExpireDeadline();
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => pending.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(status, failure.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(120), failure.ServerRetryAfter);
+        Assert.True(failure.RetryAfter >= TimeSpan.FromSeconds(120));
+    }
+
+    [Fact]
+    public async Task ResetDuringStalledErrorBodyCancelsGenerationInsteadOfRetrying()
+    {
+        StoredSupabaseSession session = SupabaseSession(s_userId, Guid.NewGuid(), "supabase-a");
+        var handler = new StalledBodyHandler { Status = HttpStatusCode.TooManyRequests };
+        using var client = new HttpClient(handler);
+        var provider = new FirebaseRealtimeCredentialProvider(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, new DeadlineTimeProvider());
+        Task<FirebaseRealtimeCredential> pending = provider.GetCredentialAsync().AsTask();
+        await handler.BodyStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await provider.ResetAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task StalledBootstrapBodyTimesOutSharedAcquisitionAndEntersCooldown()
+    {
+        StoredSupabaseSession session = SupabaseSession(s_userId, Guid.NewGuid(), "supabase-a");
+        var handler = new StalledBodyHandler();
+        using var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var time = new DeadlineTimeProvider();
+        var provider = new FirebaseRealtimeCredentialProvider(
+            new FixedSessionAccessor(session), new MemoryCredentialStore(), client, time,
+            acquisitionTimeout: TimeSpan.FromSeconds(20));
+        using var callerCancellation = new CancellationTokenSource();
+        Task<FirebaseRealtimeCredential> cancelledCaller = provider.GetCredentialAsync(callerCancellation.Token).AsTask();
+        await handler.BodyStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Task<FirebaseRealtimeCredential> sharedCaller = provider.GetCredentialAsync().AsTask();
+        callerCancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelledCaller);
+        Assert.False(sharedCaller.IsCompleted);
+        time.ExpireDeadline();
+        FirebaseRealtimeRetryException failure = await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(
+            () => sharedCaller.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal("timeout", failure.FailureCode);
+        Assert.True(failure.RetryAfter > TimeSpan.Zero);
+        await Assert.ThrowsAsync<FirebaseRealtimeRetryException>(() => provider.GetCredentialAsync().AsTask());
+        Assert.Equal(1, handler.Requests);
+        time.Advance(TimeSpan.FromMinutes(2));
+        Task<FirebaseRealtimeCredential> nextAttempt = provider.GetCredentialAsync().AsTask();
+        await handler.SecondBodyStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, handler.Requests);
+        await provider.ResetAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => nextAttempt);
+    }
+
     [Fact]
     public async Task BootstrapStoresRotatedRefreshTokenBeforePublishingAndUsesReceiptDeadline()
     {
@@ -846,6 +913,80 @@ public sealed class FirebaseRealtimeCredentialProviderTests
             await Allow.Task.WaitAsync(cancellationToken);
             return session;
         }
+    }
+
+    private sealed class DeadlineTimeProvider : TimeProvider
+    {
+        private long _timestamp;
+        private readonly List<DeadlineTimer> _timers = [];
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Volatile.Read(ref _timestamp);
+        public override DateTimeOffset GetUtcNow() => s_initialTime;
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new DeadlineTimer(callback, state);
+            lock (_timers)
+            { _timers.Add(timer); }
+            return timer;
+        }
+        public void Advance(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, elapsed.Ticks);
+        public void ExpireDeadline()
+        {
+            Advance(TimeSpan.FromSeconds(20));
+            DeadlineTimer[] timers;
+            lock (_timers)
+            { timers = [.. _timers]; }
+            foreach (DeadlineTimer timer in timers)
+            { timer.Fire(); }
+        }
+        private sealed class DeadlineTimer(TimerCallback callback, object? state) : ITimer
+        {
+            private int _disposed;
+            public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _disposed) == 0;
+            public void Fire() { if (Volatile.Read(ref _disposed) == 0) callback(state); }
+            public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
+    }
+
+    private sealed class StalledBodyHandler : HttpMessageHandler
+    {
+        public int Requests;
+        public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
+        public TaskCompletionSource BodyStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource SecondBodyStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            int count = Interlocked.Increment(ref Requests);
+            var response = new HttpResponseMessage(Status)
+            {
+                Content = new StreamContent(new StalledBodyStream(count == 1 ? BodyStarted : SecondBodyStarted)),
+            };
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(120));
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed class StalledBodyStream(TaskCompletionSource started) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     private sealed class ManualTimeProvider : TimeProvider

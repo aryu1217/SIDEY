@@ -37,7 +37,24 @@ public sealed class HistoryWindowViewModelTests
             RealtimeConnection = new RealtimeConnectionStatus(true, true, true),
         });
         Assert.True(history.Composer.SendCommand.CanExecute(null));
+        history.ApplyState(state with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(false, true, true)
+            {
+                SocketConnected = true,
+            },
+        });
+        Assert.True(history.Composer.SendCommand.CanExecute(null));
         Assert.False(history.Composer.IsConnectionRecovering);
+        history.ApplyState(state with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(false, true, false)
+            {
+                SocketConnected = true,
+            },
+        });
+        Assert.False(history.Composer.SendCommand.CanExecute(null));
+        Assert.True(history.Composer.IsConnectionRecovering);
         Assert.Equal("Waiting to send", history.Composer.Draft);
     }
 

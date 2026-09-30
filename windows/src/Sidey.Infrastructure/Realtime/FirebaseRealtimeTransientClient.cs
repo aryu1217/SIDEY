@@ -20,18 +20,26 @@ internal interface IFirebaseRealtimeTransientClient
         CancellationToken cancellationToken);
 }
 
-internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransientClient
+internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransientClient, IDisposable
 {
     private readonly IFirebaseRealtimeCredentialProvider _credentials;
     private readonly Func<Uri, FirebaseRtdbRestClient> _createClient;
+    private readonly HttpClient? _httpClient;
 
     public FirebaseRealtimeTransientClient(
         IFirebaseRealtimeCredentialProvider credentials,
         Func<Uri, FirebaseRtdbRestClient>? createClient = null)
     {
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _createClient = createClient ?? (databaseUrl =>
-            new FirebaseRtdbRestClient(new FirebaseRtdbUrlBuilder(databaseUrl)));
+        if (createClient is null)
+        {
+            _httpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
+            _createClient = databaseUrl => new FirebaseRtdbRestClient(new FirebaseRtdbUrlBuilder(databaseUrl), _httpClient);
+        }
+        else
+        {
+            _createClient = createClient;
+        }
     }
 
     public async Task PublishTypingAsync(
@@ -98,6 +106,8 @@ internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransie
             FirebaseRealtimeProtocol.CreateCharacterThrowBody(targetUserId, wireCode),
             cancellationToken).ConfigureAwait(false);
     }
+
+    public void Dispose() => _httpClient?.Dispose();
 
     private async Task WriteAsync(
         FirebaseRealtimeCredential credential,

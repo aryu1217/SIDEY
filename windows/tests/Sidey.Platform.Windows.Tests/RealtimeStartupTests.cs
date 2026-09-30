@@ -120,99 +120,283 @@ public sealed class RealtimeStartupTests
     }
 
     [Fact]
-    public async Task ChannelAuthorizationFailureDisconnectsAndRecoversTheWholeSubscriptionSet()
+    public async Task StaleRoomAuthorizationRefreshesOnlyThatRoomAndKeepsTheOtherRoomConnected()
     {
-        TaskCompletionSource initialPresenceReceived = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var server = new LocalServer(async (socket, connection, token) =>
+        var sendFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var replacementObserved = new TaskCompletionSource<(string[] Leaves, string[] Joins)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var revokedRoomLeaves = new TaskCompletionSource<string[]>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var changingRoom = Guid.NewGuid();
+        var activeRoom = Guid.NewGuid();
+        await using var server = new LocalServer(async (socket, _, token) =>
         {
             List<JsonElement> joins = [];
-            while (joins.Count < 2)
+            while (joins.Count < 4)
             {
-                JsonElement message = await ReadAsync(socket, token);
-                if (message.GetProperty("event").GetString() == "phx_join")
-                    joins.Add(message);
-            }
-            foreach (JsonElement join in joins)
-            {
-                await ReplyAsync(socket, join, token);
-            }
-
-            if (connection != 1)
-            {
-                return;
+                JsonElement first = await ReadAsync(socket, token);
+                JsonElement second = await ReadAsync(socket, token);
+                joins.Add(first);
+                joins.Add(second);
+                await ReplyAsync(socket, first, token);
+                await ReplyAsync(socket, second, token);
             }
 
-            var updatedTopics = new HashSet<string>(StringComparer.Ordinal);
-            while (updatedTopics.Count < joins.Count)
-            {
-                JsonElement message = await ReadAsync(socket, token);
-                if (message.GetProperty("event").GetString() == "presence")
-                {
-                    initialPresenceReceived.TrySetResult();
-                }
-                if (message.GetProperty("event").GetString() == "access_token"
-                    && message.GetProperty("payload").GetProperty("access_token").GetString() == "refreshed-token")
-                {
-                    updatedTopics.Add(message.GetProperty("topic").GetString()!);
-                }
-            }
-
-            string databaseTopic = Assert.Single(
-                updatedTopics,
-                topic => topic.EndsWith(":db", StringComparison.Ordinal));
+            await sendFailure.Task.WaitAsync(token);
+            string databaseTopic = RealtimeEpochSubscriptionPlan.Descriptors(changingRoom, 1)
+                .Single(descriptor => descriptor.Kind == RealtimeTopicKind.Database).PhoenixTopic;
             await SendEventAsync(
                 socket,
                 databaseTopic,
                 "system",
-                new { status = "error", message = "Unauthorized: denied" },
+                new { status = "error", message = "Unauthorized: You do not have permissions to read from this Channel topic" },
                 token);
+
+            List<string> leaves = [];
+            List<string> replacementJoins = [];
+            while (leaves.Count < 2 || replacementJoins.Count < 2)
+            {
+                JsonElement message = await ReadAsync(socket, token);
+                string? eventName = message.GetProperty("event").GetString();
+                if (eventName == "phx_leave")
+                    leaves.Add(message.GetProperty("topic").GetString()!);
+                if (eventName == "phx_join")
+                {
+                    replacementJoins.Add(message.GetProperty("topic").GetString()!);
+                    await ReplyAsync(socket, message, token);
+                }
+            }
+            replacementObserved.SetResult(([.. leaves], [.. replacementJoins]));
+
+            List<string> revokedLeaves = [];
+            while (revokedLeaves.Count < 2)
+            {
+                JsonElement message = await ReadAsync(socket, token);
+                string? eventName = message.GetProperty("event").GetString();
+                Assert.NotEqual("phx_join", eventName);
+                if (eventName == "phx_leave")
+                    revokedLeaves.Add(message.GetProperty("topic").GetString()!);
+            }
+            revokedRoomLeaves.SetResult([.. revokedLeaves]);
         });
-        var sessions = new RotatingSessions("initial-token");
-        await using SupabaseRealtimeTransport transport = CreateTransport(
-            server,
-            sessions: sessions,
-            watchdogInterval: TimeSpan.FromMilliseconds(20),
-            authorizationRefreshInterval: TimeSpan.FromMilliseconds(20));
-        var roomId = Guid.NewGuid();
+        await using SupabaseRealtimeTransport transport = CreateTransport(server);
+        var rooms = new Dictionary<Guid, long> { [changingRoom] = 1, [activeRoom] = 1 };
         await transport.SynchronizeAsync(
-            new Dictionary<Guid, long> { [roomId] = 1 },
-            roomId,
+            rooms,
+            activeRoom,
             PresenceState.Online,
             server.Token);
 
-        await initialPresenceReceived.Task.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
-        sessions.SetAccessToken("refreshed-token");
-        await WaitForEventAsync(
-            transport,
-            item => item is BackendEvent.ConnectionChanged { Status.TransportConnected: false });
-        await WaitForEventAsync(
-            transport,
-            item => item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: true });
+        sendFailure.SetResult();
+        await WaitForEventAsync<BackendEvent.RoomStructureChanged>(
+            transport, item => item.RoomId == changingRoom);
+        Assert.False(transport.ConnectionStatus.TransportConnected);
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+        rooms[changingRoom] = 2; // The authoritative snapshot observed the new epoch.
+        await transport.SynchronizeAsync(rooms, activeRoom, PresenceState.Online, server.Token);
+        (string[] leaves, string[] replacementJoins) =
+            await replacementObserved.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
-        Assert.Equal(2, server.ConnectionCount);
+        Assert.All(leaves, topic => Assert.Contains($"room:{changingRoom:D}:1:", topic, StringComparison.Ordinal));
+        Assert.All(replacementJoins, topic => Assert.Contains($"room:{changingRoom:D}:2:", topic, StringComparison.Ordinal));
+        Assert.Equal(1, server.ConnectionCount);
+        Assert.True(transport.ConnectionStatus.TransportConnected);
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+
+        rooms.Remove(changingRoom); // The authoritative snapshot no longer grants membership.
+        await transport.SynchronizeAsync(rooms, activeRoom, PresenceState.Online, server.Token);
+        string[] revokedLeaves = await revokedRoomLeaves.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.All(revokedLeaves,
+            topic => Assert.Contains($"room:{changingRoom:D}:2:", topic, StringComparison.Ordinal));
+        Assert.Equal(1, server.ConnectionCount);
         Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
     }
 
     [Theory]
-    [InlineData("Unauthorized", "authorization")]
-    [InlineData("ClientPresenceRateLimitReached", "capacity")]
-    public async Task ChannelSystemFailureReportsOnlySafeCategoryAndRecoversTheWholeSubscriptionSet(
-        string errorCode,
-        string expectedCategory)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SwitchingToAlreadyJoinedRoomRequiresReconciliationOnTheSameSocket(
+        bool unrelatedRoomFailed)
+    {
+        var firstRoom = Guid.NewGuid();
+        var secondRoom = Guid.NewGuid();
+        var failingRoom = Guid.NewGuid();
+        var sendFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unexpectedSubscriptionChange = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var server = new LocalServer(async (socket, _, token) =>
+        {
+            int expectedJoins = unrelatedRoomFailed ? 6 : 4;
+            var joins = new List<JsonElement>();
+            while (joins.Count < expectedJoins)
+            {
+                JsonElement first = await ReadAsync(socket, token);
+                JsonElement second = await ReadAsync(socket, token);
+                joins.Add(first);
+                joins.Add(second);
+                await ReplyAsync(socket, first, token);
+                await ReplyAsync(socket, second, token);
+            }
+
+            if (unrelatedRoomFailed)
+            {
+                await sendFailure.Task.WaitAsync(token);
+                string databaseTopic = RealtimeEpochSubscriptionPlan.Descriptors(failingRoom, 1)
+                    .Single(descriptor => descriptor.Kind == RealtimeTopicKind.Database).PhoenixTopic;
+                await SendEventAsync(socket, databaseTopic, "system",
+                    new { status = "error", message = "Unauthorized: You do not have permissions to read from this Channel topic" },
+                    token);
+            }
+
+            while (!token.IsCancellationRequested)
+            {
+                JsonElement message = await ReadAsync(socket, token);
+                string? eventName = message.GetProperty("event").GetString();
+                if (eventName is not ("phx_join" or "phx_leave"))
+                    continue;
+                string topic = message.GetProperty("topic").GetString()!;
+                if (unrelatedRoomFailed && topic.Contains($"room:{failingRoom:D}:", StringComparison.Ordinal))
+                {
+                    if (eventName == "phx_join")
+                    {
+                        await socket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(new
+                        {
+                            topic,
+                            @event = "phx_reply",
+                            @ref = message.GetProperty("ref").GetString(),
+                            payload = new { status = "error", response = new { reason = "Unauthorized: stale room epoch" } },
+                        }), WebSocketMessageType.Text, true, token);
+                    }
+                    continue;
+                }
+                unexpectedSubscriptionChange.TrySetResult();
+            }
+        });
+        await using SupabaseRealtimeTransport transport = CreateTransport(server);
+        var rooms = new Dictionary<Guid, long> { [firstRoom] = 1, [secondRoom] = 1 };
+        if (unrelatedRoomFailed)
+            rooms[failingRoom] = 1;
+        await transport.SynchronizeAsync(rooms, firstRoom, PresenceState.Online, server.Token);
+        if (unrelatedRoomFailed)
+        {
+            sendFailure.SetResult();
+            await WaitForEventAsync<BackendEvent.RoomStructureChanged>(
+                transport, item => item.RoomId == failingRoom);
+            Assert.False(transport.ConnectionStatus.TransportConnected);
+        }
+
+        await transport.SynchronizeAsync(rooms, secondRoom, PresenceState.Online, server.Token);
+        await WaitForEventAsync<BackendEvent.ReconciliationRequired>(transport);
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+        Assert.Equal(1, server.ConnectionCount);
+        Assert.False(unexpectedSubscriptionChange.Task.IsCompleted);
+        Assert.True(transport.ConnectionStatus.WithRecoveryReconciled(true).RecoveryReconciled);
+        Assert.True(await transport.RunWhileConnectedAsync(_ => Task.CompletedTask, server.Token));
+    }
+
+    [Fact]
+    public async Task ChannelSessionFailureStillRecoversTheWholeSocket()
     {
         var sendFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var server = new LocalServer(async (socket, connection, token) =>
         {
             JsonElement[] joins = [await ReadAsync(socket, token), await ReadAsync(socket, token)];
             foreach (JsonElement join in joins)
+                await ReplyAsync(socket, join, token);
+            if (connection == 1)
+            {
+                await sendFailure.Task.WaitAsync(token);
+                await SendEventAsync(socket,
+                    joins[0].GetProperty("topic").GetString()!,
+                    "system",
+                    new { status = "error", message = "InvalidJWTToken: expired" },
+                    token);
+            }
+        });
+        await using SupabaseRealtimeTransport transport = CreateTransport(server);
+        var roomId = Guid.NewGuid();
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [roomId] = 1 }, roomId, PresenceState.Online, server.Token);
+
+        sendFailure.SetResult();
+        await WaitForEventAsync(transport,
+            item => item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: false });
+        await WaitForEventAsync(transport,
+            item => item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: true }
+                && server.ConnectionCount == 2);
+
+        Assert.Equal(2, server.ConnectionCount);
+    }
+
+    [Fact]
+    public async Task NewEpochJoinFailureReplacesPendingRefreshForTheOldEpoch()
+    {
+        var sendFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var roomId = Guid.NewGuid();
+        await using var server = new LocalServer(async (socket, _, token) =>
+        {
+            JsonElement[] initial = [await ReadAsync(socket, token), await ReadAsync(socket, token)];
+            foreach (JsonElement join in initial)
+                await ReplyAsync(socket, join, token);
+            await sendFailure.Task.WaitAsync(token);
+            await SendEventAsync(socket,
+                RealtimeEpochSubscriptionPlan.Descriptors(roomId, 1).First().PhoenixTopic,
+                "system",
+                new { status = "error", message = "Unauthorized: stale room epoch" },
+                token);
+
+            int rejected = 0;
+            while (rejected < 2)
+            {
+                JsonElement request = await ReadAsync(socket, token);
+                if (request.GetProperty("event").GetString() != "phx_join")
+                    continue;
+                Assert.Contains($"room:{roomId:D}:2:", request.GetProperty("topic").GetString()!,
+                    StringComparison.Ordinal);
+                await socket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(new
+                {
+                    topic = request.GetProperty("topic").GetString(),
+                    @event = "phx_reply",
+                    @ref = request.GetProperty("ref").GetString(),
+                    payload = new { status = "error", response = new { reason = "Unauthorized: stale room epoch" } },
+                }), WebSocketMessageType.Text, true, token);
+                rejected++;
+            }
+        });
+        await using SupabaseRealtimeTransport transport = CreateTransport(server);
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [roomId] = 1 }, roomId, PresenceState.Online, server.Token);
+
+        sendFailure.SetResult();
+        await WaitForEventAsync<BackendEvent.Diagnostic>(transport,
+            item => item.Stage.StartsWith("realtime-channel-terminated", StringComparison.Ordinal));
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [roomId] = 2 }, roomId, PresenceState.Online, server.Token);
+        await WaitForEventAsync<BackendEvent.Diagnostic>(transport,
+            item => item.Stage.StartsWith("realtime-room-subscription-deferred", StringComparison.Ordinal));
+        await WaitForEventAsync<BackendEvent.RoomStructureChanged>(transport,
+            item => item.RoomId == roomId);
+
+        Assert.Equal(1, server.ConnectionCount);
+        Assert.False(transport.ConnectionStatus.ActiveRoomTransportConnected);
+    }
+
+    [Theory]
+    [InlineData("Unauthorized", "authorization")]
+    [InlineData("ClientPresenceRateLimitReached", "capacity")]
+    public async Task ChannelSystemFailureReportsOnlySafeCategoryAndRejoinsOnTheSameSocket(
+        string errorCode,
+        string expectedCategory)
+    {
+        var sendFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var rejoined = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var server = new LocalServer(async (socket, _, token) =>
+        {
+            JsonElement[] joins = [await ReadAsync(socket, token), await ReadAsync(socket, token)];
+            foreach (JsonElement join in joins)
             {
                 await ReplyAsync(socket, join, token);
-            }
-
-            if (connection != 1)
-            {
-                return;
             }
 
             await sendFailure.Task.WaitAsync(token);
@@ -225,6 +409,16 @@ public sealed class RealtimeStartupTests
                 "system",
                 new { status = "error", message = $"{errorCode}: private-server-detail" },
                 token);
+            while (true)
+            {
+                JsonElement message = await ReadAsync(socket, token);
+                if (message.GetProperty("event").GetString() != "phx_join")
+                    continue;
+                Assert.Equal(databaseTopic, message.GetProperty("topic").GetString());
+                await ReplyAsync(socket, message, token);
+                rejoined.SetResult();
+                return;
+            }
         });
         await using SupabaseRealtimeTransport transport = CreateTransport(server);
         var roomId = Guid.NewGuid();
@@ -242,14 +436,16 @@ public sealed class RealtimeStartupTests
             $"realtime-channel-terminated kind=database event=system failure={expectedCategory}",
             termination.Stage);
         Assert.DoesNotContain("private-server-detail", termination.Stage);
-        await WaitForEventAsync(
-            transport,
-            item => item is BackendEvent.ConnectionChanged { Status.TransportConnected: false });
-        await WaitForEventAsync(
-            transport,
-            item => item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: true });
+        await WaitForEventAsync<BackendEvent.RoomStructureChanged>(
+            transport, item => item.RoomId == roomId);
+        await transport.SynchronizeAsync(
+            new Dictionary<Guid, long> { [roomId] = 1 },
+            roomId,
+            PresenceState.Online,
+            server.Token);
+        await rejoined.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
-        Assert.Equal(2, server.ConnectionCount);
+        Assert.Equal(1, server.ConnectionCount);
         Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
     }
 
@@ -696,6 +892,9 @@ public sealed class RealtimeStartupTests
         var exception = RealtimeSubscriptionException.FromServerPayload(payload.RootElement);
         Assert.Equal(expected, exception.FailureKind.ToString());
         Assert.Equal(expected == "Authorization", exception.AuthorizationFailure);
+        Assert.Equal(reason.StartsWith("InvalidJWT", StringComparison.Ordinal)
+            || reason.StartsWith("JwtSignatureError", StringComparison.Ordinal)
+            || reason.StartsWith("Token has expired", StringComparison.Ordinal), exception.SessionFailure);
         Assert.DoesNotContain(reason, exception.Message);
     }
 
@@ -1022,7 +1221,7 @@ public sealed class RealtimeStartupTests
                         topic = request.GetProperty("topic").GetString(),
                         @event = "phx_reply",
                         @ref = request.GetProperty("ref").GetString(),
-                        payload = new { status = "error", response = new { reason = "Unauthorized: denied" } },
+                        payload = new { status = "error", response = new { reason = "InvalidJWTToken: denied" } },
                     }), WebSocketMessageType.Text, true, token);
                 return;
             }

@@ -17,6 +17,7 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     private readonly IFirebaseRealtimeCredentialProvider _credentials;
     private readonly IFirebaseRealtimeListener _firebase;
     private readonly IFirebaseRealtimeTransientClient _transients;
+    private readonly bool _ownsTransients;
     private readonly RealtimeEventQueue _events = new();
     private readonly SemaphoreSlim _selectionGate = new(1, 1);
     private readonly SemaphoreSlim _selectionWake = new(0, 1);
@@ -53,6 +54,7 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         _chat = chat ?? throw new ArgumentNullException(nameof(chat));
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _transients = transients ?? new FirebaseRealtimeTransientClient(credentials);
+        _ownsTransients = transients is null;
         ArgumentNullException.ThrowIfNull(createFirebase);
         _firebase = createFirebase(OnFirebaseEvent)
             ?? throw new InvalidOperationException("Firebase listener factory returned null.");
@@ -339,6 +341,10 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
         if (_selectionLoop is not null)
         {
             await IgnoreCancellationAsync(_selectionLoop).ConfigureAwait(false);
+        }
+        if (_ownsTransients && _transients is IDisposable disposableTransients)
+        {
+            disposableTransients.Dispose();
         }
         _events.Complete();
         lock (_stateGate)

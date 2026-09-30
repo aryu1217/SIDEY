@@ -2,6 +2,10 @@ using Sidey.Core.Localization;
 
 namespace Sidey.Core.Tests;
 
+[CollectionDefinition(nameof(SharedLocalizationCollection), DisableParallelization = true)]
+public sealed class SharedLocalizationCollection;
+
+[Collection(nameof(SharedLocalizationCollection))]
 public sealed class I18nTests
 {
     [Fact]

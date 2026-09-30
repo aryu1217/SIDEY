@@ -5,12 +5,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Sidey.Core.Abstractions;
 using Sidey.Core.Localization;
+using Sidey.Infrastructure.Realtime;
 
 namespace Sidey.Infrastructure.Authentication;
 
 internal interface IAuthSessionAccessor
 {
     public ValueTask<StoredSupabaseSession?> GetStoredSessionAsync(CancellationToken cancellationToken = default);
+    public ValueTask RecoverRejectedSessionAsync(string accessToken, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }
 
 internal sealed record StoredSupabaseSession(
@@ -295,6 +297,27 @@ public sealed class SupabaseAnonymousAuthService : IAuthService, IAuthSessionAcc
         }
     }
 
+    async ValueTask IAuthSessionAccessor.RecoverRejectedSessionAsync(string accessToken, CancellationToken cancellationToken)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            StoredSupabaseSession? stored = await ReadStoredSessionAsync(cancellationToken).ConfigureAwait(false);
+            if (stored is null || !StringComparer.Ordinal.Equals(stored.AccessToken, accessToken))
+                return;
+            StoredSupabaseSession refreshed = await RequestSessionAsync(
+                HttpMethod.Post, "/auth/v1/token?grant_type=refresh_token",
+                new { refresh_token = stored.RefreshToken }, cancellationToken).ConfigureAwait(false);
+            if (refreshed.UserId != stored.UserId)
+                throw new UnauthorizedAccessException("Refreshed Supabase identity changed.");
+            await StoreAsync(refreshed, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public void Dispose()
     {
         _gate.Dispose();
@@ -310,20 +333,22 @@ public sealed class SupabaseAnonymousAuthService : IAuthService, IAuthSessionAcc
         object body,
         CancellationToken cancellationToken)
     {
+        // ResponseHeadersRead excludes body reads from HttpClient.Timeout; retain that deadline.
+        using var deadline = new CancellationTokenSource(_httpClient.Timeout);
+        using var requestLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        CancellationToken requestToken = requestLifetime.Token;
         using HttpRequestMessage request = CreateRequest(method, relativePath);
         request.Content = JsonContent.Create(body, options: s_serializerOptions);
-        using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                I18n.Format("auth.request.failed", (int)response.StatusCode),
-                inner: null,
-                response.StatusCode);
+            throw RealtimeRestRetryPolicy.Failure(response,
+                I18n.Format("auth.request.failed", (int)response.StatusCode));
         }
 
         AuthEnvelope envelope = await response.Content.ReadFromJsonAsync<AuthEnvelope>(
             s_serializerOptions,
-            cancellationToken).ConfigureAwait(false)
+            requestToken).ConfigureAwait(false)
             ?? throw new InvalidDataException(I18n.Get("auth.response.empty"));
         if (string.IsNullOrWhiteSpace(envelope.AccessToken)
             || string.IsNullOrWhiteSpace(envelope.RefreshToken)

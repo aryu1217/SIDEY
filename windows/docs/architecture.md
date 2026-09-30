@@ -98,6 +98,16 @@ UI 이벤트나 네이티브 콜백처럼 `await`할 수 없는 경계에서는 
 
 오버레이 렌더링 경로에서는 프레임마다 비트맵, 표면, 투사체 버퍼를 만들지 않아요. 30 FPS 루프의 작은 할당도 오래 실행하면 메모리 압력과 끊김으로 이어져요.
 
+## 실시간 조회 복구는 연결과 방 수명에 묶어요
+
+[`FirebaseRealtimeCredentialProvider`](../src/Sidey.Infrastructure/Authentication/FirebaseRealtimeCredentialProvider.cs)는 같은 세션의 인증 획득을 공유하고, 응답 본문과 저장 완료까지 전체 작업에 시간 제한을 걸어요. 한 호출자의 취소는 그 호출자의 대기만 끝내요. 전체 시간 초과는 재시도 대기로 전환하고, 세션 초기화는 인증 세대와 기존 자격 증명의 수명을 취소해요. 오류 본문이 멈추더라도 이미 받은 HTTP 상태와 `Retry-After`는 유지해요.
+
+[`SupabaseBackendGateway`](../src/Sidey.Infrastructure/Backend/SupabaseBackendGateway.cs)는 메시지 식별자 또는 무효화 이벤트 뒤 조회가 일시적으로 실패하면 [`MessageRecoveryQueue`](../src/Sidey.Infrastructure/Backend/MessageRecoveryQueue.cs)에 방을 남겨요. 같은 방의 실패는 하나로 합치고, 가입한 최대 다섯 방의 복구 조회를 한 번에 하나씩 실행해요. 각 조회에는 시간 제한이 있고, 일시적 오류에는 지수 백오프, jitter, `Retry-After`를 적용해요. 401은 거절된 토큰에 대해 세션을 한 번 갱신하고 GET만 다시 시도해요. 갱신 후에도 인증이 거절되거나 영구 오류가 나오면 반복하지 않아요.
+
+방 탈퇴·삭제가 성공하거나 방 epoch가 바뀌면 해당 복구를 취소해요. 구독 종료와 로그아웃도 대기 작업을 취소하고 완료를 기다려요. 복구 결과에는 구독을 시작한 사용자 ID와 방 epoch를 싣고, `AppCoordinator`는 현재 계정과 방에 맞는 결과만 반영해요. 취소에 늦게 반응하는 조회나 출력 큐에 이미 들어간 결과도 이 경계에서 걸러요.
+
+Firebase transient 쓰기는 소유 transport의 `HttpClient` 연결 풀을 재사용해요. 요청별 RTDB wrapper를 해제해도 풀은 유지하고, 소유 transport 종료 때 해제해요. SSE 연결 실패도 서버의 `Retry-After`를 보존해 재접속 대기에 적용해요. 이 경계는 `FirebaseRealtimeCredentialProviderTests`, `MessageRecoveryQueueTests`, `SupabaseRejectedSessionRecoveryTests`, `FirebaseRtdbUrlBuilderTests`에서 확인해요.
+
 ## 테스트는 경계를 확인해요
 
 ViewModel 테스트는 명령 실행 뒤 보이는 상태와 협력자 호출을 확인해요. 런타임 바인딩은 WinUI 상호작용 테스트로 확인하는 게 가장 정확해요.

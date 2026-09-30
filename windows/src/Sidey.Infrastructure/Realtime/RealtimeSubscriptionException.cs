@@ -15,6 +15,8 @@ internal sealed class RealtimeSubscriptionException(RealtimeSubscriptionFailureK
 {
     public RealtimeSubscriptionFailureKind FailureKind { get; } = failureKind;
 
+    public bool SessionFailure { get; private init; }
+
     public bool AuthorizationFailure => FailureKind == RealtimeSubscriptionFailureKind.Authorization;
 
     public static RealtimeSubscriptionException FromServerPayload(JsonElement payload)
@@ -58,7 +60,11 @@ internal sealed class RealtimeSubscriptionException(RealtimeSubscriptionFailureK
         {
             kind = RealtimeSubscriptionFailureKind.Capacity;
         }
-        return new(kind);
+        bool sessionFailure = code is "InvalidJWTExpiration" or "InvalidJWTToken"
+            or "JwtSignatureError" or "MalformedJWT"
+            || reason?.Contains("Token has expired", StringComparison.OrdinalIgnoreCase) == true
+            || reason?.Contains("Fields `role` and `exp` are required", StringComparison.OrdinalIgnoreCase) == true;
+        return new(kind) { SessionFailure = sessionFailure };
     }
 
     private static string? ExtractReason(JsonElement payload)

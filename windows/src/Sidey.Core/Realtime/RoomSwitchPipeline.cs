@@ -8,6 +8,8 @@ public sealed class RoomSwitchPipeline(
     Action<Guid, IReadOnlyList<ChatMessage>> commit,
     TimeSpan? debounce = null) : IAsyncDisposable
 {
+    private sealed record PendingRoom(Guid RoomId);
+
     public static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(150);
 
     private readonly Func<Guid, CancellationToken, Task<IReadOnlyList<ChatMessage>>> _performSwitch =
@@ -20,8 +22,10 @@ public sealed class RoomSwitchPipeline(
     private readonly CancellationTokenSource _shutdown = new();
     private readonly TimeSpan _debounce = debounce ?? DefaultDebounce;
     private long _generation;
+    private PendingRoom? _pendingRoom;
 
     public Guid? CommittedRoomId { get; private set; }
+    public Guid? PendingRoomId => Volatile.Read(ref _pendingRoom)?.RoomId;
 
     public void InitializeCommittedRoom(Guid? roomId) => CommittedRoomId = roomId;
 
@@ -45,6 +49,8 @@ public sealed class RoomSwitchPipeline(
                 return;
             }
 
+            var pending = new PendingRoom(roomId);
+            Volatile.Write(ref _pendingRoom, pending);
             try
             {
                 IReadOnlyList<ChatMessage> messages = await _performSwitch(roomId, linked.Token);
@@ -62,8 +68,13 @@ public sealed class RoomSwitchPipeline(
             }
             catch
             {
+                Interlocked.CompareExchange(ref _pendingRoom, null, pending);
                 await _restoreCommittedRoom(CommittedRoomId, linked.Token);
                 throw;
+            }
+            finally
+            {
+                Interlocked.CompareExchange(ref _pendingRoom, null, pending);
             }
         }
         finally

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -24,6 +25,10 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     private readonly HttpClient _httpClient;
     private readonly bool _ownsHttpClient;
     private readonly IRealtimeTransport _realtime;
+    private readonly Lock _messageRecoveryGate = new();
+    private MessageRecoveryQueue? _messageRecovery;
+    private int _sessionInvalidated;
+    private Guid _snapshotUserId;
     private readonly SemaphoreSlim _firebaseWireCodeGate = new(1, 1);
     private readonly CancellationTokenSource _firebaseWireCodeRefreshCancellation = new();
     private readonly Lock _firebaseWireCodeRefreshGate = new();
@@ -31,7 +36,9 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     private int _firebaseWireCodesConfigured;
     private int _disposed;
     private IReadOnlyDictionary<Guid, long> _roomEpochs = new Dictionary<Guid, long>();
-    private Guid? _activeRoomId;
+    private readonly Dictionary<Guid, long> _messageRevisions = [];
+    private sealed record ActiveRoomRequest(Guid? RoomId, long Generation);
+    private ActiveRoomRequest _activeRoomRequest = new(null, 0);
     private IReadOnlyDictionary<string, string>? _firebaseThrowableWireCodes;
     private string _equippedThrowableId = "patch_soft_ball";
 
@@ -79,6 +86,10 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     public async Task<BackendSnapshot> FetchSnapshotAsync(CancellationToken cancellationToken = default)
     {
         StoredSupabaseSession session = await RequiredSessionAsync(cancellationToken).ConfigureAwait(false);
+        lock (_messageRecoveryGate)
+        {
+            _snapshotUserId = session.UserId;
+        }
         Task<DatabaseProfile[]> profileTask = GetAsync<DatabaseProfile[]>(
             $"/rest/v1/profiles?id=eq.{session.UserId:D}&select=*",
             cancellationToken);
@@ -443,7 +454,19 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     {
         await RpcNoResultAsync("leave_room", new { p_room_id = roomId }, cancellationToken)
             .ConfigureAwait(false);
+        ForgetRecoveryRoom(roomId);
         await _credentials.DeleteInviteCodeAsync(roomId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void ForgetRecoveryRoom(Guid roomId)
+    {
+        lock (_messageRecoveryGate)
+        {
+            _roomEpochs = _roomEpochs.Where(pair => pair.Key != roomId)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+            _messageRevisions.Remove(roomId);
+            _messageRecovery?.UpdateRooms(_roomEpochs);
+        }
     }
 
     public Task RenameRoomAsync(
@@ -489,6 +512,7 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     {
         await RpcNoResultAsync("delete_room", new { p_room_id = roomId }, cancellationToken)
             .ConfigureAwait(false);
+        ForgetRecoveryRoom(roomId);
         await _credentials.DeleteInviteCodeAsync(roomId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -685,13 +709,29 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         PresenceState localPresence,
         CancellationToken cancellationToken = default)
     {
+        Guid? nextActiveRoomId = activeRoomId is { } id && roomEpochs.ContainsKey(id) ? id : null;
+        while (true)
+        {
+            ActiveRoomRequest current = Volatile.Read(ref _activeRoomRequest);
+            if (current.RoomId == nextActiveRoomId)
+                break;
+            var next = new ActiveRoomRequest(nextActiveRoomId, current.Generation + 1);
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _activeRoomRequest, next, current), current))
+                break;
+        }
         await _realtime.SynchronizeAsync(
             roomEpochs,
             activeRoomId,
             localPresence,
             cancellationToken).ConfigureAwait(false);
-        _roomEpochs = roomEpochs.ToDictionary(pair => pair.Key, pair => pair.Value);
-        _activeRoomId = activeRoomId is { } id && roomEpochs.ContainsKey(id) ? id : null;
+        lock (_messageRecoveryGate)
+        {
+            if (Volatile.Read(ref _sessionInvalidated) == 0)
+            {
+                _roomEpochs = roomEpochs.ToDictionary(pair => pair.Key, pair => pair.Value);
+                _messageRecovery?.UpdateRooms(_roomEpochs);
+            }
+        }
         if (_realtime.RequiresThrowableWireCodes)
         {
             EnsureFirebaseWireCodesRefresh();
@@ -798,9 +838,17 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         return rows.SingleOrDefault();
     }
 
-    public ValueTask InvalidateRealtimeSessionAsync(
-        CancellationToken cancellationToken = default) =>
-        _realtime.InvalidateSessionAsync(cancellationToken);
+    public ValueTask InvalidateRealtimeSessionAsync(CancellationToken cancellationToken = default)
+    {
+        Interlocked.Exchange(ref _sessionInvalidated, 1);
+        lock (_messageRecoveryGate)
+        {
+            _roomEpochs = new Dictionary<Guid, long>();
+            _messageRevisions.Clear();
+            _messageRecovery?.UpdateRooms(_roomEpochs);
+        }
+        return _realtime.InvalidateSessionAsync(cancellationToken);
+    }
 
     private async Task<DatabaseMessage?> ReconcileMessageAsync(
         Guid messageId,
@@ -854,9 +902,58 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         ChannelWriter<BackendEvent> output,
         CancellationToken cancellationToken)
     {
+        Guid recoveryUserId;
+        lock (_messageRecoveryGate)
+        {
+            recoveryUserId = _snapshotUserId;
+        }
+        var fetchRevisions = new Dictionary<Guid, long>();
+        var fetchStartedTimestamps = new Dictionary<Guid, long>();
+        await using var messageRecovery = new MessageRecoveryQueue(
+            async (roomId, token) =>
+            {
+                lock (_messageRecoveryGate)
+                {
+                    fetchRevisions[roomId] = _messageRevisions.GetValueOrDefault(roomId);
+                    fetchStartedTimestamps[roomId] = Stopwatch.GetTimestamp();
+                }
+                IReadOnlyList<ChatMessage>? messages = null;
+                bool connected = await _realtime.RunWhileConnectedAsync(async connectedToken =>
+                {
+                    messages = await FetchRecentMessagesAsync(roomId, connectedToken).ConfigureAwait(false);
+                }, token).ConfigureAwait(false);
+                if (!connected || messages is null)
+                    throw new HttpRequestException("Message reconciliation is waiting for connection recovery.");
+                return messages;
+            },
+            async (roomId, epoch, messages, token) =>
+            {
+                while (await output.WaitToWriteAsync(token).ConfigureAwait(false))
+                {
+                    lock (_messageRecoveryGate)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        if (Volatile.Read(ref _sessionInvalidated) != 0 || _snapshotUserId != recoveryUserId
+                            || !_roomEpochs.TryGetValue(roomId, out long currentEpoch) || currentEpoch != epoch)
+                            return;
+                        if (!fetchRevisions.TryGetValue(roomId, out long fetchRevision)
+                            || fetchRevision != _messageRevisions.GetValueOrDefault(roomId))
+                            throw new HttpRequestException("Newer room messages arrived during recovery.");
+                        if (output.TryWrite(new RecoveredMessagesReceived(
+                            recoveryUserId, roomId, epoch, messages, fetchStartedTimestamps[roomId])))
+                            return;
+                    }
+                }
+            }, cancellationToken);
+        lock (_messageRecoveryGate)
+        {
+            messageRecovery.UpdateRooms(_roomEpochs);
+            _messageRecovery = messageRecovery;
+        }
         CancellationTokenSource? structuralDelay = null;
         Task structuralRefresh = Task.CompletedTask;
         RealtimeConnectionStatus connectionStatus = RealtimeConnectionStatus.Disconnected;
+        ActiveRoomRequest? reconciledActiveRoomRequest = null;
         try
         {
             await foreach (BackendEvent backendEvent in _realtime.ReadEventsAsync(cancellationToken))
@@ -872,8 +969,9 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
                         await HandleMessageChangeAsync(change, output, cancellationToken)
                             .ConfigureAwait(false);
                     }
-                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                     {
+                        messageRecovery.Mark(change.RoomId, exception);
                         await output.WriteAsync(
                             new BackendEvent.Diagnostic(
                                 $"message-recheck-error {FailureDiagnostic(exception)}"),
@@ -893,12 +991,14 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
                         IReadOnlyList<ChatMessage> messages = await FetchRecentMessagesAsync(
                             invalidated.RoomId,
                             cancellationToken).ConfigureAwait(false);
-                        await output.WriteAsync(
+                        await WriteRoomMessageEventAsync(
+                            output, invalidated.RoomId,
                             new BackendEvent.MessagesReplaced(invalidated.RoomId, messages),
                             cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                     {
+                        messageRecovery.Mark(invalidated.RoomId, exception);
                         await output.WriteAsync(
                             new BackendEvent.Diagnostic(
                                 $"expired-messages-error {FailureDiagnostic(exception)}"),
@@ -927,13 +1027,19 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
 
                 if (backendEvent is BackendEvent.ReconciliationRequired)
                 {
+                    ActiveRoomRequest activeRoomRequest = Volatile.Read(ref _activeRoomRequest);
                     connectionStatus = connectionStatus.WithRecoveryReconciled(false);
                     await output.WriteAsync(
                         new BackendEvent.ConnectionChanged(connectionStatus),
                         cancellationToken).ConfigureAwait(false);
+                    bool reconciled = false;
                     if (!await _realtime.RunWhileConnectedAsync(
-                        token => EmitReconciliationWithRetryAsync(output, token), cancellationToken).ConfigureAwait(false))
+                        async token => { reconciled = await EmitReconciliationWithRetryAsync(output, token).ConfigureAwait(false); },
+                        cancellationToken).ConfigureAwait(false) || !reconciled)
                         continue;
+                    if (!ReferenceEquals(activeRoomRequest, Volatile.Read(ref _activeRoomRequest)))
+                        continue;
+                    reconciledActiveRoomRequest = activeRoomRequest;
                     connectionStatus = _realtime.ConnectionStatus.WithRecoveryReconciled(true);
                     await output.WriteAsync(
                         new BackendEvent.ConnectionChanged(connectionStatus),
@@ -943,15 +1049,27 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
 
                 if (backendEvent is BackendEvent.ConnectionChanged connection)
                 {
+                    RealtimeConnectionStatus previousStatus = connectionStatus;
                     connectionStatus = connection.Status;
+                    if (previousStatus.RecoveryReconciled
+                        && previousStatus.ActiveRoomTransportConnected
+                        && connectionStatus.ActiveRoomTransportConnected
+                        && ReferenceEquals(reconciledActiveRoomRequest, Volatile.Read(ref _activeRoomRequest)))
+                        connectionStatus = connectionStatus with { RecoveryReconciled = true };
                     await output.WriteAsync(
                         new BackendEvent.ConnectionChanged(connectionStatus),
                         cancellationToken).ConfigureAwait(false);
-                    if (connectionStatus.TransportConnected)
+                    if (connectionStatus.TransportConnected || connectionStatus.ActiveRoomTransportConnected)
                     {
+                        bool reconciled = false;
+                        ActiveRoomRequest activeRoomRequest = Volatile.Read(ref _activeRoomRequest);
                         if (!await _realtime.RunWhileConnectedAsync(
-                            token => EmitReconciliationWithRetryAsync(output, token), cancellationToken).ConfigureAwait(false))
+                            async token => { reconciled = await EmitReconciliationWithRetryAsync(output, token).ConfigureAwait(false); },
+                            cancellationToken).ConfigureAwait(false) || !reconciled)
                             continue;
+                        if (!ReferenceEquals(activeRoomRequest, Volatile.Read(ref _activeRoomRequest)))
+                            continue;
+                        reconciledActiveRoomRequest = activeRoomRequest;
                         connectionStatus = _realtime.ConnectionStatus.WithRecoveryReconciled(true);
                         await output.WriteAsync(
                             new BackendEvent.ConnectionChanged(connectionStatus),
@@ -972,11 +1090,16 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
                 structuralDelay.Dispose();
             }
 
+            lock (_messageRecoveryGate)
+            {
+                if (ReferenceEquals(_messageRecovery, messageRecovery))
+                    _messageRecovery = null;
+            }
             output.TryComplete();
         }
     }
 
-    private async Task EmitReconciliationWithRetryAsync(
+    private async Task<bool> EmitReconciliationWithRetryAsync(
         ChannelWriter<BackendEvent> output,
         CancellationToken cancellationToken)
     {
@@ -985,7 +1108,7 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             try
             {
                 await EmitReconciliationAsync(output, cancellationToken).ConfigureAwait(false);
-                return;
+                return true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -1001,8 +1124,10 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
                     new BackendEvent.TechnicalError(
                         I18n.Format("connection.group_resync_failed", exception.Message)),
                     cancellationToken).ConfigureAwait(false);
-                await Task.Delay(
-                    RealtimeRecoveryPolicy.DelayForAttempt(attempt + 1),
+                if (!RealtimeRestRetryPolicy.IsTransient(exception))
+                    return false;
+                await FirebaseRealtimeRetryPolicy.DelayAsync(
+                    RealtimeRestRetryPolicy.Delay(attempt + 1, exception), TimeProvider.System,
                     cancellationToken).ConfigureAwait(false);
             }
         }
@@ -1016,10 +1141,11 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         await output.WriteAsync(
             new BackendEvent.SnapshotReceived(snapshot),
             cancellationToken).ConfigureAwait(false);
-        if (_activeRoomId is { } activeRoomId
+        if (Volatile.Read(ref _activeRoomRequest).RoomId is { } activeRoomId
             && snapshot.Rooms.Any(room => room.Id == activeRoomId))
         {
-            await output.WriteAsync(
+            await WriteRoomMessageEventAsync(
+                output, activeRoomId,
                 new BackendEvent.MessagesReplaced(
                     activeRoomId,
                     await FetchRecentMessagesAsync(activeRoomId, cancellationToken)
@@ -1038,7 +1164,8 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             await output.WriteAsync(
                 new BackendEvent.Diagnostic("message-delete-forwarded"),
                 cancellationToken).ConfigureAwait(false);
-            await output.WriteAsync(
+            await WriteRoomMessageEventAsync(
+                output, change.RoomId,
                 new BackendEvent.MessageDeleted(change.RoomId, change.MessageId),
                 cancellationToken).ConfigureAwait(false);
             return;
@@ -1075,7 +1202,8 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             await output.WriteAsync(
                 new BackendEvent.Diagnostic("message-recheck-completed result=found"),
                 cancellationToken).ConfigureAwait(false);
-            await output.WriteAsync(
+            await WriteRoomMessageEventAsync(
+                output, change.RoomId,
                 new BackendEvent.MessageReceived(MapMessage(row)),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -1084,10 +1212,30 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             await output.WriteAsync(
                 new BackendEvent.Diagnostic("message-recheck-completed result=missing"),
                 cancellationToken).ConfigureAwait(false);
-            await output.WriteAsync(
+            await WriteRoomMessageEventAsync(
+                output, change.RoomId,
                 new BackendEvent.MessageDeleted(change.RoomId, change.MessageId),
                 cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task WriteRoomMessageEventAsync(
+        ChannelWriter<BackendEvent> output,
+        Guid roomId,
+        BackendEvent backendEvent,
+        CancellationToken cancellationToken)
+    {
+        while (await output.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
+        {
+            lock (_messageRecoveryGate)
+            {
+                if (!output.TryWrite(backendEvent))
+                    continue;
+                _messageRevisions[roomId] = _messageRevisions.GetValueOrDefault(roomId) + 1;
+                return;
+            }
+        }
+        throw new ChannelClosedException();
     }
 
     private async Task EmitCoalescedSnapshotAsync(
@@ -1097,28 +1245,53 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         try
         {
             await Task.Delay(s_structuralCoalescingWindow, cancellationToken).ConfigureAwait(false);
-            BackendSnapshot snapshot = await FetchSnapshotAsync(cancellationToken).ConfigureAwait(false);
-            await output.WriteAsync(new BackendEvent.SnapshotReceived(snapshot), cancellationToken)
-                .ConfigureAwait(false);
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    BackendSnapshot snapshot = await FetchSnapshotAsync(cancellationToken).ConfigureAwait(false);
+                    await output.WriteAsync(new BackendEvent.SnapshotReceived(snapshot), cancellationToken)
+                        .ConfigureAwait(false);
+                    return;
+                }
+                catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+                {
+                    output.TryWrite(new BackendEvent.Diagnostic(
+                        $"room-snapshot-error {FailureDiagnostic(exception)}"));
+                    if (attempt == 0)
+                        output.TryWrite(new BackendEvent.TechnicalError(
+                            I18n.Format("groups.refresh.failed", exception.Message)));
+                    if (!RealtimeRestRetryPolicy.IsTransient(exception))
+                        return;
+                    await FirebaseRealtimeRetryPolicy.DelayAsync(
+                        RealtimeRestRetryPolicy.Delay(attempt + 1, exception), TimeProvider.System,
+                        cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-        }
-        catch (Exception exception)
-        {
-            output.TryWrite(new BackendEvent.Diagnostic(
-                $"room-snapshot-error {FailureDiagnostic(exception)}"));
-            output.TryWrite(new BackendEvent.TechnicalError(
-                I18n.Format("groups.refresh.failed", exception.Message)));
         }
     }
 
     private async Task<T> GetAsync<T>(string relativePath, CancellationToken cancellationToken)
     {
-        using HttpRequestMessage request = await CreateRequestAsync(HttpMethod.Get, relativePath, cancellationToken)
-            .ConfigureAwait(false);
-        using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        return await ReadRequiredAsync<T>(response, cancellationToken).ConfigureAwait(false);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var requestLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        CancellationToken requestToken = requestLifetime.Token;
+        for (int attempt = 0; ; attempt++)
+        {
+            using HttpRequestMessage request = await CreateRequestAsync(HttpMethod.Get, relativePath, requestToken)
+                .ConfigureAwait(false);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestToken).ConfigureAwait(false);
+            if (attempt == 0 && response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await _sessions.RecoverRejectedSessionAsync(request.Headers.Authorization!.Parameter!, requestToken)
+                    .ConfigureAwait(false);
+                continue;
+            }
+            return await ReadRequiredAsync<T>(response, requestToken).ConfigureAwait(false);
+        }
     }
 
     private void EnsureFirebaseWireCodesRefresh()
@@ -1306,10 +1479,8 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Supabase RPC {function} failed with HTTP {(int)response.StatusCode}.",
-                inner: null,
-                response.StatusCode);
+            throw RealtimeRestRetryPolicy.Failure(response,
+                $"Supabase RPC {function} failed with HTTP {(int)response.StatusCode}.");
         }
     }
 
@@ -1359,10 +1530,8 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     {
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Supabase REST request failed with HTTP {(int)response.StatusCode}.",
-                inner: null,
-                response.StatusCode);
+            throw RealtimeRestRetryPolicy.Failure(response,
+                $"Supabase REST request failed with HTTP {(int)response.StatusCode}.");
         }
 
         return await response.Content.ReadFromJsonAsync<T>(s_jsonOptions, cancellationToken)
@@ -1376,10 +1545,8 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
     {
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Supabase RPC failed with HTTP {(int)response.StatusCode}.",
-                inner: null,
-                response.StatusCode);
+            throw RealtimeRestRetryPolicy.Failure(response,
+                $"Supabase RPC failed with HTTP {(int)response.StatusCode}.");
         }
 
         await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken)

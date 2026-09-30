@@ -41,6 +41,8 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingReplies = [];
     private readonly ConcurrentDictionary<string, string> _joinReferences = [];
     private readonly ConcurrentDictionary<Guid, IReadOnlySet<Guid>> _presentUsersByRoom = [];
+    private readonly ConcurrentDictionary<Guid, int> _roomRefreshAttempts = [];
+    private readonly ConcurrentDictionary<Guid, long> _roomRefreshPending = [];
     private readonly Lock _recoveryGate = new();
     private IReadOnlyDictionary<Guid, long> _desiredRoomEpochs = new Dictionary<Guid, long>();
     private Guid? _activeRoomId;
@@ -101,7 +103,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         using var interrupted = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         void OnConnectionChanged(RealtimeConnectionStatus status)
         {
-            if (!status.TransportConnected)
+            if (!status.TransportConnected && !status.ActiveRoomTransportConnected)
             {
                 try
                 { interrupted.Cancel(); }
@@ -111,10 +113,11 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         ConnectionStatusChanged += OnConnectionChanged;
         try
         {
-            if (!ConnectionStatus.TransportConnected)
+            if (!ConnectionStatus.TransportConnected && !ConnectionStatus.ActiveRoomTransportConnected)
                 return false;
             await operation(interrupted.Token).ConfigureAwait(false);
-            return !interrupted.IsCancellationRequested && ConnectionStatus.TransportConnected;
+            return !interrupted.IsCancellationRequested
+                && (ConnectionStatus.TransportConnected || ConnectionStatus.ActiveRoomTransportConnected);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -156,12 +159,17 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             {
                 Volatile.Write(ref _recoveryPaused, 0);
                 Interlocked.Exchange(ref _authorizationFailures, 0);
+                foreach (RealtimeRoomDescriptor descriptor in delta.Joins)
+                    _roomRefreshAttempts.TryRemove(descriptor.RoomId, out _);
             }
             foreach (Guid roomId in _presentUsersByRoom.Keys.Where(id => !desired.ContainsKey(id)))
             {
                 _presentUsersByRoom.TryRemove(roomId, out _);
+                _roomRefreshAttempts.TryRemove(roomId, out _);
             }
-            _activeRoomId = activeRoomId is { } id && desired.ContainsKey(id) ? id : null;
+            Guid? nextActiveRoomId = activeRoomId is { } id && desired.ContainsKey(id) ? id : null;
+            bool activeRoomChanged = _activeRoomId != nextActiveRoomId;
+            _activeRoomId = nextActiveRoomId;
             _localPresence = localPresence;
             if (!IsNetworkAvailable || Volatile.Read(ref _recoveryPaused) != 0)
             {
@@ -202,7 +210,11 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                     .SelectMany(pair => RealtimeEpochSubscriptionPlan.Descriptors(
                         pair.Key,
                         pair.Value))
-                : delta.Joins;
+                : delta.Joins.Concat(desired
+                    .OrderBy(pair => pair.Key)
+                    .SelectMany(pair => RealtimeEpochSubscriptionPlan.Descriptors(pair.Key, pair.Value))
+                    .Where(descriptor => !_joinReferences.ContainsKey(descriptor.PhoenixTopic)))
+                    .Distinct();
             try
             {
                 await JoinTopicsAsync(joins, cancellationToken).ConfigureAwait(false);
@@ -220,7 +232,12 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 ScheduleRecovery();
                 return;
             }
-            EmitConnectionStatus(CurrentTransportStatus());
+            RealtimeConnectionStatus status = CurrentTransportStatus();
+            bool unchangedStatus = status == ConnectionStatus;
+            EmitConnectionStatus(status);
+            if (activeRoomChanged && unchangedStatus
+                && (status.TransportConnected || status.ActiveRoomTransportConnected))
+                Emit(new BackendEvent.ReconciliationRequired());
             Interlocked.Exchange(ref _authorizationFailures, 0);
             Emit(new BackendEvent.Diagnostic(
                 $"realtime-synchronization-completed rooms={desired.Count}"));
@@ -441,8 +458,27 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         // each room before starting the next room so later rooms get a fresh timeout.
         foreach (IGrouping<Guid, RealtimeRoomDescriptor> room in descriptors.GroupBy(descriptor => descriptor.RoomId))
         {
-            await Task.WhenAll(room.Select(descriptor => JoinTopicAsync(descriptor, cancellationToken)))
-                .ConfigureAwait(false);
+            try
+            {
+                await Task.WhenAll(room.Select(descriptor => JoinTopicAsync(descriptor, cancellationToken)))
+                    .ConfigureAwait(false);
+                _roomRefreshAttempts.TryRemove(room.Key, out _);
+            }
+            catch (RealtimeSubscriptionException exception) when (
+                !exception.SessionFailure
+                && exception.FailureKind != RealtimeSubscriptionFailureKind.Configuration)
+            {
+                Emit(new BackendEvent.Diagnostic(
+                    $"realtime-room-subscription-deferred failure={exception.FailureKind.ToString().ToLowerInvariant()}"));
+                if (exception.FailureKind != RealtimeSubscriptionFailureKind.Authorization)
+                    Emit(new BackendEvent.TechnicalError(RealtimeUserErrorMessage.From(exception)));
+                ScheduleRoomRefresh(room.Key, room.First().Epoch);
+            }
+            catch (TimeoutException)
+            {
+                Emit(new BackendEvent.Diagnostic("realtime-room-subscription-deferred failure=timeout"));
+                ScheduleRoomRefresh(room.Key, room.First().Epoch);
+            }
         }
     }
 
@@ -565,9 +601,9 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 room.Value,
                 RealtimeTopicKind.Ephemeral);
             string? joinReference = _joinReferences.GetValueOrDefault(topic.PhoenixTopic);
-            if (_socketSession?.Socket.State == WebSocketState.Open
-                && joinReference is not null
-                && _publishedPresence.TryGetValue(topic.PhoenixTopic, out (string JoinReference, PresenceState State) published)
+            if (_socketSession?.Socket.State != WebSocketState.Open || joinReference is null)
+                continue;
+            if (_publishedPresence.TryGetValue(topic.PhoenixTopic, out (string JoinReference, PresenceState State) published)
                 && published == (joinReference, state))
             {
                 continue;
@@ -909,7 +945,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             && _desiredRoomEpochs.All(room => RealtimeEpochSubscriptionPlan
                 .Descriptors(room.Key, room.Value)
                 .All(descriptor => _joinReferences.ContainsKey(descriptor.PhoenixTopic)));
-        bool activeRoomConnected = transportConnected
+        bool activeRoomConnected = socketConnected
             && _activeRoomId is { } activeRoomId
             && _desiredRoomEpochs.TryGetValue(activeRoomId, out long epoch)
             && RealtimeEpochSubscriptionPlan.Descriptors(activeRoomId, epoch)
@@ -917,7 +953,10 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         return new RealtimeConnectionStatus(
             transportConnected,
             activeRoomConnected,
-            RecoveryReconciled: false);
+            RecoveryReconciled: false)
+        {
+            SocketConnected = socketConnected,
+        };
     }
 
     private void EmitDisconnected() => EmitConnectionStatus(RealtimeConnectionStatus.Disconnected);
@@ -1068,13 +1107,63 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         Emit(new BackendEvent.Diagnostic(
             $"realtime-channel-terminated kind={descriptor.Kind.ToString().ToLowerInvariant()} event={eventName} failure={failure.FailureKind.ToString().ToLowerInvariant()}"));
         EmitConnectionStatus(CurrentTransportStatus());
-        if (PauseForNonRetryableFailure(failure))
+        if (failure.SessionFailure || failure.FailureKind == RealtimeSubscriptionFailureKind.Configuration)
         {
+            if (!PauseForNonRetryableFailure(failure))
+            {
+                Emit(new BackendEvent.TechnicalError(RealtimeUserErrorMessage.From(failure)));
+                ScheduleRecovery();
+            }
             return;
         }
 
-        Emit(new BackendEvent.TechnicalError(RealtimeUserErrorMessage.From(failure)));
-        ScheduleRecovery();
+        ScheduleRoomRefresh(descriptor.RoomId, descriptor.Epoch);
+    }
+
+    private void ScheduleRoomRefresh(Guid roomId, long epoch)
+    {
+        while (true)
+        {
+            if (_roomRefreshPending.TryGetValue(roomId, out long pendingEpoch))
+            {
+                if (pendingEpoch == epoch)
+                    return;
+                if (_roomRefreshPending.TryUpdate(roomId, epoch, pendingEpoch))
+                    break;
+            }
+            else if (_roomRefreshPending.TryAdd(roomId, epoch))
+            {
+                break;
+            }
+        }
+
+        int attempt = _roomRefreshAttempts.AddOrUpdate(roomId, 1, (_, previous) => Math.Min(previous + 1, 4));
+        _ = RefreshRoomAfterDelayAsync(roomId, epoch, attempt);
+    }
+
+    private async Task RefreshRoomAfterDelayAsync(Guid roomId, long epoch, int attempt)
+    {
+        bool refresh = false;
+        try
+        {
+            TimeSpan delay = attempt == 1
+                ? RealtimeRecoveryPolicy.PathRecoveryDebounce
+                : RealtimeRecoveryPolicy.DelayForAttempt(attempt - 1);
+            await Task.Delay(delay, _shutdown.Token).ConfigureAwait(false);
+            refresh = _desiredRoomEpochs.TryGetValue(roomId, out long currentEpoch)
+                && currentEpoch == epoch;
+        }
+        catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _roomRefreshPending.TryRemove(new KeyValuePair<Guid, long>(roomId, epoch));
+        }
+        if (refresh && !_shutdown.IsCancellationRequested
+            && _desiredRoomEpochs.TryGetValue(roomId, out long latestEpoch)
+            && latestEpoch == epoch)
+            Emit(new BackendEvent.RoomStructureChanged(roomId));
     }
 
     private static bool IsValidCharacterId(string value)
@@ -1285,6 +1374,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             subscriptionAuthorizationFailure |= current is RealtimeSubscriptionException
             {
                 FailureKind: RealtimeSubscriptionFailureKind.Authorization,
+                SessionFailure: true,
             };
             configurationFailure |= current is RealtimeSubscriptionException
             {
@@ -1336,7 +1426,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
     private void OnNetworkPathChanged()
     {
         // NCSI can change on a healthy connection; do not tear down a working socket.
-        if (!ConnectionStatus.TransportConnected)
+        if (!ConnectionStatus.SocketConnected)
             ScheduleRecovery(immediate: true);
     }
 

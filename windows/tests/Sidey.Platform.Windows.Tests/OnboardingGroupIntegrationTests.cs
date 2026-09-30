@@ -322,6 +322,14 @@ public sealed class OnboardingGroupIntegrationTests
         knownPresence[(nextRoom.Id, nextSleepingFriendId)] = PresenceState.Away;
 
         Bind<Action<RealtimeConnectionStatus>>(coordinator, "SetRealtimeConnection")(
+            new RealtimeConnectionStatus(false, false, false) { SocketConnected = true });
+        Assert.Equal(PresenceState.Online, knownPresence[(nextRoom.Id, nextFriendId)]);
+        Assert.Equal(PresenceState.Online, coordinator.State.Rooms.Single(room => room.Id == nextRoom.Id)
+            .Members.Single(member => member.UserId == nextFriendId).Presence);
+        Bind<Action<RealtimeConnectionStatus>>(coordinator, "SetRealtimeConnection")(
+            new RealtimeConnectionStatus(true, true, true));
+
+        Bind<Action<RealtimeConnectionStatus>>(coordinator, "SetRealtimeConnection")(
             new RealtimeConnectionStatus(true, false, false));
         Assert.Equal(PresenceState.Online, coordinator.State.Rooms.Single(room => room.Id == nextRoom.Id)
             .Members.Single(member => member.UserId == nextFriendId).Presence);
@@ -356,6 +364,67 @@ public sealed class OnboardingGroupIntegrationTests
             coordinator.State.Rooms.Single(room => room.Id == firstRoom.Id)
                 .Members.Single(member => member.UserId == firstFriendId).Presence);
         Assert.Equal(PresenceState.Offline, knownPresence[(nextRoom.Id, nextFriendId)]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SnapshotDuringRoomSwitchKeepsPendingRealtimeTargetOnlyWhileMembershipExists(
+        bool pendingRoomRemoved)
+    {
+        await using var coordinator = new AppCoordinator(new MemoryPreferences());
+        IBackendGateway backend = DispatchProxy.Create<IBackendGateway, GroupBackend>();
+        var server = (GroupBackend)backend;
+        Room firstRoom = server.NewRoom("First");
+        Room secondRoom = server.NewRoom("Second");
+        server.Rooms = [firstRoom, secondRoom];
+        SetField(coordinator, "_backend", backend);
+        SetField(coordinator, "_state", CoordinatorState.Initial with
+        {
+            GoogleAuthentication = GoogleAuthenticationState.Verified,
+            Profile = server.Profile,
+            Rooms = server.Rooms,
+            ActiveRoomId = firstRoom.Id,
+            Preferences = AppPreferences.Default with { OverlayVisible = false },
+            RealtimeConnection = new RealtimeConnectionStatus(true, true, true),
+        });
+        var switching = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pipeline = new RoomSwitchPipeline(async (_, token) =>
+        {
+            switching.TrySetResult();
+            await release.Task.WaitAsync(token);
+            return [];
+        }, (_, _) => Task.CompletedTask,
+            Bind<Action<Guid, IReadOnlyList<ChatMessage>>>(coordinator, "CommitRoomSwitch"),
+            TimeSpan.Zero);
+        pipeline.InitializeCommittedRoom(firstRoom.Id);
+        RoomSessionLifetime session = Assert.IsType<RoomSessionLifetime>(typeof(AppCoordinator)
+            .GetField("_roomSession", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(coordinator));
+        session.SwitchPipeline = pipeline;
+        using var cancel = new CancellationTokenSource();
+        Task request = pipeline.RequestAsync(secondRoom.Id, cancel.Token);
+        await switching.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        IReadOnlyList<Room> snapshotRooms = pendingRoomRemoved ? [firstRoom] : [firstRoom, secondRoom];
+        await Bind<Func<BackendSnapshot, CancellationToken, Task>>(coordinator, "ReconcileSnapshotAsync")(
+            new BackendSnapshot(server.Profile, snapshotRooms, server.Profile.Id, new HashSet<string>()),
+            CancellationToken.None);
+
+        Assert.Equal(firstRoom.Id, coordinator.State.ActiveRoomId);
+        Assert.Equal(pendingRoomRemoved ? firstRoom.Id : secondRoom.Id, server.LastSynchronizedRoomId);
+        if (pendingRoomRemoved)
+        {
+            cancel.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
+        }
+        else
+        {
+            release.SetResult();
+            await request.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(secondRoom.Id, coordinator.State.ActiveRoomId);
+        }
+        Assert.Null(pipeline.PendingRoomId);
     }
 
     private static void SetField(AppCoordinator coordinator, string name, object value) =>
@@ -429,6 +498,7 @@ public sealed class OnboardingGroupIntegrationTests
         public IReadOnlyList<Room> Rooms { get; set; } = [];
         public int Mutations { get; private set; }
         public Func<Task> Synchronize { get; set; } = () => Task.CompletedTask;
+        public Guid? LastSynchronizedRoomId { get; private set; }
 
         public Room NewRoom(string name) => new(Guid.NewGuid(), name, Profile.Id,
             [new RoomMember(Profile.Id, Profile.Nickname, Profile.CharacterId, PresenceState.Online)], "TEST", true, 1);
@@ -452,6 +522,7 @@ public sealed class OnboardingGroupIntegrationTests
                 case nameof(IBackendGateway.FetchRecentMessagesAsync):
                     return Task.FromResult<IReadOnlyList<ChatMessage>>([]);
                 case nameof(IBackendGateway.SynchronizeRealtimeRoomsAsync):
+                    LastSynchronizedRoomId = (Guid?)args![1];
                     return Synchronize();
                 default:
                     throw new NotSupportedException(targetMethod.Name);

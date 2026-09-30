@@ -255,7 +255,12 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
             TimeSpan delay = FirebaseRealtimeRetryPolicy.CalculateDelay(
                 consecutiveFailures,
                 failure is FirebaseRealtimeRetryException ? null : statusCode,
-                retryAfter: null,
+                retryAfter: failure switch
+                {
+                    FirebaseRealtimeStreamRequestException request => request.RetryAfter,
+                    FirebaseRtdbRequestException request => request.RetryAfter,
+                    _ => null,
+                },
                 Random.Shared.NextDouble());
             if (failure is FirebaseRealtimeRetryException retryFailure && retryFailure.RetryAfter > delay)
             {
@@ -1109,6 +1114,7 @@ internal sealed class FirebaseRealtimeListener : IFirebaseRealtimeListener
     {
         public string StreamKind { get; } = streamKind;
         public FirebaseRtdbFailureKind FailureKind { get; } = innerException.FailureKind;
+        public TimeSpan? RetryAfter { get; } = innerException.RetryAfter;
         public System.Net.HttpStatusCode? StatusCode { get; } = innerException.StatusCode;
     }
 

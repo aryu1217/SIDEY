@@ -107,7 +107,7 @@ public sealed class StoreStateGatewayTests
     {
         await using var context = new StoreRequestContext(CatalogRows(), status);
 
-        HttpRequestException exception = await Assert.ThrowsAsync<HttpRequestException>(
+        HttpRequestException exception = await Assert.ThrowsAnyAsync<HttpRequestException>(
             () => context.Backend.GetWindowsCommerceStateAsync());
 
         Assert.Equal(status, exception.StatusCode);

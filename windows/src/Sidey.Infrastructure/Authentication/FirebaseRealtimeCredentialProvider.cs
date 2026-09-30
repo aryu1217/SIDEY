@@ -125,6 +125,7 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
     private readonly HttpClient _httpClient;
     private readonly TimeProvider _timeProvider;
     private readonly Func<double> _retryJitter;
+    private readonly TimeSpan _acquisitionTimeout;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Lock _lifecycleGate = new();
     private readonly Dictionary<SessionKey, TokenState> _states = [];
@@ -148,13 +149,16 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         ICredentialStore credentials,
         HttpClient httpClient,
         TimeProvider? timeProvider = null,
-        Func<double>? retryJitter = null)
+        Func<double>? retryJitter = null,
+        TimeSpan? acquisitionTimeout = null)
     {
         _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _timeProvider = timeProvider ?? TimeProvider.System;
         _retryJitter = retryJitter ?? (() => Random.Shared.NextDouble());
+        _acquisitionTimeout = acquisitionTimeout ?? TimeSpan.FromSeconds(20);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_acquisitionTimeout, TimeSpan.Zero);
     }
 
     public ValueTask<FirebaseRealtimeCredential> GetCredentialAsync(
@@ -426,6 +430,32 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         long generation,
         CancellationToken generationToken)
     {
+        using var deadline = new CancellationTokenSource(_acquisitionTimeout, _timeProvider);
+        using var acquisition = CancellationTokenSource.CreateLinkedTokenSource(generationToken, deadline.Token);
+        try
+        {
+            return await AcquireCredentialWithinDeadlineAsync(
+                key, supabaseSession, previousState, persistedSession, requiresRebootstrap,
+                minimumAccessRevision, generation, acquisition.Token, generationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested && !generationToken.IsCancellationRequested)
+        {
+            var timeout = new FirebaseRealtimeRetryException("Firebase credential acquisition timed out.", null, TimeSpan.Zero, "timeout");
+            throw await RemoveFailedOperationAsync(key, generation, timeout).ConfigureAwait(false) ?? timeout;
+        }
+    }
+
+    private async Task<FirebaseRealtimeCredential> AcquireCredentialWithinDeadlineAsync(
+        SessionKey key,
+        StoredSupabaseSession supabaseSession,
+        TokenState? previousState,
+        PersistedSession? persistedSession,
+        bool requiresRebootstrap,
+        string? minimumAccessRevision,
+        long generation,
+        CancellationToken generationToken,
+        CancellationToken lifetimeToken)
+    {
         try
         {
             if (previousState is null || requiresRebootstrap)
@@ -497,7 +527,8 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
                     generation,
                     validated.Bootstrap,
                     grant,
-                    generationToken).ConfigureAwait(false);
+                    generationToken,
+                    lifetimeToken).ConfigureAwait(false);
             }
 
             FirebaseTokenGrant refreshed = await RefreshTokenAsync(
@@ -511,10 +542,12 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
                 generation,
                 previousState.Bootstrap,
                 refreshed,
-                generationToken).ConfigureAwait(false);
+                generationToken,
+                lifetimeToken).ConfigureAwait(false);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException || !generationToken.IsCancellationRequested)
         {
+            EnsureCurrentGeneration(generation, lifetimeToken);
             FirebaseRealtimeRetryException? adjusted = await RemoveFailedOperationAsync(key, generation, exception)
                 .ConfigureAwait(false);
             if (adjusted is not null)
@@ -777,10 +810,6 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
                 }
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
         catch (Exception)
         {
             // Retain the HTTP status and retry headers when optional error-body reading fails.
@@ -833,9 +862,10 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
         long generation,
         ValidatedBootstrap bootstrap,
         FirebaseTokenGrant grant,
-        CancellationToken generationToken)
+        CancellationToken generationToken,
+        CancellationToken lifetimeToken)
     {
-        await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        await _gate.WaitAsync(generationToken).ConfigureAwait(false);
         try
         {
             EnsureCurrentGeneration(generation, generationToken);
@@ -880,7 +910,7 @@ internal sealed class FirebaseRealtimeCredentialProvider : IFirebaseRealtimeCred
                 bootstrap.FirebaseApiKey,
                 generation,
                 checked(++_authVersion),
-                generationToken,
+                lifetimeToken,
                 grant.ReceivedTimestamp,
                 RefreshAfter(grant.ExpiresIn),
                 grant.ExpiresIn,

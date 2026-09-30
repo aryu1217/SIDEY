@@ -90,13 +90,15 @@ public sealed record RealtimeConnectionStatus(
     bool ActiveRoomTransportConnected,
     bool RecoveryReconciled)
 {
+    public bool SocketConnected { get; init; } = TransportConnected;
+
     public static RealtimeConnectionStatus Disconnected { get; } = new(false, false, false);
 
     public bool IsReady => TransportConnected && RecoveryReconciled;
 
     public RealtimeConnectionStatus WithRecoveryReconciled(bool reconciled) => this with
     {
-        RecoveryReconciled = TransportConnected && reconciled,
+        RecoveryReconciled = (TransportConnected || ActiveRoomTransportConnected) && reconciled,
     };
 }
 

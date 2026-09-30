@@ -236,7 +236,7 @@ public sealed class SupabaseIdentityLinkTests
         await auth.BeginGoogleSignInAsync(new Uri("sidey://auth/google"));
         await auth.CancelGoogleAuthenticationAsync();
         Uri current = await auth.BeginGoogleSignInAsync(new Uri("sidey://auth/google"));
-        await Assert.ThrowsAsync<HttpRequestException>(() => auth.CompleteGoogleIdentityLinkAsync("stale-code"));
+        await Assert.ThrowsAnyAsync<HttpRequestException>(() => auth.CompleteGoogleIdentityLinkAsync("stale-code"));
         Assert.Null(credentials.SessionJson);
 
         await auth.CompleteGoogleIdentityLinkAsync("current-code");

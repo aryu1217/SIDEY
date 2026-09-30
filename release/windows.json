@@ -2,9 +2,9 @@
   "schema": 1,
   "platform": "windows",
   "channel": "production",
-  "version": "2.2640.8",
-  "windowsBuild": 8,
-  "updateVersion": "2.2640.8",
-  "releaseVersion": "2.2640.8",
-  "msixVersion": "2.2640.8.0"
+  "version": "2.2640.12",
+  "windowsBuild": 12,
+  "updateVersion": "2.2640.12",
+  "releaseVersion": "2.2640.12",
+  "msixVersion": "2.2640.12.0"
 }

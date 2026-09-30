@@ -8,6 +8,9 @@ param(
 
     [string]$BuildDirectory = 'build/windows/manual-release-build',
 
+    [ValidateNotNullOrEmpty()]
+    [string]$SourceRemote = 'origin',
+
     [string]$MakensisPath
 )
 
@@ -42,10 +45,10 @@ try {
     if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
         throw 'Unable to resolve the release source commit.'
     }
-    $remoteLine = git ls-remote origin refs/heads/main
+    $remoteLine = git ls-remote $SourceRemote refs/heads/main
     if ($LASTEXITCODE -ne 0 -or @($remoteLine).Count -ne 1 -or
         ($remoteLine -split '\s+')[0] -cne $sourceCommit) {
-        throw 'Current HEAD must equal origin/main before building a release candidate.'
+        throw "Current HEAD must equal $SourceRemote/main before building a release candidate."
     }
     $trackedChanges = @(git status --porcelain --untracked-files=no)
     if ($LASTEXITCODE -ne 0 -or $trackedChanges.Count -gt 0) {

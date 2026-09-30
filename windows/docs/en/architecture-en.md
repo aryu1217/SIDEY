@@ -98,6 +98,16 @@ At boundaries that cannot be awaited, such as UI events or native callbacks, the
 
 Do not create a bitmap, surface, or projectile buffer on every frame in the overlay rendering path. Even small allocations in a 30 FPS loop cause memory pressure and stutter during long-running sessions.
 
+## Bind realtime read recovery to connection and room lifetimes
+
+[`FirebaseRealtimeCredentialProvider`](../../src/Sidey.Infrastructure/Authentication/FirebaseRealtimeCredentialProvider.cs) shares credential acquisition for the same session and bounds the entire operation, including response bodies and persistence. Cancelling one caller ends only that caller's wait. Acquisition timeout enters retry cooldown; session reset cancels the credential generation and existing credential lifetime. A stalled error body retains the HTTP status and `Retry-After` already received.
+
+[`SupabaseBackendGateway`](../../src/Sidey.Infrastructure/Backend/SupabaseBackendGateway.cs) retains a room in [`MessageRecoveryQueue`](../../src/Sidey.Infrastructure/Backend/MessageRecoveryQueue.cs) when a message identity or invalidation read fails transiently. It coalesces failures for the same room and serializes recovery reads across at most five joined rooms. Each read has a timeout; transient failures use exponential backoff, jitter, and `Retry-After`. A 401 refreshes the rejected session token once and retries only the GET. Repeated authentication rejection and permanent failures stop retrying.
+
+Successful room leave or deletion, and changes to the room epoch, cancel that room's recovery. Subscription shutdown and sign-out cancel and await pending work. Recovery results carry the user ID captured at subscription start and the room epoch; `AppCoordinator` applies only results matching its current account and room. This also fences reads that react late to cancellation and results already in the output queue.
+
+Firebase transient writes reuse the owning transport's `HttpClient` connection pool. Disposing a request-scoped RTDB wrapper keeps the pool alive; transport shutdown disposes it. SSE failures also retain server `Retry-After` for reconnect delays. `FirebaseRealtimeCredentialProviderTests`, `MessageRecoveryQueueTests`, `SupabaseRejectedSessionRecoveryTests`, and `FirebaseRtdbUrlBuilderTests` cover these boundaries.
+
 ## Tests verify boundaries
 
 ViewModel tests check visible state and collaborator calls after a command runs. WinUI interaction tests cover bindings at runtime.

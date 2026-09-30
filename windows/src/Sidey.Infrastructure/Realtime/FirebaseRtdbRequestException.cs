@@ -16,8 +16,10 @@ internal sealed class FirebaseRtdbRequestException(
     FirebaseRtdbFailureKind failureKind,
     HttpStatusCode? statusCode,
     string message,
-    Exception? innerException = null) : Exception(message, innerException)
+    Exception? innerException = null,
+    TimeSpan? retryAfter = null) : Exception(message, innerException)
 {
     public FirebaseRtdbFailureKind FailureKind { get; } = failureKind;
     public HttpStatusCode? StatusCode { get; } = statusCode;
+    public TimeSpan? RetryAfter { get; } = retryAfter;
 }
