@@ -94,14 +94,14 @@ public sealed class FirebaseRealtimeChatClientTests
                 },
             }));
         }));
-        var chat = new FirebaseRealtimeChatClient(
-            new FixedCredentialProvider(Credential("firebase-id-token-secret")),
-            client);
+        FixedCredentialProvider provider = new(Credential("firebase-id-token-secret"));
+        FirebaseRealtimeChatClient chat = new(provider, client);
 
         FirebaseRealtimeChatException exception =
             await Assert.ThrowsAsync<FirebaseRealtimeChatException>(
                 () => chat.SendAsync(s_messageId, s_roomId, "hello").AsTask());
 
+        Assert.Equal(expectedCode == "unauthenticated" ? 1 : 0, provider.RecoveryRequests);
         Assert.Equal(expectedCode, exception.Code);
         Assert.Equal(FirebaseRealtimeChatFailureClassification.KnownNonCommit, exception.Classification);
         Assert.Equal(httpStatus, exception.StatusCode);
@@ -218,10 +218,26 @@ public sealed class FirebaseRealtimeChatClientTests
         : IFirebaseRealtimeCredentialProvider
     {
         public ValueTask<FirebaseRealtimeCredential> GetCredentialAsync(
+            CancellationToken cancellationToken = default) =>
+            throw new FirebaseRealtimeRetryException("Renewal is cooling down.", HttpStatusCode.ServiceUnavailable, TimeSpan.FromSeconds(30));
+
+        public ValueTask<FirebaseRealtimeCredential> GetUsableCredentialAsync(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return ValueTask.FromResult(credential);
+        }
+
+        public int RecoveryRequests { get; private set; }
+
+        public ValueTask RecoverRejectedCredentialAsync(
+            FirebaseRealtimeCredential rejected,
+            CancellationToken cancellationToken = default)
+        {
+            Assert.Same(credential, rejected);
+            RecoveryRequests++;
+            return ValueTask.FromException(new FirebaseRealtimeRetryException(
+                "Recovery is cooling down.", HttpStatusCode.ServiceUnavailable, TimeSpan.FromSeconds(30)));
         }
 
         public ValueTask ResetAsync(CancellationToken cancellationToken = default) =>

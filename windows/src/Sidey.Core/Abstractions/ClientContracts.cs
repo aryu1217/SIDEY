@@ -67,6 +67,9 @@ public sealed record MessageHistoryPage(
     IReadOnlyList<ChatMessage> Messages,
     MessageHistoryCursor? NextCursor);
 
+public sealed class ChatNotReadyException() : InvalidOperationException(
+    I18n.Get("connection.notice.reconnecting"));
+
 public sealed class ChatCommitAmbiguousException : Exception
 {
     public ChatCommitAmbiguousException(Guid messageId, Guid roomId, Exception innerException)

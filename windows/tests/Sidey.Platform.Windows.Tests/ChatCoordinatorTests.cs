@@ -7,6 +7,41 @@ namespace Sidey.Platform.Windows.Tests;
 
 public sealed class ChatCoordinatorTests
 {
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task DisconnectedSendDoesNotStageOrRequestMessages(bool transportReady, bool roomReady)
+    {
+        await using ChatFixture fixture = new();
+        SetField(fixture.Coordinator, "_state", fixture.Coordinator.State with
+        {
+            RealtimeConnection = new RealtimeConnectionStatus(transportReady, roomReady, transportReady),
+        });
+
+        await Assert.ThrowsAsync<ChatNotReadyException>(
+            () => fixture.Coordinator.SendMessageAsync(fixture.Room.Id, "Saved draft"));
+
+        Assert.Equal(0, fixture.Backend.Sends);
+        Assert.Equal(0, fixture.Backend.Fetches);
+        Assert.Empty(fixture.Messages.Entries);
+        Assert.Empty(fixture.Bubbles.Bubbles);
+    }
+
+    [Fact]
+    public async Task TerminalNotReadyRaceRemovesPendingMessageWithoutHistoryQuery()
+    {
+        await using ChatFixture fixture = new();
+        fixture.Backend.Send = (_, _, _) => Task.FromException<ChatMessage>(new ChatNotReadyException());
+
+        await Assert.ThrowsAsync<ChatNotReadyException>(
+            () => fixture.Coordinator.SendMessageAsync(fixture.Room.Id, "Restore this draft"));
+
+        Assert.Equal(1, fixture.Backend.Sends);
+        Assert.Equal(0, fixture.Backend.Fetches);
+        Assert.Empty(fixture.Messages.Entries);
+        Assert.Empty(fixture.Bubbles.Bubbles);
+    }
+
     [Fact]
     public async Task RealtimeConfirmationBeforeLostHttpResponseKeepsTheSendSuccessful()
     {
@@ -125,6 +160,31 @@ public sealed class ChatCoordinatorTests
 
         Assert.Equal(0, fixture.Backend.Sends);
         Assert.Empty(fixture.Messages.Entries);
+        Assert.Empty(fixture.Bubbles.Bubbles);
+    }
+
+    [Fact]
+    public async Task MessageFromAnotherRoomDoesNotAppearInTheActiveRoomBubble()
+    {
+        await using ChatFixture fixture = new();
+        Guid otherRoomId = new("11111111-1111-4111-8111-111111111111");
+        Room otherRoom = new(otherRoomId, "Other", fixture.Profile.Id,
+            [new RoomMember(fixture.Profile.Id, fixture.Profile.Nickname,
+                fixture.Profile.CharacterId, PresenceState.Online)], "OTHER", true, 1);
+        SetField(fixture.Coordinator, "_state", fixture.Coordinator.State with
+        {
+            Rooms = [fixture.Room, otherRoom],
+        });
+        ChatMessage message = new(Guid.NewGuid(), otherRoomId, fixture.Profile.Id,
+            "Other room message", DateTimeOffset.UtcNow);
+        fixture.Backend.Events = Replay(new BackendEvent.MessageReceived(message));
+
+        await (Task)typeof(AppCoordinator)
+            .GetMethod("PumpBackendEventsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(fixture.Coordinator, null)!;
+
+        Assert.Contains(fixture.Coordinator.State.Messages,
+            entry => entry.Id == message.Id && entry.RoomId == otherRoomId);
         Assert.Empty(fixture.Bubbles.Bubbles);
     }
 

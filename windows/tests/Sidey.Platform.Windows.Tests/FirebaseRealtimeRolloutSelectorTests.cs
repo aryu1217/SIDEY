@@ -14,6 +14,67 @@ public sealed class FirebaseRealtimeRolloutSelectorTests
     private static readonly Guid s_sessionId = Guid.Parse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
 
     [Fact]
+    public async Task FailedEnabledRefreshPreservesSafeHttpDetailsWithoutErrorBodySecrets()
+    {
+        int requests = 0;
+        using HttpClient client = new(new DelegateHandler(async (_, _) =>
+        {
+            if (++requests == 1)
+            {
+                return SelectionResponse(true, false, 30);
+            }
+            HttpResponseMessage response = new(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = JsonContent.Create(new { code = "PGRST003", message = "private-server-detail", details = "bearer-secret" }),
+            };
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(47));
+            return await Task.FromResult(response);
+        }));
+        FirebaseRealtimeRolloutSelector selector = new(
+            new SupabaseRuntimeConfiguration(new Uri("https://example.supabase.co"), "publishable-test-key"),
+            new FixedSessionAccessor(Session()), "2.0.0", client);
+        _ = await selector.SelectAsync();
+
+        FirebaseRealtimeRolloutException failure = await Assert.ThrowsAsync<FirebaseRealtimeRolloutException>(
+            () => selector.RefreshAsync().AsTask());
+
+        Assert.True(failure.FailClosed);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, failure.StatusCode);
+        Assert.Equal("PGRST003", failure.FailureCode);
+        Assert.Equal(TimeSpan.FromSeconds(47), failure.RetryAfter);
+        Assert.DoesNotContain("private-server-detail", failure.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("bearer-secret", failure.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task InitialFailureFallbackRetainsStatusAndDateHeaderButRejectsUnknownErrorCode()
+    {
+        DateTimeOffset serverNow = new(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
+        using HttpClient client = new(new DelegateHandler(async (_, _) =>
+        {
+            HttpResponseMessage response = new(HttpStatusCode.TooManyRequests)
+            {
+                Content = JsonContent.Create(new { code = "private-error-secret", message = "private-message" }),
+            };
+            response.Headers.Date = serverNow;
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(serverNow.AddSeconds(53));
+            return await Task.FromResult(response);
+        }));
+        FirebaseRealtimeRolloutSelector selector = new(
+            new SupabaseRuntimeConfiguration(new Uri("https://example.supabase.co"), "publishable-test-key"),
+            new FixedSessionAccessor(Session()), "2.0.0", client);
+
+        FirebaseRealtimeRolloutSelection fallback = await selector.SelectAsync();
+
+        Assert.False(fallback.Enabled);
+        FirebaseRealtimeRolloutException failure = Assert.IsType<FirebaseRealtimeRolloutException>(fallback.Failure);
+        Assert.Equal(HttpStatusCode.TooManyRequests, failure.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(53), failure.RetryAfter);
+        Assert.Equal("http-error", failure.FailureCode);
+        Assert.DoesNotContain("private-error-secret", failure.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SendsExactCapabilityAndCachesEnabledSelectionForServerTtl()
     {
         StoredSupabaseSession session = Session();

@@ -40,7 +40,7 @@ internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransie
         CancellationToken cancellationToken)
     {
         FirebaseRealtimeCredential credential =
-            await _credentials.GetCredentialAsync(cancellationToken).ConfigureAwait(false);
+            await _credentials.GetUsableCredentialAsync(cancellationToken).ConfigureAwait(false);
         string path = FirebaseRealtimeProtocol.TypingPath(
             roomId,
             credential.UserId,
@@ -70,7 +70,7 @@ internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransie
         CancellationToken cancellationToken)
     {
         FirebaseRealtimeCredential credential =
-            await _credentials.GetCredentialAsync(cancellationToken).ConfigureAwait(false);
+            await _credentials.GetUsableCredentialAsync(cancellationToken).ConfigureAwait(false);
         await WriteAsync(
             credential,
             HttpMethod.Put,
@@ -86,7 +86,7 @@ internal sealed class FirebaseRealtimeTransientClient : IFirebaseRealtimeTransie
         CancellationToken cancellationToken)
     {
         FirebaseRealtimeCredential credential =
-            await _credentials.GetCredentialAsync(cancellationToken).ConfigureAwait(false);
+            await _credentials.GetUsableCredentialAsync(cancellationToken).ConfigureAwait(false);
         if (wireCode != "0" && !credential.WireItems.Contains(wireCode, StringComparer.Ordinal))
         {
             throw new InvalidOperationException("The equipped throwable is not authorized for Firebase realtime.");

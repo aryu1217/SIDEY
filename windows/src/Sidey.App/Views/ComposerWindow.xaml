@@ -80,6 +80,17 @@
           <SymbolIcon Symbol="Send" />
         </Button>
 
+        <ProgressRing
+            Grid.Column="2"
+            Width="14"
+            Height="14"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            IsActive="{Binding IsConnectionRecovering}"
+            ToolTipService.ToolTip="{Binding ConnectionMessage}"
+            AutomationProperties.Name="{Binding ConnectionMessage}"
+            Visibility="{Binding IsConnectionRecovering, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
         <Border
             Grid.Column="2"
             Width="14"

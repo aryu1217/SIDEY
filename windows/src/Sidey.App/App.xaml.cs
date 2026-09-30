@@ -743,7 +743,8 @@ public partial class App : Application
 
     private static void ApplyComposerState(ComposerViewModel composer, CoordinatorState state) =>
         composer.ApplyRoom(state.ActiveRoomId,
-            state.ActiveRoomId is not null && !state.NeedsOnboarding && state.GroupOperation == GroupOperation.Idle);
+            state.ActiveRoomId is not null && !state.NeedsOnboarding && state.GroupOperation == GroupOperation.Idle,
+            state.RealtimeConnection.IsReady && state.RealtimeConnection.ActiveRoomTransportConnected);
 
     private void OnComposerPlacementChanged(ComposerPlacement placement)
     {

@@ -15,6 +15,172 @@ public sealed class FirebaseRealtimeListenerTests
     private static readonly Guid s_roomId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
 
     [Fact]
+    public async Task ReconnectRequestsDuringReplacementOpeningDoNotCancelIt()
+    {
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        ScriptedCredentialProvider credentials = new(async (request, token) =>
+        {
+            if (request == 2)
+            {
+                await release.Task.WaitAsync(token);
+            }
+            return ScheduledCredential(270, 300);
+        });
+        await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient());
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => listener.IsReady);
+
+        listener.RequestReconnect();
+        await WaitUntilAsync(() => credentials.RequestCount == 2);
+        Assert.False(listener.IsReady);
+        for (int request = 0; request < 32; request++)
+        {
+            listener.RequestReconnect();
+        }
+        release.SetResult();
+
+        await WaitUntilAsync(() => listener.IsReady);
+        await listener.StopAsync(CancellationToken.None);
+        Assert.Equal(2, credentials.RequestCount);
+    }
+
+    [Fact]
+    public async Task ReconnectDuringRoomSwitchDoesNotRestartThePreviousRoom()
+    {
+        Guid nextRoomId = new("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource cancelled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        ScriptedCredentialProvider credentials = new(async (request, token) =>
+        {
+            if (request == 1)
+            {
+                using CancellationTokenRegistration registration = token.Register(() => cancelled.TrySetResult());
+                await release.Task;
+            }
+            return ScheduledCredential(270, 300);
+        });
+        await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient());
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => credentials.RequestCount == 1);
+
+        Task switchRoom = listener.StartAsync(nextRoomId, CancellationToken.None);
+        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        listener.RequestReconnect();
+        release.SetResult();
+        await switchRoom;
+
+        await WaitUntilAsync(() => listener.IsReady);
+        await listener.StopAsync(CancellationToken.None);
+        Assert.Equal(2, credentials.RequestCount);
+    }
+
+    [Fact]
+    public async Task RejectionBeforeCredentialAcquisitionReturnsPreventsOpeningThatVersion()
+    {
+        TimerTimeProvider time = new();
+        FirebaseRealtimeCredential original = ScheduledCredential(270, 300, authVersion: 1);
+        Action<FirebaseRealtimeCredential>? reject = null;
+        ScriptedCredentialProvider credentials = new((request, _) =>
+        {
+            if (request == 1)
+            {
+                reject!(original);
+            }
+            return ValueTask.FromResult(request == 1
+                ? original : ScheduledCredential(270, 300, authVersion: 2));
+        });
+        reject = credentials.Reject;
+        int clients = 0;
+        System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
+        await using FirebaseRealtimeListener listener = new(credentials, events.Enqueue, _ =>
+        {
+            Interlocked.Increment(ref clients);
+            return CreateClient();
+        }, time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => events.OfType<BackendEvent.Diagnostic>().Any(item =>
+            item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal))
+            && time.ActiveTimers >= 1);
+        Assert.Equal(0, clients);
+        Assert.False(listener.IsReady);
+
+        time.Advance(TimeSpan.FromMilliseconds(1_300));
+
+        await WaitUntilAsync(() => credentials.RequestCount == 2 && listener.IsReady);
+        Assert.Equal(1, clients);
+    }
+
+    [Fact]
+    public async Task RejectedCredentialDuringOpeningCancelsTheCandidateAndOpensFreshStreams()
+    {
+        FirebaseRealtimeCredential original = ScheduledCredential(270, 300, authVersion: 1);
+        TaskCompletionSource opening = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource cancelled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        ScriptedCredentialProvider credentials = new((request, _) => ValueTask.FromResult(
+            request == 1 ? original : ScheduledCredential(270, 300, authVersion: 2)));
+        int clients = 0;
+        FirebaseRtdbUrlBuilder urls = new(new Uri("https://sidey.asia-southeast1.firebasedatabase.app"));
+        await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ =>
+        {
+            if (Interlocked.Increment(ref clients) > 1)
+            {
+                return CreateClient();
+            }
+            return FirebaseRtdbRestClient.CreateForTesting(urls, async (_, token) =>
+            {
+                opening.TrySetResult();
+                try
+                {
+                    await release.Task.WaitAsync(token);
+                }
+                catch (OperationCanceledException)
+                {
+                    cancelled.TrySetResult();
+                    throw;
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+        });
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await opening.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(listener.IsReady);
+
+        credentials.Reject(original);
+
+        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await WaitUntilAsync(() => credentials.RequestCount == 2 && listener.IsReady);
+        Assert.Equal(2, clients);
+    }
+
+    [Fact]
+    public async Task RejectedCredentialReconnectsOnceAndLateRejectionLeavesNewStreamsReady()
+    {
+        FirebaseRealtimeCredential original = ScheduledCredential(270, 300, authVersion: 1);
+        ScriptedCredentialProvider credentials = new((request, _) => ValueTask.FromResult(
+            request == 1 ? original : ScheduledCredential(270, 300, authVersion: 2)));
+        FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient());
+        await using (listener)
+        {
+            await listener.StartAsync(s_roomId, CancellationToken.None);
+            await WaitUntilAsync(() => listener.IsReady);
+            credentials.Reject(original);
+            for (int rejection = 0; rejection < 32; rejection++)
+            {
+                credentials.Reject(original);
+            }
+
+            await WaitUntilAsync(() => credentials.RequestCount == 2 && listener.IsReady);
+            credentials.Reject(original);
+            Assert.True(listener.IsReady);
+            await listener.StopAsync(CancellationToken.None);
+            Assert.Equal(2, credentials.RequestCount);
+        }
+        credentials.Reject(original);
+        Assert.Equal(2, credentials.RequestCount);
+    }
+
+    [Fact]
     public async Task CredentialRefreshDeadlineRotatesWithoutDisconnectingHealthyStreams()
     {
         var time = new TimerTimeProvider();
@@ -52,6 +218,7 @@ public sealed class FirebaseRealtimeListenerTests
         var time = new TimerTimeProvider();
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var endOldStream = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
         var credentials = new ScriptedCredentialProvider(async (request, token) =>
         {
             if (request > 1)
@@ -63,7 +230,7 @@ public sealed class FirebaseRealtimeListenerTests
         int clients = 0;
         await using var listener = new FirebaseRealtimeListener(
             credentials,
-            _ => { },
+            events.Enqueue,
             _ => CreateClient(Interlocked.Increment(ref clients) == 1 ? endOldStream.Task : Task.Delay(Timeout.InfiniteTimeSpan)),
             time);
         await listener.StartAsync(s_roomId, CancellationToken.None);
@@ -81,6 +248,10 @@ public sealed class FirebaseRealtimeListenerTests
         }
         await WaitUntilAsync(() => !listener.IsReady);
         release.SetResult();
+        await WaitUntilAsync(() => events.OfType<BackendEvent.Diagnostic>().Any(item =>
+            item.Stage.StartsWith("firebase-listener-disconnected", StringComparison.Ordinal))
+            && time.ActiveTimers >= 1);
+        time.Advance(TimeSpan.FromMilliseconds(1_300));
         await WaitUntilAsync(() => listener.IsReady);
         Assert.Equal(2, clients);
     }
@@ -110,6 +281,101 @@ public sealed class FirebaseRealtimeListenerTests
         await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.False(listener.IsReady);
         await listener.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task BootstrapRetryAfterPreventsEarlyRetryAndStopCancelsWait()
+    {
+        TimerTimeProvider time = new();
+        System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
+        ScriptedCredentialProvider credentials = new((_, _) =>
+            throw new FirebaseRealtimeRetryException("Bootstrap unavailable.", HttpStatusCode.ServiceUnavailable, TimeSpan.FromSeconds(30)));
+        await using FirebaseRealtimeListener listener = new(credentials, events.Enqueue, _ => CreateClient(), time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => credentials.RequestCount == 1 && time.ActiveTimers >= 1);
+
+        time.Advance(TimeSpan.FromSeconds(29));
+        Assert.Equal(1, credentials.RequestCount);
+        time.Advance(TimeSpan.FromSeconds(8));
+        await WaitUntilAsync(() => credentials.RequestCount == 2 && time.ActiveTimers >= 1);
+        await listener.StopAsync(CancellationToken.None);
+        time.Advance(TimeSpan.FromMinutes(30));
+        Assert.Equal(2, credentials.RequestCount);
+    }
+
+    [Fact]
+    public async Task BootstrapRetryAfterWaitIsBoundedByThirtyMinutes()
+    {
+        TimerTimeProvider time = new();
+        ScriptedCredentialProvider credentials = new((_, _) =>
+            throw new FirebaseRealtimeRetryException("Bootstrap unavailable.", HttpStatusCode.TooManyRequests, TimeSpan.FromHours(1)));
+        await using FirebaseRealtimeListener listener = new(credentials, _ => { }, _ => CreateClient(), time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => credentials.RequestCount == 1 && time.ActiveTimers >= 1);
+
+        time.Advance(TimeSpan.FromMinutes(29));
+        Assert.Equal(1, credentials.RequestCount);
+        time.Advance(TimeSpan.FromMinutes(1));
+        await WaitUntilAsync(() => credentials.RequestCount == 2);
+    }
+
+    [Fact]
+    public async Task RepeatedConnectionFailuresDoNotRetryEverySecond()
+    {
+        TimerTimeProvider time = new();
+        System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
+        ScriptedCredentialProvider credentials = new((_, _) =>
+            throw new HttpRequestException("Firebase bootstrap unavailable."));
+        await using FirebaseRealtimeListener listener = new(
+            credentials, events.Enqueue, _ => CreateClient(), time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+        await WaitUntilAsync(() => credentials.RequestCount == 1
+            && events.OfType<BackendEvent.Diagnostic>().Count(item =>
+                item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal)) == 1
+            && time.ActiveTimers >= 1);
+
+        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        await WaitUntilAsync(() => credentials.RequestCount == 2
+            && events.OfType<BackendEvent.Diagnostic>().Count(item =>
+                item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal)) == 2
+            && time.ActiveTimers >= 1);
+        time.Advance(TimeSpan.FromMilliseconds(1_300));
+        Assert.Equal(2, credentials.RequestCount);
+
+        time.Advance(TimeSpan.FromMilliseconds(1_200));
+        await WaitUntilAsync(() => credentials.RequestCount == 3);
+        await listener.StopAsync(CancellationToken.None);
+        time.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(3, credentials.RequestCount);
+    }
+
+    [Fact]
+    public async Task SustainedFailuresKeepAutomaticRetryAtMostThirtyMinutes()
+    {
+        TimerTimeProvider time = new();
+        System.Collections.Concurrent.ConcurrentQueue<BackendEvent> events = new();
+        ScriptedCredentialProvider credentials = new((_, _) =>
+            throw new HttpRequestException("Firebase bootstrap unavailable."));
+        await using FirebaseRealtimeListener listener = new(
+            credentials, events.Enqueue, _ => CreateClient(), time);
+        await listener.StartAsync(s_roomId, CancellationToken.None);
+
+        for (int attempt = 1; attempt <= 12; attempt++)
+        {
+            await WaitUntilAsync(() => credentials.RequestCount == attempt
+                && events.OfType<BackendEvent.Diagnostic>().Count(item =>
+                    item.Stage.StartsWith("firebase-listener-connect-failed", StringComparison.Ordinal)) == attempt
+                && time.ActiveTimers >= 1);
+            if (attempt < 12)
+            {
+                time.Advance(TimeSpan.FromMinutes(30));
+            }
+        }
+
+        time.Advance(TimeSpan.FromMinutes(20));
+        Assert.Equal(12, credentials.RequestCount);
+        time.Advance(TimeSpan.FromMinutes(10));
+        await WaitUntilAsync(() => credentials.RequestCount == 13);
     }
 
     [Fact]
@@ -152,6 +418,9 @@ public sealed class FirebaseRealtimeListenerTests
         await WaitUntilAsync(() => events.OfType<BackendEvent.TypingChanged>().Any(item => item.Active));
 
         time.Advance(TimeSpan.FromSeconds(5));
+        await WaitUntilAsync(() => candidateStreamsDisposed == 2 && !listener.IsReady);
+        await WaitUntilAsync(() => clients == 3,
+            () => time.Advance(TimeSpan.FromMilliseconds(250)));
         await WaitUntilAsync(() => clients == 3 && listener.IsReady
             && events.OfType<BackendEvent.CharacterPulsed>().Any());
         Assert.Equal(2, candidateStreamsDisposed);
@@ -1100,24 +1369,27 @@ public sealed class FirebaseRealtimeListenerTests
         return $"event: put\ndata: {update}\n\n";
     }
 
-    private static async Task WaitUntilAsync(Func<bool> predicate)
+    private static async Task WaitUntilAsync(Func<bool> predicate, Action? advanceTime = null)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (!predicate())
         {
+            advanceTime?.Invoke();
             await Task.Delay(10, timeout.Token);
         }
     }
 
-    private static FirebaseRealtimeCredential ScheduledCredential(int refreshSeconds, int expirySeconds) => new(
+    private static FirebaseRealtimeCredential ScheduledCredential(int refreshSeconds, int expirySeconds, long authVersion = 0) => new(
         s_userId, s_sessionId, "id-token", new Uri("https://sidey.asia-southeast1.firebasedatabase.app"), 1,
-        refreshAfter: TimeSpan.FromSeconds(refreshSeconds), expiresAfter: TimeSpan.FromSeconds(expirySeconds));
+        refreshAfter: TimeSpan.FromSeconds(refreshSeconds), expiresAfter: TimeSpan.FromSeconds(expirySeconds), authVersion: authVersion);
 
     private sealed class ScriptedCredentialProvider(
         Func<int, CancellationToken, ValueTask<FirebaseRealtimeCredential>> acquire) : IFirebaseRealtimeCredentialProvider
     {
         private int _requests;
+        public event Action<FirebaseRealtimeCredential>? CredentialRejected;
         public int RequestCount => Volatile.Read(ref _requests);
+        public void Reject(FirebaseRealtimeCredential credential) => CredentialRejected?.Invoke(credential);
         public ValueTask<FirebaseRealtimeCredential> GetCredentialAsync(CancellationToken cancellationToken = default) =>
             acquire(Interlocked.Increment(ref _requests), cancellationToken);
         public ValueTask ResetAsync(CancellationToken cancellationToken = default) => ValueTask.CompletedTask;

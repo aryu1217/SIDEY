@@ -116,6 +116,10 @@ public sealed class FirebaseRealtimeTransientClientTests
     {
         public ValueTask<FirebaseRealtimeCredential> GetCredentialAsync(
             CancellationToken cancellationToken = default) =>
+            throw new FirebaseRealtimeRetryException("Renewal is cooling down.", HttpStatusCode.ServiceUnavailable, TimeSpan.FromSeconds(30));
+
+        public ValueTask<FirebaseRealtimeCredential> GetUsableCredentialAsync(
+            CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(credential);
 
         public ValueTask ResetAsync(CancellationToken cancellationToken = default) =>
