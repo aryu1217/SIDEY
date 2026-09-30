@@ -24,7 +24,12 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-# The App Store host owns all common XCTest coverage.
+# Window/focus UI tests are opt-in; the default route must not depend on desktop focus.
+if [ "${SIDEY_RUN_WINDOW_POLICY_TESTS:-0}" != 1 ]; then
+    set -- -skip-testing:SIDEYTests/WindowPolicyTests "$@"
+fi
+
+# The App Store host owns the application XCTest coverage.
 xcodebuild \
     -project "$SIDEY_REPO_ROOT/macos/SIDEY.xcodeproj" \
     -scheme SIDEY \
@@ -42,5 +47,3 @@ python3 "$SIDEY_REPO_ROOT/scripts/macos/verify_app_version.py" \
 	--app "$SIDEY_TEST_DIR/app-store/Build/Products/Debug/SIDEY.app" \
 	--product-version "$SIDEY_EXPECTED_PRODUCT_VERSION" \
 	--build "$SIDEY_EXPECTED_MAC_BUILD"
-
-"$SIDEY_REPO_ROOT/scripts/macos/tests/test_recording.sh"

@@ -2,6 +2,24 @@ import XCTest
 @testable import SIDEY
 
 final class FirebaseV2SnapshotReceiverTests: XCTestCase {
+    func testBoundedDatabaseStreamKeepsLatestCompleteAccessAndChatSnapshot() async throws {
+        let pair = FirebaseV2DatabaseValueStream.makeSnapshotStream()
+        let roomID = UUID()
+        for sequence in 1...1_000 {
+            pair.continuation.yield(Data("""
+            {"a":"00000000000000000002","r":{"\(roomID.uuidString)":{"n":\(sequence)}}}
+            """.utf8))
+        }
+        pair.continuation.finish()
+        var iterator = pair.stream.makeAsyncIterator()
+        let latest = try await iterator.next()
+        let snapshot = try FirebaseV2InboxSnapshot.decode(XCTUnwrap(latest))
+        XCTAssertEqual(snapshot.accessRevision?.rawValue, "00000000000000000002")
+        XCTAssertEqual(snapshot.rooms[roomID]?.chatSequence, 1_000)
+        let end = try await iterator.next()
+        XCTAssertNil(end)
+    }
+
     func testDatabaseSnapshotSerializerTreatsMissingFirebaseValueAsEmptyObject() throws {
         for value in [nil, NSNull()] as [Any?] {
             let data = try FirebaseV2DatabaseSnapshotSerializer.data(from: value)

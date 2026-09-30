@@ -29,6 +29,29 @@ final class RealtimeTransportTests: XCTestCase {
         XCTAssertEqual(selection.fallbackReason, .firebaseBootstrapNotAllowed)
     }
 
+    func testRouterOverflowRepairsSelectedTransportAndPublishesAtomicBaseline() async throws {
+        let firebase = FakeRealtimeTransport(kind: .firebaseV2)
+        let router = try RoomMessagingTransportRouter(
+            selection: .resolve(requested: .firebaseV2, firebaseV2Allowed: true),
+            makeFirebaseV2: { firebase }, eventBufferLimit: 1)
+        _ = try await router.synchronize(rooms: [], activeRoomID: nil)
+        for _ in 0..<4 { await firebase.emit(.messagesInvalidated(roomID: UUID())) }
+        let deadline = ContinuousClock().now.advanced(by: .seconds(3))
+        while await firebase.operationCount < 2, ContinuousClock().now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        var iterator = router.events.makeAsyncIterator()
+        var repaired = false
+        while !repaired, let event = await iterator.next() {
+            if case .eventGapRepaired(let baseline) = event {
+                XCTAssertTrue(baseline.reconciliation.snapshot.rooms.isEmpty)
+                repaired = true
+            }
+        }
+        XCTAssertTrue(repaired)
+        await router.shutdown()
+    }
+
     func testRouterPublishesThroughOnlySelectedTransport() async throws {
         let legacy = FakeRealtimeTransport(kind: .legacySupabase)
         let firebase = FakeRealtimeTransport(kind: .firebaseV2)

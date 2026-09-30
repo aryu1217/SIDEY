@@ -815,6 +815,16 @@ extension AppCoordinator {
             applyRequestedOverlayVisibility()
             refreshStatusItem()
             persistPreferences()
+        case .eventGapRepaired(let repair):
+            applyBackendReconciliation(repair.reconciliation)
+            for (roomID, messages) in repair.messagesByRoom {
+                model.replaceMessages(roomID: roomID, with: messages)
+            }
+            for presence in repair.presence { handleBackendEvent(presence) }
+            if let connection = repair.connection { handleBackendEvent(.connection(connection)) }
+            applyRequestedOverlayVisibility()
+            refreshStatusItem()
+            persistPreferences()
         case .message(let message):
             let isActiveRoom = message.roomID == model.activeRoom?.id
             let revealMessage = isActiveRoom && !model.preferences.quietModeEnabled

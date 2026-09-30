@@ -626,6 +626,12 @@ private actor BackendEventProbe {
                 apply(snapshot)
             case .reconciliation(let reconciliation):
                 apply(reconciliation.snapshot)
+            case .eventGapRepaired(let repair):
+                apply(repair.reconciliation.snapshot)
+                for messages in repair.messagesByRoom.values { messageIDs.formUnion(messages.map(\.id)) }
+                for event in repair.presence {
+                    if case .presence(_, let userID, let state) = event { presence[userID] = state }
+                }
             case .technicalError:
                 break
             }

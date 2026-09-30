@@ -26,6 +26,7 @@ actor SideyBackend {
     nonisolated let events: AsyncStream<BackendEvent>
 
     private let client: SupabaseClient
+    private let snapshotLoader: (@Sendable () async throws -> BackendSnapshot)?
     // A retired SDK client must never rejoin a topic on its replacement socket.
     private let makeRealtime: @Sendable () -> RealtimeClientV2
     private var realtime: RealtimeClientV2
@@ -57,8 +58,11 @@ actor SideyBackend {
     private var networkAvailability = NetworkAvailabilityState()
     private var structuralSnapshotTask: Task<Void, Never>?
     private var structuralSnapshotRetry = RealtimeStructuralSnapshotRetry()
-    private var structuralSnapshotInFlight = false
-    private var structuralSnapshotPending = false
+    private var structuralSnapshotGeneration: UInt64 = 0
+    private var structuralSnapshotRevision: UInt64 = 0
+    private var structuralSnapshotDirty = false
+    private var eventGapRepairNeeded = false
+    private var loadingEventGapRepair = false
     private var typingExpiryTasks: [String: Task<Void, Never>] = [:]
     private var activeRoomID: UUID?
     private var localPresence: PresenceState = .online
@@ -75,7 +79,8 @@ actor SideyBackend {
     init(
         configuration: RuntimeConfiguration,
         keychain: KeychainStore = KeychainStore(),
-        networkPathMonitor: any NetworkPathMonitoring = SystemNetworkPathMonitor()
+        networkPathMonitor: any NetworkPathMonitoring = SystemNetworkPathMonitor(),
+        snapshotLoader: (@Sendable () async throws -> BackendSnapshot)? = nil
     ) {
         let eventPair = AsyncStream<BackendEvent>.makeStream(
             bufferingPolicy: .bufferingNewest(256)
@@ -86,6 +91,7 @@ actor SideyBackend {
         let legacyRefreshAccount = "supabase-refresh:\(fingerprint):default"
         self.keychain = keychain
         self.networkPathMonitor = networkPathMonitor
+        self.snapshotLoader = snapshotLoader
         self.legacyRefreshAccount = legacyRefreshAccount
         self.inviteAccountPrefix = "room-invite:\(fingerprint):default:"
 
@@ -270,6 +276,35 @@ actor SideyBackend {
         }
     }
 
+    /// Return one atomic baseline; do not publish pieces while row queries are
+    /// still in flight. Presence stays owned by the shared Supabase channels.
+    func repairRealtimeEventGap(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        try await acquireTopologyMutation()
+        defer { releaseTopologyMutation() }
+        return try await repairRealtimeEventGapWhileOwningTopology(rooms: rooms, activeRoomID: activeRoomID)
+    }
+
+    private func repairRealtimeEventGapWhileOwningTopology(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        let initialGeneration = realtimeGeneration
+        let snapshot = try await loadSnapshot()
+        try ensureCurrentRealtimeGeneration(initialGeneration)
+        _ = try await repairRoomChannels(snapshot: snapshot, generation: initialGeneration)
+        try await configureChannels(rooms: snapshot.rooms, activeRoomID: activeRoomID)
+        loadingEventGapRepair = true
+        defer { loadingEventGapRepair = false }
+        let result = try await reconcileCurrentState(emitEvents: false, replayPresenceEvents: false)
+        let generation = realtimeGeneration
+        var messagesByRoom: [UUID: [ChatMessage]] = [:]
+        for room in result.snapshot.rooms.prefix(5) {
+            messagesByRoom[room.id] = room.id == result.activeRoomID
+                ? result.activeMessages : try await recentMessages(roomID: room.id)
+            try ensureCurrentRealtimeGeneration(generation)
+        }
+        return BackendEventGapRepair(reconciliation: result, messagesByRoom: messagesByRoom,
+            presence: presenceReplay.snapshot(rooms: result.snapshot.rooms,
+                subscribedRoomIDs: livePresenceRoomIDs()), connection: currentConnectionStatus())
+    }
+
     func setActiveRoom(_ roomID: UUID?) async throws {
         activeRoomID = roomID
         try await publishPresence()
@@ -340,6 +375,7 @@ actor SideyBackend {
         networkPathTask?.cancel()
         networkPathTask = nil
         networkPathMonitor.cancel()
+        structuralSnapshotGeneration &+= 1
         structuralSnapshotTask?.cancel()
         structuralSnapshotTask = nil
         realtime.disconnect(reason: "SIDEY shutdown")
@@ -373,6 +409,7 @@ actor SideyBackend {
     }
 
     func loadSnapshot() async throws -> BackendSnapshot {
+        if let snapshotLoader { return try await snapshotLoader() }
         let session = try await client.auth.session
         async let profileRows: [DatabaseProfile] = client.from("profiles")
             .select()
@@ -1570,10 +1607,11 @@ actor SideyBackend {
             // A membership event can arrive while recovery owns the topology
             // permit, or be missed while its socket is being replaced. Reload
             // once after recovery even when no callback was delivered.
+            structuralSnapshotGeneration &+= 1
             structuralSnapshotTask?.cancel()
             structuralSnapshotTask = nil
             structuralSnapshotRetry.succeeded()
-            structuralSnapshotPending = false
+            structuralSnapshotDirty = false
             scheduleStructuralSnapshot()
             recoveryLogger.notice(
                 "completed generation=\(generation, privacy: .public) rooms=\(rooms.count, privacy: .public) preservedConnection=\(preservedConnection, privacy: .public)"
@@ -1618,6 +1656,7 @@ actor SideyBackend {
             realtimeRecoveryAttempt = 0
             rebuildingGeneration = nil
             recoveryReconciled = false
+            structuralSnapshotGeneration &+= 1
             structuralSnapshotTask?.cancel()
             structuralSnapshotTask = nil
             markAllRoomsUnsubscribed()
@@ -1669,7 +1708,7 @@ actor SideyBackend {
         typingExpiryTasks.removeAll()
     }
 
-    private func reconcileCurrentState(emitEvents: Bool) async throws -> BackendReconciliation {
+    private func reconcileCurrentState(emitEvents: Bool, replayPresenceEvents: Bool = true) async throws -> BackendReconciliation {
         let generation = realtimeGeneration
         var snapshot = try await loadSnapshot()
         try ensureCurrentRealtimeGeneration(generation)
@@ -1691,12 +1730,12 @@ actor SideyBackend {
         guard hasHealthyRealtimeTopology() else { throw SideyBackendError.realtimeUnavailable }
         // Replay a complete membership baseline, including offline members,
         // after a receiver was replaced or a dropped event forced reconciliation.
-        replayPresence(rooms: snapshot.rooms)
+        if replayPresenceEvents { replayPresence(rooms: snapshot.rooms) }
         if emitEvents {
             emit(.reconciliation(reconciliation))
         }
         recoveryReconciled = true
-        emitConnectionState()
+        if replayPresenceEvents { emitConnectionState() }
         return reconciliation
     }
 
@@ -1821,116 +1860,119 @@ actor SideyBackend {
                                deletedEventID: change.operation == "deleted" ? change.eventID : nil))
     }
 
-    private func scheduleStructuralSnapshot() {
-        if structuralSnapshotInFlight || realtimeRecoveryTask != nil {
-            structuralSnapshotPending = true
-            return
-        }
-        guard structuralSnapshotTask == nil,
-              !isShuttingDown,
-              networkAvailability.current != .unavailable
-        else { return }
-        let delay = structuralSnapshotRetry.delay
+    func structuralSnapshotStatus() -> (isRunning: Bool, isShutDown: Bool) {
+        (structuralSnapshotTask != nil, isShuttingDown)
+    }
+
+    func scheduleStructuralSnapshot() {
+        guard !isShuttingDown, networkAvailability.current != .unavailable else { return }
+        structuralSnapshotRevision &+= 1
+        structuralSnapshotDirty = true
+        guard structuralSnapshotTask == nil, realtimeRecoveryTask == nil else { return }
+        let generation = structuralSnapshotGeneration
         structuralSnapshotTask = Task { [weak self] in
-            do {
-                try await Task.sleep(for: delay)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled else { return }
-            await self?.emitStructuralSnapshot()
+            await self?.refreshStructuralSnapshots(generation: generation)
         }
     }
 
-    private func emitStructuralSnapshot() async {
-        do { try await acquireTopologyMutation() } catch { return }
-        defer { releaseTopologyMutation() }
-        structuralSnapshotTask = nil
-        guard !structuralSnapshotInFlight else {
-            structuralSnapshotPending = true
-            return
-        }
-        guard !isShuttingDown,
-              networkAvailability.current != .unavailable else { return }
-        guard realtimeRecoveryTask == nil else {
-            structuralSnapshotPending = true
-            return
-        }
-        structuralSnapshotInFlight = true
+    private func refreshStructuralSnapshots(generation: UInt64) async {
         defer {
-            structuralSnapshotInFlight = false
-            if structuralSnapshotPending {
-                structuralSnapshotPending = false
-                scheduleStructuralSnapshot()
-            }
+            if generation == structuralSnapshotGeneration { structuralSnapshotTask = nil }
         }
-        do {
-            let generation = realtimeGeneration
-            let session = try await authenticatedSession()
-            try ensureCurrentRealtimeGeneration(generation)
-            let current = realtime
-            await current.setAuth(session.accessToken)
-            try ensureCurrentRealtimeGeneration(generation)
-            guard realtime === current else { throw CancellationError() }
-            let snapshot = try await loadSnapshot()
-            try ensureCurrentRealtimeGeneration(generation)
-            try Task.checkCancellation()
-            let callbackGenerations = channels.mapValues(\.callbackGeneration)
-            let repaired = try await RealtimeRoomChannelRepair.run(
-                rooms: snapshot.rooms,
-                liveEpochs: Dictionary(uniqueKeysWithValues: channels.map {
-                    ($0.key, $0.value.epoch)
-                }),
-                healthyRoomIDs: Set(channels.compactMap { roomID, pair in
-                    pair.generation == realtimeGeneration
-                        && pair.database.status == .subscribed
-                        && pair.ephemeral.status == .subscribed ? roomID : nil
-                }),
-                removeChannel: { [self] roomID in
-                    guard let callbackGeneration = callbackGenerations[roomID] else { return }
-                    await self.removeChannel(
-                        roomID,
-                        expectedCallbackGeneration: callbackGeneration
-                    )
-                },
-                configureChannels: { [self] rooms in
-                    try await self.ensureCurrentRealtimeGeneration(generation)
-                    let activeRoomID = await self.activeRoomID
-                    try await self.configureChannels(
-                        rooms: rooms,
-                        activeRoomID: activeRoomID
-                    )
+        while structuralSnapshotDirty, !Task.isCancelled,
+              generation == structuralSnapshotGeneration, !isShuttingDown,
+              networkAvailability.current != .unavailable {
+            do {
+                try await Task.sleep(for: structuralSnapshotRetry.delay)
+                try await acquireTopologyMutation()
+                defer { releaseTopologyMutation() }
+                guard realtimeRecoveryTask == nil else { return }
+                structuralSnapshotDirty = false
+                let revision = structuralSnapshotRevision
+                let realtime = realtimeGeneration
+                if snapshotLoader == nil {
+                    let auth = try await authenticatedSession()
+                    try ensureCurrentRealtimeGeneration(realtime)
+                    let current = self.realtime
+                    await current.setAuth(auth.accessToken)
+                    try ensureCurrentRealtimeGeneration(realtime)
+                    guard self.realtime === current else { throw CancellationError() }
                 }
-            )
-            try ensureCurrentRealtimeGeneration(generation)
-            if !repaired {
-                if recoveryReconciled {
+                let snapshot = try await loadSnapshot()
+                try Task.checkCancellation()
+                guard generation == structuralSnapshotGeneration, !isShuttingDown else { return }
+                // A newer notification invalidates the in-flight result. Keep
+                // one worker and run again instead of publishing stale state.
+                guard revision == structuralSnapshotRevision, realtime == realtimeGeneration else {
+                    structuralSnapshotDirty = true
+                    continue
+                }
+                let repaired = try await repairRoomChannels(snapshot: snapshot, generation: realtime)
+                try ensureCurrentRealtimeGeneration(realtime)
+                if eventGapRepairNeeded {
+                    let result = try await repairRealtimeEventGapWhileOwningTopology(
+                        rooms: snapshot.rooms, activeRoomID: activeRoomID
+                    )
+                    guard generation == structuralSnapshotGeneration, !isShuttingDown else { return }
+                    if revision == structuralSnapshotRevision {
+                        emit(.eventGapRepaired(result), repairBaseline: true)
+                        eventGapRepairNeeded = false
+                    } else {
+                        eventGapRepairNeeded = true
+                        structuralSnapshotDirty = true
+                    }
+                } else if !repaired && (recoveryReconciled || snapshotLoader != nil) {
                     emit(.snapshot(snapshot))
                 } else {
-                    try await publishPresence()
-                    _ = try await reconcileCurrentState(emitEvents: true)
+                    try await configureChannels(rooms: snapshot.rooms, activeRoomID: activeRoomID)
+                    let result = try await reconcileCurrentState(emitEvents: false)
+                    guard generation == structuralSnapshotGeneration, !isShuttingDown else { return }
+                    emit(.reconciliation(result))
                 }
-            } else {
-                _ = try await reconcileCurrentState(emitEvents: true)
-            }
-            structuralSnapshotRetry.succeeded()
-        } catch is CancellationError {
-            return
-        } catch {
-            recoveryLogger.error(
-                "Room state resynchronization failed: \(String(reflecting: error), privacy: .private)"
-            )
-            emit(.technicalError(L10n.text("backend.error.room_resync_failed")))
-            structuralSnapshotRetry.failed()
-            let authenticationFailed = error is AuthError
-                || (error as? SideyBackendError) == .sessionRecoveryFailed
-                || (error as? SideyBackendError) == .authenticationRequired
-            if authenticationFailed || realtime.status != .connected {
-                scheduleRealtimeRecovery(trigger: .reconciliation, immediate: false)
-            } else {
-                scheduleStructuralSnapshot()
+                if structuralSnapshotDirty { structuralSnapshotRetry.failed() }
+                else { structuralSnapshotRetry.succeeded() }
+            } catch is CancellationError {
+                guard !Task.isCancelled, generation == structuralSnapshotGeneration, !isShuttingDown else { return }
+                structuralSnapshotRetry.failed()
+                structuralSnapshotDirty = true
+                eventGapRepairNeeded = true
+            } catch {
+                guard generation == structuralSnapshotGeneration, !isShuttingDown else { return }
+                recoveryLogger.error("Room state resynchronization failed: \(String(reflecting: error), privacy: .private)")
+                emit(.technicalError(L10n.text("backend.error.room_resync_failed")))
+                structuralSnapshotRetry.failed()
+                structuralSnapshotDirty = true
+                eventGapRepairNeeded = true
+                let authenticationFailed = error is AuthError
+                    || (error as? SideyBackendError) == .sessionRecoveryFailed
+                    || (error as? SideyBackendError) == .authenticationRequired
+                if authenticationFailed || self.realtime.status != .connected {
+                    scheduleRealtimeRecovery(trigger: .reconciliation, immediate: false)
+                }
             }
         }
+    }
+
+    private func repairRoomChannels(snapshot: BackendSnapshot, generation: Int) async throws -> Bool {
+        let callbackGenerations = channels.mapValues(\.callbackGeneration)
+        return try await RealtimeRoomChannelRepair.run(
+            rooms: snapshot.rooms,
+            liveEpochs: Dictionary(uniqueKeysWithValues: channels.map { ($0.key, $0.value.epoch) }),
+            healthyRoomIDs: Set(channels.compactMap { roomID, pair in
+                pair.generation == realtimeGeneration
+                    && pair.database.status == .subscribed
+                    && pair.ephemeral.status == .subscribed ? roomID : nil
+            }),
+            removeChannel: { [self] roomID in
+                guard let callbackGeneration = callbackGenerations[roomID] else { return }
+                await self.removeChannel(roomID, expectedCallbackGeneration: callbackGeneration)
+            },
+            configureChannels: { [self] rooms in
+                try await self.ensureCurrentRealtimeGeneration(generation)
+                let roomID = await self.activeRoomID
+                try await self.configureChannels(rooms: rooms, activeRoomID: roomID)
+            }
+        )
     }
 
     private func handlePresence(
@@ -2038,15 +2080,19 @@ actor SideyBackend {
         emit(.typing(roomID: roomID, userID: userID, active: false))
     }
 
-    private func emit(_ event: BackendEvent) {
+    private func emit(_ event: BackendEvent, repairBaseline: Bool = false) {
+        if loadingEventGapRepair, !repairBaseline, event.requiresStateRepair {
+            eventGapRepairNeeded = true
+            scheduleStructuralSnapshot()
+        }
         var terminatedSubscribers: [UUID] = []
         var subscriberDroppedEvent = false
         for (id, continuation) in eventSubscribers {
             switch continuation.yield(event) {
             case .enqueued:
                 break
-            case .dropped:
-                subscriberDroppedEvent = true
+            case .dropped(let dropped):
+                subscriberDroppedEvent = subscriberDroppedEvent || dropped.requiresStateRepair
             case .terminated:
                 terminatedSubscribers.append(id)
             @unknown default:
@@ -2056,14 +2102,18 @@ actor SideyBackend {
         for id in terminatedSubscribers {
             eventSubscribers.removeValue(forKey: id)
         }
-        if subscriberDroppedEvent {
+        if subscriberDroppedEvent, !repairBaseline {
+            eventGapRepairNeeded = true
             scheduleStructuralSnapshot()
         }
         switch eventContinuation.yield(event) {
         case .enqueued:
             break
-        case .dropped:
-            scheduleStructuralSnapshot()
+        case .dropped(let dropped):
+            if !repairBaseline, dropped.requiresStateRepair {
+                eventGapRepairNeeded = true
+                scheduleStructuralSnapshot()
+            }
         case .terminated:
             // A transport switch intentionally retires the original consumer
             // before attaching a fresh subscriber. Backend lifetime is owned

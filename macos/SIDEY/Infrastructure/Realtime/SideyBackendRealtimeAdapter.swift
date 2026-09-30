@@ -21,6 +21,18 @@ actor SideyBackendRealtimeAdapter: RoomMessagingTransport, FirebaseV2SupabasePla
         try await backend.syncRealtime(rooms: rooms, activeRoomID: activeRoomID)
     }
 
+    func message(id: UUID, roomID: UUID) async throws -> ChatMessage? {
+        try await backend.message(id: id, roomID: roomID)
+    }
+
+    func recentMessages(roomID: UUID) async throws -> [ChatMessage] {
+        try await backend.recentMessages(roomID: roomID)
+    }
+
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        try await backend.repairRealtimeEventGap(rooms: rooms, activeRoomID: activeRoomID)
+    }
+
     func setActiveRoom(_ roomID: UUID?) async throws {
         try await backend.setActiveRoom(roomID)
     }

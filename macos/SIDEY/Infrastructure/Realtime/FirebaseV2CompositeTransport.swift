@@ -134,6 +134,9 @@ protocol FirebaseV2SupabasePlane: Actor {
         rooms: [Room],
         activeRoomID: UUID?
     ) async throws -> BackendReconciliation
+    func message(id: UUID, roomID: UUID) async throws -> ChatMessage?
+    func recentMessages(roomID: UUID) async throws -> [ChatMessage]
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair
     func setActiveRoom(_ roomID: UUID?) async throws
     func setLocalPresence(_ state: PresenceState) async throws
     func publishTyping(roomID: UUID, event: String) async throws
@@ -177,6 +180,7 @@ struct FirebaseV2CompositeDiagnostics: Equatable, Sendable {
     let grantOpen: Bool
     let serverTimeOffsetMilliseconds: Int64
     let shutDown: Bool
+    let eventRepairPending: Bool
 }
 
 /// Firebase v2 transport selected only after the authenticated Supabase
@@ -201,6 +205,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private var serverClock = FirebaseV2ServerClock()
     private var serverClockTask: Task<Void, Never>?
     private let liveReadinessTimeout: Duration
+    private let deliverySleep: @Sendable (Duration) async throws -> Void
     private let credentialReplacementGate = RealtimeCredentialOperationGate()
     private let clock = ContinuousClock()
 
@@ -211,6 +216,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private var activeRoomState = RealtimeActiveRoomState()
     private var grantBarrier = RealtimeGrantBarrier()
     private var inboxReconciler = FirebaseV2InboxReconciler()
+    private var inboxBaselineEstablished = false
+    private var inboxObservedRooms: Set<UUID> = []
     private var liveReconciler = FirebaseV2LiveReconciler()
     private var inboxTask: Task<Void, Never>?
     private var liveTasksByRoom: [UUID: Task<Void, Never>] = [:]
@@ -236,6 +243,19 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     private var isReconcilingHint = false
     private var needsAnotherHintReconciliation = false
     private var pendingMinimumAccessRevision: RealtimeRevision?
+    private struct PendingChat {
+        var sequence: Int64
+        var event: FirebaseV2ChatEventPayload?
+        var requiresCatchUp = false
+    }
+    private var verifiedChatSequences: [UUID: Int64] = [:]
+    private var pendingChats: [UUID: PendingChat] = [:]
+    private var chatDeliveryTask: Task<Void, Never>?
+    private var chatDeliveryGeneration: UInt64 = 0
+    private var eventRepairTask: Task<Void, Never>?
+    private var eventRepairGeneration: UInt64 = 0
+    private var eventRepairDirty = false
+    private var publishingEventRepair = false
     private var isShutDown = false
 
     init(
@@ -248,12 +268,14 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         throwableCatalogIDByWireCode: [FirebaseV2WireCode: String],
         serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil,
         liveReadinessTimeout: Duration = .seconds(10),
+        eventBufferLimit: Int = 256,
+        deliverySleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
         nowMilliseconds: @escaping @Sendable () -> Int64 = {
             Int64(Date().timeIntervalSince1970 * 1_000)
         }
     ) {
         let pair = AsyncStream<BackendEvent>.makeStream(
-            bufferingPolicy: .bufferingNewest(256)
+            bufferingPolicy: .bufferingNewest(max(1, eventBufferLimit))
         )
         self.events = pair.stream
         self.eventContinuation = pair.continuation
@@ -268,6 +290,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             uniqueKeysWithValues: throwableCatalogIDByWireCode.map { ($0.value, $0.key) }
         )
         self.liveReadinessTimeout = liveReadinessTimeout
+        self.deliverySleep = deliverySleep
         self.nowMilliseconds = nowMilliseconds
         self.serverTimeOffsets = serverTimeOffsets
     }
@@ -386,7 +409,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
               refreshPolicy != nil else { return }
         chatAuthenticationRecoveryPending = true
         chatAuthenticationRecoveryGeneration = expectedGeneration
-        eventContinuation.yield(.connection(BackendConnectionStatus(
+        emit(.connection(BackendConnectionStatus(
             transportConnected: false,
             recoveryReconciled: false,
             activeRoomTransportConnected: false
@@ -467,6 +490,9 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         listenerGeneration &+= 1
         roomTransitionGeneration &+= 1
         inboxTask?.cancel()
+        eventRepairGeneration &+= 1
+        eventRepairTask?.cancel()
+        eventRepairTask = nil
         serverClockTask?.cancel()
         chatAuthenticationRecoveryTask?.cancel()
         chatAuthenticationRecoveryTask = nil
@@ -517,7 +543,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             liveListenerCount: liveTasksByRoom.count,
             grantOpen: grantBarrier.isOpen,
             serverTimeOffsetMilliseconds: serverClock.offsetMilliseconds,
-            shutDown: isShutDown
+            shutDown: isShutDown,
+            eventRepairPending: eventRepairTask != nil
         )
     }
 
@@ -717,14 +744,24 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         liveTasksByRoom.removeAll()
         liveListenerIDsByRoom.removeAll()
         latestLiveDataByRoom.removeAll()
+        chatDeliveryGeneration &+= 1
+        chatDeliveryTask?.cancel()
+        chatDeliveryTask = nil
+        verifiedChatSequences.removeAll()
+        pendingChats.removeAll()
     }
 
     private func pruneLiveListeners(authorizedRoomIDs: Set<UUID>) {
+        verifiedChatSequences = verifiedChatSequences.filter { authorizedRoomIDs.contains($0.key) }
+        pendingChats = pendingChats.filter { authorizedRoomIDs.contains($0.key) }
+        inboxObservedRooms.formIntersection(authorizedRoomIDs)
         for roomID in Array(liveTasksByRoom.keys)
         where !authorizedRoomIDs.contains(roomID) {
             liveTasksByRoom.removeValue(forKey: roomID)?.cancel()
             liveListenerIDsByRoom.removeValue(forKey: roomID)
             latestLiveDataByRoom.removeValue(forKey: roomID)
+            verifiedChatSequences.removeValue(forKey: roomID)
+            pendingChats.removeValue(forKey: roomID)
         }
     }
 
@@ -914,20 +951,26 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             failClosedIfActiveRoomWasRevoked()
             pruneLiveListeners(authorizedRoomIDs: Set(currentRooms.map(\.id)))
             if let session { startWarmLiveListeners(session: session) }
-            eventContinuation.yield(event)
+            emit(event)
         case .reconciliation(let reconciliation):
             currentRooms = reconciliation.snapshot.rooms
             currentReconciliation = reconciliation
             failClosedIfActiveRoomWasRevoked()
             pruneLiveListeners(authorizedRoomIDs: Set(currentRooms.map(\.id)))
             if let session { startWarmLiveListeners(session: session) }
-            eventContinuation.yield(event)
+            emit(event)
+        case .eventGapRepaired(let repair):
+            currentRooms = repair.reconciliation.snapshot.rooms
+            currentReconciliation = repair.reconciliation
+            failClosedIfActiveRoomWasRevoked()
+            pruneLiveListeners(authorizedRoomIDs: Set(currentRooms.map(\.id)))
+            emit(.eventGapRepaired(applyingFirebaseConnectionGate(to: repair)))
         case .connection where chatAuthenticationRecoveryPending:
             // Presence remains on Supabase, but a healthy Supabase socket must
             // not reopen Firebase sends while this credential is being checked.
             break
         default:
-            eventContinuation.yield(event)
+            emit(event)
         }
     }
 
@@ -935,14 +978,43 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         guard !isShutDown,
               generation == inboxListenerGeneration,
               let snapshot = try? FirebaseV2InboxSnapshot.decode(data) else { return }
-        let actions = inboxReconciler.consume(snapshot)
-        guard !actions.isEmpty else { return }
-        let accessRevisions: [RealtimeRevision] = actions.compactMap { action in
-            guard case .accessRevisionAdvanced(let revision) = action else { return nil }
-            return revision
+        // A first compact slot may already include a message committed after
+        // the startup HTTP read. Repair its recent window without replaying a
+        // historic bubble or declaring the sequence verified before a query.
+        for (roomID, hint) in snapshot.rooms
+        where currentRooms.prefix(5).contains(where: { $0.id == roomID }) {
+            if verifiedChatSequences[roomID] == nil { verifiedChatSequences[roomID] = 0 }
+            if inboxObservedRooms.insert(roomID).inserted, let sequence = hint.chatSequence {
+                enqueueChat(roomID: roomID, sequence: sequence, event: nil,
+                    requiresCatchUp: pendingChats[roomID]?.event == nil)
+            }
         }
-        let minimumAccessRevision = accessRevisions.max()
-        await reconcileAuthoritativeHint(minimumAccessRevision: minimumAccessRevision)
+        let actions = inboxReconciler.consume(snapshot)
+        var requiresSnapshot = !inboxBaselineEstablished
+            && snapshot.rooms.values.contains { $0.revision != nil }
+        inboxBaselineEstablished = true
+        var minimumAccessRevision: RealtimeRevision?
+        if let revision = snapshot.accessRevision,
+           let current = session?.bootstrap.accessRevision, revision > current {
+            minimumAccessRevision = revision
+            requiresSnapshot = true
+        }
+        for action in actions {
+            switch action {
+            case .accessRevisionAdvanced(let revision):
+                if let current = session?.bootstrap.accessRevision, revision > current {
+                    minimumAccessRevision = max(minimumAccessRevision ?? revision, revision)
+                    requiresSnapshot = true
+                }
+            case .roomRevisionAdvanced:
+                requiresSnapshot = true
+            case .chatSequenceAdvanced(let roomID, let sequence, _):
+                enqueueChat(roomID: roomID, sequence: sequence, event: nil)
+            }
+        }
+        if requiresSnapshot {
+            await reconcileAuthoritativeHint(minimumAccessRevision: minimumAccessRevision)
+        }
     }
 
     private func receiveLiveData(
@@ -957,6 +1029,15 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
               liveTasksByRoom[roomID] != nil,
               let snapshot = try? FirebaseV2LiveSnapshot.decode(data) else { return }
         latestLiveDataByRoom[roomID] = data
+        if verifiedChatSequences[roomID] == nil {
+            verifiedChatSequences[roomID] = 0
+            if let event = snapshot.chatEvent {
+                // Historic first snapshots update the recent window silently.
+                enqueueChat(roomID: roomID, sequence: event.sequence, event: nil, requiresCatchUp: true)
+            }
+        } else if let event = snapshot.chatEvent {
+            enqueueChat(roomID: roomID, sequence: event.sequence, event: event)
+        }
         guard roomID == activeRoomState.desiredActiveRoomID,
               liveReadinessContinuation != nil
                 || (roomID == activeRoomState.committedRealtimeActiveRoomID
@@ -1010,7 +1091,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         switch action {
         case .typing(let userID, let active):
             guard userID != session?.identity.accountID else { return false }
-            eventContinuation.yield(.typing(
+            emit(.typing(
                 roomID: roomID,
                 userID: userID,
                 active: active
@@ -1018,7 +1099,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             return false
         case .pulse(let userID, _):
             guard userID != session?.identity.accountID else { return false }
-            eventContinuation.yield(.characterPulse(CharacterPulseEvent(
+            emit(.characterPulse(CharacterPulseEvent(
                 id: UUID(),
                 roomID: roomID,
                 userID: userID
@@ -1031,7 +1112,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
                   let actor = room.members.first(where: { $0.userID == actorUserID }),
                   let throwableID = throwableCatalogIDByWireCode[payload.wireCode]
             else { return false }
-            eventContinuation.yield(.characterThrow(CharacterThrowEvent(
+            emit(.characterThrow(CharacterThrowEvent(
                 id: UUID(),
                 roomID: roomID,
                 actorUserID: actorUserID,
@@ -1041,9 +1122,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             )))
             return false
         case .chatHint:
-            // RTDB chat bodies are delivery hints only. Postgres remains the
-            // source of truth and is re-read before emitting a durable message.
-            return true
+            // Delivery is handled by the bounded per-room Postgres ID worker.
+            return false
         }
     }
 
@@ -1074,6 +1154,176 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             _ = handleLiveAction(action, roomID: roomID)
         }
         scheduleTypingExpiry(roomID: roomID, generation: generation)
+    }
+
+    private func enqueueChat(roomID: UUID, sequence: Int64, event: FirebaseV2ChatEventPayload?, requiresCatchUp: Bool = false) {
+        guard !isShutDown, currentRooms.prefix(5).contains(where: { $0.id == roomID }),
+              session?.bootstrap.rooms.contains(roomID) == true,
+              sequence > (verifiedChatSequences[roomID] ?? 0) else { return }
+        if let pending = pendingChats[roomID], pending.sequence > sequence { return }
+        let candidate = event ?? pendingChats[roomID]?.event
+        pendingChats[roomID] = PendingChat(sequence: sequence, event: candidate,
+            requiresCatchUp: requiresCatchUp || (pendingChats[roomID]?.requiresCatchUp ?? false))
+        guard chatDeliveryTask == nil else { return }
+        let generation = chatDeliveryGeneration
+        chatDeliveryTask = Task { [weak self] in
+            await self?.deliverPendingChats(generation: generation)
+        }
+    }
+
+    private func deliverPendingChats(generation: UInt64) async {
+        defer {
+            if generation == chatDeliveryGeneration { chatDeliveryTask = nil }
+        }
+        var failures = 0
+        while !Task.isCancelled, generation == chatDeliveryGeneration, !isShutDown,
+              !pendingChats.isEmpty {
+            do {
+                // Give inbox/live notifications one small shared window. Storage
+                // is one latest hint per authorized room, not a message backlog.
+                let delay = failures == 0 ? 0.05 : FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                    failureCount: failures, rateLimited: false, retryAfterSeconds: nil,
+                    jitter: Double.random(in: 0...1)
+                )
+                try await deliverySleep(.seconds(delay))
+                let batch = pendingChats
+                for (roomID, pending) in batch {
+                    guard generation == chatDeliveryGeneration, !isShutDown else { return }
+                    guard let roomEpoch = currentRooms.first(where: { $0.id == roomID })?.realtimeEpoch else {
+                        pendingChats.removeValue(forKey: roomID)
+                        continue
+                    }
+                    let previous = verifiedChatSequences[roomID] ?? 0
+                    guard pending.sequence > previous else {
+                        pendingChats.removeValue(forKey: roomID)
+                        continue
+                    }
+                    let liveEvent = latestLiveDataByRoom[roomID].flatMap {
+                        try? FirebaseV2LiveSnapshot.decode($0).chatEvent
+                    }
+                    let event = [pending.event, liveEvent].compactMap { $0 }
+                        .first { $0.sequence == pending.sequence }
+                    if !pending.requiresCatchUp, pending.sequence == previous + 1, let event,
+                       let message = try await supabasePlane.message(id: event.messageID, roomID: roomID) {
+                        guard generation == chatDeliveryGeneration, !Task.isCancelled,
+                              !isShutDown else { return }
+                        guard currentRooms.contains(where: { $0.id == roomID }) else {
+                            pendingChats.removeValue(forKey: roomID)
+                            continue
+                        }
+                        guard currentRooms.first(where: { $0.id == roomID })?.realtimeEpoch == roomEpoch else {
+                            pendingChats[roomID]?.requiresCatchUp = true
+                            continue
+                        }
+                        emit(.message(message))
+                    } else {
+                        // A compact RTDB slot can overwrite intermediate events.
+                        // Repair only the existing recent-message window, never
+                        // claim an unbounded history catch-up from a 50-row query.
+                        let messages = try await supabasePlane.recentMessages(roomID: roomID)
+                        guard generation == chatDeliveryGeneration, !Task.isCancelled,
+                              !isShutDown else { return }
+                        guard currentRooms.contains(where: { $0.id == roomID }) else {
+                            pendingChats.removeValue(forKey: roomID)
+                            continue
+                        }
+                        guard currentRooms.first(where: { $0.id == roomID })?.realtimeEpoch == roomEpoch else {
+                            pendingChats[roomID]?.requiresCatchUp = true
+                            continue
+                        }
+                        emit(.messagesReplaced(roomID: roomID, messages: messages))
+                    }
+                    verifiedChatSequences[roomID] = pending.sequence
+                    if pendingChats[roomID]?.sequence == pending.sequence {
+                        pendingChats.removeValue(forKey: roomID)
+                    }
+                }
+                failures = 0
+            } catch is CancellationError {
+                guard !Task.isCancelled, generation == chatDeliveryGeneration, !isShutDown else { return }
+                // A topology/session query can reject a stale read without
+                // cancelling this worker. Its dirty sequence still needs repair.
+                failures += 1
+            } catch {
+                guard !Task.isCancelled, generation == chatDeliveryGeneration, !isShutDown else { return }
+                // Retain the dirty sequence through HTTP failure, even while the
+                // Firebase/Supabase sockets themselves remain healthy.
+                failures += 1
+                emit(.technicalError(L10n.text("firebase.transport.error.reconciliation_failed")))
+            }
+        }
+    }
+
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        try requireRunning()
+        let generation = listenerGeneration
+        let reconciliation = try await supabasePlane.repairDroppedEvents(
+            rooms: rooms, activeRoomID: activeRoomID
+        )
+        guard !isShutDown, generation == listenerGeneration else { throw CancellationError() }
+        currentRooms = reconciliation.reconciliation.snapshot.rooms
+        currentReconciliation = reconciliation.reconciliation
+        failClosedIfActiveRoomWasRevoked()
+        pruneLiveListeners(authorizedRoomIDs: Set(currentRooms.map(\.id)))
+        return applyingFirebaseConnectionGate(to: reconciliation)
+    }
+
+    private func applyingFirebaseConnectionGate(to repair: BackendEventGapRepair) -> BackendEventGapRepair {
+        guard chatAuthenticationRecoveryPending || !grantBarrier.isOpen else { return repair }
+        return BackendEventGapRepair(reconciliation: repair.reconciliation,
+            messagesByRoom: repair.messagesByRoom, presence: repair.presence,
+            connection: BackendConnectionStatus(transportConnected: false,
+                recoveryReconciled: false, activeRoomTransportConnected: false))
+    }
+
+    private func emit(_ event: BackendEvent, repairBaseline: Bool = false) {
+        if publishingEventRepair, !repairBaseline, event.requiresStateRepair {
+            eventRepairDirty = true
+        }
+        if case .dropped(let dropped) = eventContinuation.yield(event),
+           !repairBaseline, dropped.requiresStateRepair, !isShutDown {
+            eventRepairDirty = true
+            guard eventRepairTask == nil else { return }
+            let generation = eventRepairGeneration
+            eventRepairTask = Task { [weak self] in
+                await self?.repairEventQueue(generation: generation)
+            }
+        }
+    }
+
+    private func repairEventQueue(generation: UInt64) async {
+        defer {
+            if generation == eventRepairGeneration { eventRepairTask = nil; publishingEventRepair = false }
+        }
+        var failures = 0
+        while eventRepairDirty, generation == eventRepairGeneration, !Task.isCancelled, !isShutDown {
+            do {
+                let delay = failures == 0 ? 1.0 : FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                    failureCount: failures, rateLimited: false, retryAfterSeconds: nil,
+                    jitter: Double.random(in: 0...1)
+                )
+                try await deliverySleep(.seconds(delay))
+                eventRepairDirty = false
+                publishingEventRepair = true
+                let result = try await repairDroppedEvents(
+                    rooms: currentRooms, activeRoomID: activeRoomState.committedRealtimeActiveRoomID
+                )
+                guard generation == eventRepairGeneration, !isShutDown else { return }
+                emit(.eventGapRepaired(result), repairBaseline: true)
+                publishingEventRepair = false
+                failures = eventRepairDirty ? failures + 1 : 0
+            } catch is CancellationError {
+                guard !Task.isCancelled, generation == eventRepairGeneration, !isShutDown else { return }
+                publishingEventRepair = false
+                eventRepairDirty = true
+                failures += 1
+            } catch {
+                guard generation == eventRepairGeneration, !isShutDown, !Task.isCancelled else { return }
+                publishingEventRepair = false
+                eventRepairDirty = true
+                failures += 1
+            }
+        }
     }
 
     private func reconcileAuthoritativeHint(
@@ -1109,7 +1359,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
                 currentRooms = reconciliation.snapshot.rooms
                 currentReconciliation = reconciliation
                 failClosedIfActiveRoomWasRevoked()
-                eventContinuation.yield(.reconciliation(reconciliation))
+                emit(.reconciliation(reconciliation))
             } catch is CancellationError {
                 break
             } catch {
@@ -1124,7 +1374,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
                     ))
                     return
                 }
-                eventContinuation.yield(.technicalError(
+                emit(.technicalError(
                     L10n.text("firebase.transport.error.reconciliation_failed")
                 ))
             }
@@ -1201,7 +1451,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             startWarmLiveListeners(session: recovered)
             if chatAuthenticationRecoveryPending {
                 chatAuthenticationRecoveryPending = false
-                eventContinuation.yield(.connection(BackendConnectionStatus(
+                emit(.connection(BackendConnectionStatus(
                     transportConnected: true,
                     recoveryReconciled: true,
                     activeRoomTransportConnected:
@@ -1223,6 +1473,8 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
         previousInboxTask?.cancel()
         inboxTask = nil
         inboxReconciler = FirebaseV2InboxReconciler()
+        inboxBaselineEstablished = false
+        inboxObservedRooms.removeAll()
         startInboxListenerIfNeeded(for: identity.accountID)
     }
 
@@ -1259,12 +1511,12 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
 
     private func failClosed(message: String) async {
         guard !isShutDown else { return }
-        eventContinuation.yield(.connection(BackendConnectionStatus(
+        emit(.connection(BackendConnectionStatus(
             transportConnected: false,
             recoveryReconciled: false,
             activeRoomTransportConnected: false
         )))
-        eventContinuation.yield(.technicalError(message))
+        emit(.technicalError(message))
 
         // Close Firebase credentials/listeners before any network wait. The
         // shared Supabase plane must survive so selector-driven recovery and a
@@ -1350,4 +1602,12 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
 // RPCs so the router can rebuild the Supabase adapter when the selector turns
 // Firebase v2 off. The Firebase composite itself only uses this conformance for
 // authoritative reconciliation and Presence.
-extension SideyBackend: FirebaseV2SupabasePlane {}
+extension SideyBackend: FirebaseV2SupabasePlane {
+    func recentMessages(roomID: UUID) async throws -> [ChatMessage] {
+        try await recentMessages(roomID: roomID, limit: 50)
+    }
+
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        try await repairRealtimeEventGap(rooms: rooms, activeRoomID: activeRoomID)
+    }
+}

@@ -12,6 +12,23 @@ struct BackendReconciliation: Equatable, Sendable {
     let activeMessages: [ChatMessage]
 }
 
+/// One atomic baseline prevents overflow repair from evicting pieces of its
+/// own Presence/message state while the consumer is still suspended.
+struct BackendEventGapRepair: Sendable {
+    let reconciliation: BackendReconciliation
+    let messagesByRoom: [UUID: [ChatMessage]]
+    let presence: [BackendEvent]
+    let connection: BackendConnectionStatus?
+
+    init(reconciliation: BackendReconciliation, messagesByRoom: [UUID: [ChatMessage]],
+         presence: [BackendEvent], connection: BackendConnectionStatus? = nil) {
+        self.reconciliation = reconciliation
+        self.messagesByRoom = messagesByRoom
+        self.presence = presence
+        self.connection = connection
+    }
+}
+
 struct BackendConnectionStatus: Equatable, Sendable {
     let transportConnected: Bool
     let recoveryReconciled: Bool
@@ -114,6 +131,7 @@ struct MessageHistoryPage: Equatable, Sendable {
 enum BackendEvent: Sendable {
     case snapshot(BackendSnapshot)
     case reconciliation(BackendReconciliation)
+    case eventGapRepaired(BackendEventGapRepair)
     case message(ChatMessage)
     case messageDeleted(roomID: UUID, messageID: UUID)
     case messagesInvalidated(roomID: UUID)
@@ -918,5 +936,16 @@ enum SideyBackendError: LocalizedError, Equatable {
             return business(code: code)
         }
         return .remote(diagnostic: diagnostic)
+    }
+}
+
+extension BackendEvent {
+    var requiresStateRepair: Bool {
+        switch self {
+        case .typing, .characterPulse, .characterThrow, .technicalError:
+            false
+        default:
+            true
+        }
     }
 }

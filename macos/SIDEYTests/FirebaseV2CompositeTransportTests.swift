@@ -431,7 +431,7 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }
     }
 
-    func testFirebaseSelectionConsumesFirebaseTransientsAndReconcilesChatHint() async throws {
+    func testFirebaseSelectionConsumesTransientsAndReadsChatByIDWithoutFullSnapshot() async throws {
         let fixture = try Fixture()
         _ = try await fixture.transport.synchronize(
             rooms: [fixture.room],
@@ -439,6 +439,10 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         )
         var iterator = fixture.transport.events.makeAsyncIterator()
         let livePath = FirebaseV2Path.liveRoom(fixture.room.id)
+        let durableMessage = ChatMessage(id: UUID(uuidString: "22222222-2222-4222-8222-222222222222")!,
+            roomID: fixture.room.id, senderID: fixture.friendID, body: "Postgres body",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(durableMessage)
         fixture.values.yield(Data("{}".utf8), at: livePath)
         fixture.values.yield(Data("""
         {
@@ -483,10 +487,191 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertEqual(characterThrow.targetUserID, fixture.ownID)
         XCTAssertEqual(characterThrow.throwableID, "throwable_leaf")
 
-        guard case .reconciliation = await iterator.next()
-        else { return XCTFail("Chat hint must trigger authoritative reconciliation") }
+        guard case .message(let verified) = await iterator.next()
+        else { return XCTFail("Expected a Postgres-verified message") }
+        XCTAssertEqual(verified, durableMessage)
         let synchronizeCount = await fixture.supabase.synchronizeCount
-        XCTAssertEqual(synchronizeCount, 2)
+        let requests = await fixture.supabase.messageRequests
+        XCTAssertEqual(requests, [durableMessage.id])
+        XCTAssertEqual(synchronizeCount, 1)
+    }
+
+    func testInboxAndLiveForOneSequenceShareOneVerifiedIDQuery() async throws {
+        let fixture = try Fixture()
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "verified", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        let inbox = FirebaseV2Path.inbox(userID: fixture.ownID)
+        fixture.values.yield(Data("""
+        {"a":"00000000000000000001","r":{"\(fixture.room.id.uuidString)":{}}}
+        """.utf8), at: inbox)
+        fixture.values.yield(Data("""
+        {"a":"00000000000000000001","r":{"\(fixture.room.id.uuidString)":{"n":1}}}
+        """.utf8), at: inbox)
+        fixture.values.yield(chatSnapshot(message, sequence: 1), at: FirebaseV2Path.liveRoom(fixture.room.id))
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        let event = await iterator.next()
+        guard case .message(let received) = event else { return XCTFail("Expected one verified row; got \(String(describing: event))") }
+        XCTAssertEqual(received, message)
+        let requests = await fixture.supabase.messageRequests
+        let recent = await fixture.supabase.recentRequests
+        let full = await fixture.supabase.synchronizeCount
+        XCTAssertEqual(requests, [message.id])
+        XCTAssertTrue(recent.isEmpty)
+        XCTAssertEqual(full, 1)
+    }
+
+    func testSequenceGapRepairsOnlyRecentMessagesWithoutFullSnapshot() async throws {
+        let fixture = try Fixture()
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "last", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        fixture.values.yield(chatSnapshot(message, sequence: 7), at: FirebaseV2Path.liveRoom(fixture.room.id))
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .messagesReplaced(let roomID, let messages) = await iterator.next()
+        else { return XCTFail("A compact-slot gap must repair the recent window") }
+        XCTAssertEqual(roomID, fixture.room.id)
+        XCTAssertEqual(messages, [message])
+        let recent = await fixture.supabase.recentRequests
+        let full = await fixture.supabase.synchronizeCount
+        XCTAssertEqual(recent, [fixture.room.id])
+        XCTAssertEqual(full, 1)
+    }
+
+    func testFailedIDReadRetainsDirtySequenceUntilRetrySucceeds() async throws {
+        let fixture = try Fixture(deliverySleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "retry", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        await fixture.supabase.failNextMessage()
+        fixture.values.yield(chatSnapshot(message, sequence: 1), at: FirebaseV2Path.liveRoom(fixture.room.id))
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .technicalError = await iterator.next() else { return XCTFail("Expected read failure") }
+        guard case .message(let received) = await iterator.next() else { return XCTFail("Dirty ID must retry") }
+        XCTAssertEqual(received, message)
+        let requests = await fixture.supabase.messageRequests
+        XCTAssertEqual(requests, [message.id, message.id])
+    }
+
+    func testOverflowPublishesOneAtomicMessageAndPresenceBaselineWithoutRepairLoop() async throws {
+        let fixture = try Fixture(eventBufferLimit: 1)
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        await fixture.supabase.emit(.presence(roomID: fixture.room.id, userID: fixture.friendID, state: .away))
+        await fixture.supabase.emit(.presence(roomID: fixture.room.id, userID: fixture.friendID, state: .online))
+        try await eventually {
+            let count = await fixture.supabase.repairCount
+            let pending = await fixture.transport.diagnostics().eventRepairPending
+            return count == 1 && !pending
+        }
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .eventGapRepaired(let repair) = await iterator.next() else { return XCTFail("Expected atomic repair") }
+        XCTAssertEqual(repair.reconciliation.snapshot.rooms.map(\.id), [fixture.room.id])
+        XCTAssertEqual(repair.presence.count, fixture.room.members.count)
+        let count = await fixture.supabase.repairCount
+        XCTAssertEqual(count, 1)
+    }
+
+    func testFirstInboxSequenceDoesNotSkipRowsCommittedAfterStartupRead() async throws {
+        let fixture = try Fixture()
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "startup race", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        fixture.values.yield(Data("""
+        {"a":"00000000000000000001","r":{"\(fixture.room.id.uuidString)":{"n":7}}}
+        """.utf8), at: FirebaseV2Path.inbox(userID: fixture.ownID))
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .messagesReplaced(let roomID, let rows) = await iterator.next()
+        else { return XCTFail("First compact sequence must query its recent window") }
+        XCTAssertEqual(roomID, fixture.room.id)
+        XCTAssertEqual(rows, [message])
+        let full = await fixture.supabase.synchronizeCount
+        XCTAssertEqual(full, 1)
+    }
+
+    func testDurableEventDuringSlowOverflowRepairRetainsDirtyStateForAnotherPass() async throws {
+        let barrier = CompositeRepairBarrier()
+        let fixture = try Fixture(eventBufferLimit: 1,
+            deliverySleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        await fixture.supabase.beforeNextRepair { await barrier.suspend() }
+        await fixture.supabase.emit(.messagesInvalidated(roomID: fixture.room.id))
+        await fixture.supabase.emit(.messagesInvalidated(roomID: fixture.room.id))
+        try await eventually { await barrier.isSuspended }
+        await fixture.supabase.emit(.presence(roomID: fixture.room.id, userID: fixture.friendID, state: .away))
+        // Observe the forwarded event before releasing the HTTP stand-in.
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        var receivedPresence = false
+        while !receivedPresence, let event = await iterator.next() {
+            if case .presence = event { receivedPresence = true }
+        }
+        XCTAssertTrue(receivedPresence)
+        await barrier.release()
+        try await eventually {
+            let count = await fixture.supabase.repairCount
+            let pending = await fixture.transport.diagnostics().eventRepairPending
+            return count == 2 && !pending
+        }
+        guard case .eventGapRepaired = await iterator.next() else { return XCTFail("Expected repaired baseline") }
+    }
+
+    func testInternalIDReadCancellationRetriesWithoutAnotherFirebaseNotification() async throws {
+        let fixture = try Fixture(deliverySleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "retry stale query", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        await fixture.supabase.cancelNextMessage()
+        fixture.values.yield(chatSnapshot(message, sequence: 1), at: FirebaseV2Path.liveRoom(fixture.room.id))
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .message(let received) = await iterator.next() else { return XCTFail("Dirty sequence must retry") }
+        XCTAssertEqual(received, message)
+        let requests = await fixture.supabase.messageRequests
+        XCTAssertEqual(requests, [message.id, message.id])
+    }
+
+    func testRoomEpochChangeDuringIDReadDiscardsItAndRepairsRecentWindow() async throws {
+        let barrier = CompositeRepairBarrier()
+        let fixture = try Fixture(deliverySleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        let message = ChatMessage(id: UUID(), roomID: fixture.room.id, senderID: fixture.friendID,
+            body: "epoch race", createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        await fixture.supabase.store(message)
+        await fixture.supabase.beforeNextMessage { await barrier.suspend() }
+        fixture.values.yield(chatSnapshot(message, sequence: 1), at: FirebaseV2Path.liveRoom(fixture.room.id))
+        try await eventually { await barrier.isSuspended }
+        var nextRoom = fixture.room
+        nextRoom.realtimeEpoch += 1
+        await fixture.supabase.replaceRooms([nextRoom])
+        await fixture.supabase.emitSnapshot()
+        var iterator = fixture.transport.events.makeAsyncIterator()
+        guard case .snapshot(let state) = await iterator.next() else { return XCTFail("Expected new membership epoch") }
+        XCTAssertEqual(state.rooms.first?.realtimeEpoch, nextRoom.realtimeEpoch)
+        await barrier.release()
+        guard case .messagesReplaced(let roomID, let rows) = await iterator.next()
+        else { return XCTFail("Old-epoch ID result must not publish as a live message") }
+        XCTAssertEqual(roomID, nextRoom.id)
+        XCTAssertEqual(rows, [message])
+        let recent = await fixture.supabase.recentRequests
+        XCTAssertEqual(recent, [nextRoom.id])
+    }
+
+    private func chatSnapshot(_ message: ChatMessage, sequence: Int64) -> Data {
+        Data("""
+        {"e":{"b":"untrusted hint","i":"\(message.id.uuidString)","n":\(sequence),
+        "s":"\(message.senderID.uuidString)","t":1800000000000}}
+        """.utf8)
     }
 
     func testServerOffsetCorrectsBothClockDirectionsAndStopsOnShutdown() async throws {
@@ -885,6 +1070,22 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         }
     }
 
+    func testAtomicRepairDoesNotReopenFirebaseWhileAuthenticationRecoveryIsPending() async throws {
+        let selector = CompositeRolloutRefreshRecorder()
+        await selector.blockNextRefresh()
+        let fixture = try Fixture(refreshPolicy: { await selector.refresh() })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        await fixture.chatCaller.failNextUnauthenticated()
+        _ = await fixture.transport.sendChat(roomID: fixture.room.id, body: "reject", id: UUID())
+        try await eventually { await selector.refreshCount == 1 }
+        let repair = try await fixture.transport.repairDroppedEvents(
+            rooms: [fixture.room], activeRoomID: fixture.room.id)
+        XCTAssertEqual(repair.connection?.isReady, false)
+        XCTAssertEqual(repair.connection?.activeRoomTransportConnected, false)
+        await selector.resumeRefresh()
+    }
+
     func testSupabaseReconnectDoesNotReopenChatDuringAuthenticationRecovery() async throws {
         let selector = CompositeRolloutRefreshRecorder()
         await selector.blockNextRefresh()
@@ -1024,7 +1225,9 @@ private struct Fixture {
         initialLeaseExpiresAt: Int64 = 1_800_000_300_000,
         leaseRefreshExpiresAt: Int64? = nil,
         serverTimeOffsets: (any FirebaseV2ServerTimeOffsetStreaming)? = nil,
-        refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)? = nil
+        refreshPolicy: (@Sendable () async throws -> RealtimeRolloutPolicyDecision)? = nil,
+        eventBufferLimit: Int = 256,
+        deliverySleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) throws {
         values = CompositeValueStreamStub(
             automaticallyYieldBaseline: automaticallyYieldLiveBaseline
@@ -1121,6 +1324,8 @@ private struct Fixture {
             ],
             serverTimeOffsets: serverTimeOffsets,
             liveReadinessTimeout: liveReadinessTimeout,
+            eventBufferLimit: eventBufferLimit,
+            deliverySleep: deliverySleep,
             nowMilliseconds: { 1_800_000_000_000 }
         )
     }
@@ -1252,6 +1457,14 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     private var blockedActiveRooms: Set<UUID> = []
     private var activeRoomContinuations: [UUID: CheckedContinuation<Void, Never>] = [:]
     private(set) var synchronizeCount = 0
+    private(set) var messageRequests: [UUID] = []
+    private(set) var recentRequests: [UUID] = []
+    private(set) var repairCount = 0
+    private var messages: [UUID: ChatMessage] = [:]
+    private var messageFailures = 0
+    private var messageCancellations = 0
+    private var beforeMessage: (@Sendable () async -> Void)?
+    private var beforeRepair: (@Sendable () async -> Void)?
     private(set) var shutdownCount = 0
     private(set) var activeRoomRequests: [UUID?] = []
     private(set) var transientPublications: [CompositeTransientPublication] = []
@@ -1274,6 +1487,37 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
             activeMessages: reconciliation.activeMessages
         )
     }
+
+    func message(id: UUID, roomID: UUID) async throws -> ChatMessage? {
+        messageRequests.append(id)
+        if let beforeMessage { self.beforeMessage = nil; await beforeMessage() }
+        if messageCancellations > 0 { messageCancellations -= 1; throw CancellationError() }
+        if messageFailures > 0 { messageFailures -= 1; throw URLError(.timedOut) }
+        return messages[id]
+    }
+
+    func recentMessages(roomID: UUID) async throws -> [ChatMessage] {
+        recentRequests.append(roomID)
+        return messages.values.filter { $0.roomID == roomID }.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        repairCount += 1
+        if let beforeRepair { self.beforeRepair = nil; await beforeRepair() }
+        let result = try await synchronize(rooms: rooms, activeRoomID: activeRoomID)
+        return BackendEventGapRepair(reconciliation: result,
+            messagesByRoom: Dictionary(grouping: messages.values, by: \.roomID),
+            presence: result.snapshot.rooms.flatMap { room in room.members.map {
+                .presence(roomID: room.id, userID: $0.userID, state: $0.presence)
+            } }, connection: BackendConnectionStatus(transportConnected: true, recoveryReconciled: true))
+    }
+
+    func store(_ message: ChatMessage) { messages[message.id] = message }
+    func failNextMessage() { messageFailures += 1 }
+    func cancelNextMessage() { messageCancellations += 1 }
+    func beforeNextMessage(_ operation: @escaping @Sendable () async -> Void) { beforeMessage = operation }
+    func emitSnapshot() { continuation.yield(.snapshot(reconciliation.snapshot)) }
+    func beforeNextRepair(_ operation: @escaping @Sendable () async -> Void) { beforeRepair = operation }
 
     func setActiveRoom(_ roomID: UUID?) async throws {
         activeRoomRequests.append(roomID)
@@ -1490,4 +1734,14 @@ private final class CompositeServerOffsetStub: @unchecked Sendable,
         let continuation = lock.withLock { self.continuation }
         continuation?.yield(offset)
     }
+}
+
+private actor CompositeRepairBarrier {
+    private(set) var isSuspended = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func suspend() async {
+        isSuspended = true
+        await withCheckedContinuation { continuation = $0 }
+    }
+    func release() { continuation?.resume(); continuation = nil }
 }

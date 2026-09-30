@@ -105,6 +105,7 @@ protocol RoomMessagingTransport: Actor {
     nonisolated var events: AsyncStream<BackendEvent> { get }
 
     func synchronize(rooms: [Room], activeRoomID: UUID?) async throws -> BackendReconciliation
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair
     func setActiveRoom(_ roomID: UUID?) async throws
     func setLocalPresence(_ state: PresenceState) async throws
     func publishTyping(roomID: UUID, event: String) async throws
@@ -123,6 +124,12 @@ protocol RoomMessagingTransport: Actor {
 }
 
 extension RoomMessagingTransport {
+    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+        let result = try await synchronize(rooms: rooms, activeRoomID: activeRoomID)
+        return BackendEventGapRepair(reconciliation: result,
+            messagesByRoom: result.activeRoomID.map { [$0: result.activeMessages] } ?? [:], presence: [])
+    }
+
     /// Legacy Supabase transport has no separate Firebase credential grant.
     func convergeAccessGrant(
         revision: RealtimeRevision,
@@ -201,6 +208,9 @@ actor RoomMessagingTransportRouter {
     private var lastSuccessfulProtocol: RealtimeTransportKind?
     private var eventTask: Task<Void, Never>?
     private var eventGeneration: UInt64 = 0
+    private var eventRepairTask: Task<Void, Never>?
+    private var eventRepairDirty = false
+    private var publishingEventRepair = false
     private var synchronizedRooms: [Room]?
     private var synchronizedActiveRoomID: UUID?
     private var isShutDown = false
@@ -235,6 +245,7 @@ actor RoomMessagingTransportRouter {
             (@MainActor @Sendable () async throws -> any RoomMessagingTransport)? = nil,
         makeLegacyForSwitch: (@Sendable () async throws -> any RoomMessagingTransport)? = nil,
         shutdownShared: (@Sendable () async -> Void)? = nil,
+        eventBufferLimit: Int = 256,
         presenceRetrySleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         }
@@ -264,7 +275,7 @@ actor RoomMessagingTransportRouter {
         self.shutdownShared = shutdownShared
         self.presenceRetrySleep = presenceRetrySleep
         let pair = AsyncStream<BackendEvent>.makeStream(
-            bufferingPolicy: .bufferingNewest(256)
+            bufferingPolicy: .bufferingNewest(max(1, eventBufferLimit))
         )
         self.events = pair.stream
         self.eventContinuation = pair.continuation
@@ -544,7 +555,7 @@ actor RoomMessagingTransportRouter {
             schedulePresenceRetry()
             startEventForwardingIfNeeded()
             recordSuccess(operation: "rollout-lease-recovery")
-            eventContinuation.yield(.reconciliation(reconciliation))
+            emit(.reconciliation(reconciliation))
         } catch {
             // Synchronization can already have published Supabase Presence.
             // Fail-closing the replacement withdraws it before the next retry.
@@ -603,7 +614,7 @@ actor RoomMessagingTransportRouter {
             }
         } catch {
             operationalState = .blocked
-            eventContinuation.yield(.technicalError(
+            emit(.technicalError(
                 L10n.text("realtime.kill_switch.error.legacy_connection_creation_failed")
             ))
             throw error
@@ -624,7 +635,7 @@ actor RoomMessagingTransportRouter {
         } catch {
             blockedLegacyTransport = legacyTransport
             operationalState = .blocked
-            eventContinuation.yield(.technicalError(
+            emit(.technicalError(
                 L10n.text("realtime.kill_switch.error.legacy_connection_recovery_failed")
             ))
             throw error
@@ -653,7 +664,7 @@ actor RoomMessagingTransportRouter {
         schedulePresenceRetry()
         startEventForwardingIfNeeded()
         recordSuccess(operation: "kill-switch-to-legacy")
-        eventContinuation.yield(.reconciliation(reconciliation))
+        emit(.reconciliation(reconciliation))
         return reconciliation
     }
 
@@ -688,6 +699,10 @@ actor RoomMessagingTransportRouter {
 
     private func stopEventForwarding() {
         eventGeneration &+= 1
+        eventRepairTask?.cancel()
+        eventRepairTask = nil
+        eventRepairDirty = false
+        publishingEventRepair = false
         eventTask?.cancel()
         eventTask = nil
     }
@@ -700,7 +715,60 @@ actor RoomMessagingTransportRouter {
             publishedPresenceRevision = nil
             schedulePresenceRetry()
         }
-        eventContinuation.yield(event)
+        emit(event)
+    }
+
+    private func emit(_ event: BackendEvent, repairBaseline: Bool = false) {
+        if publishingEventRepair, !repairBaseline, event.requiresStateRepair {
+            eventRepairDirty = true
+        }
+        if case .dropped(let dropped) = eventContinuation.yield(event),
+           !repairBaseline, dropped.requiresStateRepair, !isShutDown {
+            eventRepairDirty = true
+            guard eventRepairTask == nil else { return }
+            let generation = eventGeneration
+            eventRepairTask = Task { [weak self] in
+                await self?.repairEventQueue(generation: generation)
+            }
+        }
+    }
+
+    private func repairEventQueue(generation: UInt64) async {
+        defer {
+            if generation == eventGeneration { eventRepairTask = nil; publishingEventRepair = false }
+        }
+        var failures = 0
+        while eventRepairDirty, generation == eventGeneration, !Task.isCancelled, !isShutDown {
+            do {
+                let delay = failures == 0 ? 1.0 : FirebaseV2BootstrapRetryPolicy.delaySeconds(
+                    failureCount: failures, rateLimited: false, retryAfterSeconds: nil,
+                    jitter: Double.random(in: 0...1)
+                )
+                try await Task.sleep(for: .seconds(delay))
+                guard operationalState == .running, let rooms = synchronizedRooms else { return }
+                eventRepairDirty = false
+                publishingEventRepair = true
+                let repaired = try await transport.repairDroppedEvents(
+                    rooms: rooms, activeRoomID: synchronizedActiveRoomID
+                )
+                guard generation == eventGeneration, !isShutDown else { return }
+                synchronizedRooms = repaired.reconciliation.snapshot.rooms
+                synchronizedActiveRoomID = repaired.reconciliation.activeRoomID
+                emit(.eventGapRepaired(repaired), repairBaseline: true)
+                publishingEventRepair = false
+                failures = eventRepairDirty ? failures + 1 : 0
+            } catch is CancellationError {
+                guard !Task.isCancelled, generation == eventGeneration, !isShutDown else { return }
+                publishingEventRepair = false
+                eventRepairDirty = true
+                failures += 1
+            } catch {
+                guard generation == eventGeneration, !isShutDown, !Task.isCancelled else { return }
+                publishingEventRepair = false
+                eventRepairDirty = true
+                failures += 1
+            }
+        }
     }
 
     private func requireRunning() throws {

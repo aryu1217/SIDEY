@@ -19,7 +19,7 @@ GitHub Actions is disabled, so validate macOS changes locally on a Mac from the 
 ./scripts/macos/tests/test_native.sh
 ```
 
-This route verifies content assets, runs the macOS Python tests, runs all common XCTest coverage in `SIDEY`, and tests the recording tool. Read narrower scripts before invoking them and do not replace the maintained wrapper with an improvised build command for final evidence.
+This route verifies content assets, runs the macOS Python tests, and runs `SIDEY` XCTest coverage excluding `WindowPolicyTests`. It does not launch or test the independent recording app. Window/focus tests and recording tests are separate, explicitly selected checks: use `SIDEY_RUN_WINDOW_POLICY_TESTS=1 ./scripts/macos/tests/test_native.sh -only-testing:SIDEYTests/WindowPolicyTests` for the former and `./scripts/macos/tests/test_recording.sh` for the latter. Do not add them back to ordinary integration checks or run them for unrelated changes. Read narrower scripts before invoking them and use the maintained wrapper for final integration evidence.
 
 Signing, notarization, packaging, app launch, Keychain prompts, StoreKit operations, release access, network-backed integration and other machine- or account-state changes require matching user authorization. A successful build does not prove runtime or distribution behavior that was not observed.
 

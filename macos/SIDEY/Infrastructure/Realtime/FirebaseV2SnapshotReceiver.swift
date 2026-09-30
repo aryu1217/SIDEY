@@ -55,6 +55,9 @@ struct FirebaseV2InboxReconciler: Sendable {
             accessRevision = next
         }
 
+        // Removed memberships must not keep high-water state indefinitely or
+        // make a later rejoin compare against the departed membership baseline.
+        roomHints = roomHints.filter { snapshot.rooms[$0.key] != nil }
         for (roomID, next) in snapshot.rooms {
             guard let previous = roomHints[roomID] else {
                 roomHints[roomID] = next
@@ -312,25 +315,35 @@ final class FirebaseV2DatabaseValueStream: @unchecked Sendable, FirebaseV2Databa
     }
 
     func values(at path: String) -> AsyncThrowingStream<Data, Error> {
-        AsyncThrowingStream { continuation in
-            let reference = database.reference(withPath: path)
-            let handle = reference.observe(.value) { snapshot in
-                do {
-                    let data = try FirebaseV2DatabaseSnapshotSerializer.data(
-                        from: snapshot.value
-                    )
-                    continuation.yield(data)
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            } withCancel: { error in
+        // .value callbacks contain the entire current node. Keep only its
+        // latest state; durable sequence gaps are repaired through Postgres.
+        let pair = Self.makeSnapshotStream()
+        let continuation = pair.continuation
+        let reference = database.reference(withPath: path)
+        let handle = reference.observe(.value) { snapshot in
+            do {
+                let data = try FirebaseV2DatabaseSnapshotSerializer.data(
+                    from: snapshot.value
+                )
+                continuation.yield(data)
+            } catch {
                 continuation.finish(throwing: error)
             }
-            let observer = FirebaseV2ObserverCancellation(reference: reference, handle: handle)
-            continuation.onTermination = { @Sendable _ in
-                observer.cancel()
-            }
+        } withCancel: { error in
+            continuation.finish(throwing: error)
         }
+        let observer = FirebaseV2ObserverCancellation(reference: reference, handle: handle)
+        continuation.onTermination = { @Sendable _ in
+            observer.cancel()
+        }
+        return pair.stream
+    }
+
+    static func makeSnapshotStream() -> (
+        stream: AsyncThrowingStream<Data, Error>,
+        continuation: AsyncThrowingStream<Data, Error>.Continuation
+    ) {
+        AsyncThrowingStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 }
 
