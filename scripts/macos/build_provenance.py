@@ -104,6 +104,16 @@ def finish():
         raise RuntimeError('Build inputs changed during compilation; rebuild before reviewing')
     destination = Path(env['TARGET_BUILD_DIR']) / env['UNLOCALIZED_RESOURCES_FOLDER_PATH']
     write_json(destination / 'SideyBuildReceipt.json', state)
+    # Xcode's Run pre-action does not reliably prepare a ticket for the newly
+    # compiled build. Issue it after the executable and receipt are produced.
+    entitlements_path = env.get('CODE_SIGN_ENTITLEMENTS')
+    if state['configuration'] == 'Debug' and entitlements_path:
+        entitlements = plistlib.loads((Path(env['SRCROOT']) / entitlements_path).read_bytes())
+        app = Path(env['TARGET_BUILD_DIR']) / env['FULL_PRODUCT_NAME']
+        executable = app / 'Contents/MacOS' / env['EXECUTABLE_NAME']
+        directory = directory_for_bundle(state['bundle_id'],
+                                         bool(entitlements.get('com.apple.security.app-sandbox')))
+        issue_ticket(app, state, executable, directory)
 
 
 def read_build(app):
@@ -126,6 +136,13 @@ def verify(app, root=ROOT, target=None, configuration=None):
     return receipt, info
 
 
+def directory_for_bundle(bundle_id, sandboxed):
+    home = Path.home()
+    if sandboxed:
+        home /= f'Library/Containers/{bundle_id}/Data'
+    return home / 'Library/Application Support/SIDEY/BuildReview'
+
+
 def ticket_directory(app, bundle_id):
     # The sandboxed process reads only its own container. It never reads the repository.
     result = subprocess.run(['/usr/bin/codesign', '-d', '--entitlements', '-', str(app)],
@@ -145,23 +162,25 @@ def ticket_directory(app, bundle_id):
         if 'com.apple.security.app-sandbox' in rendered and match is None:
             raise RuntimeError(f'Cannot determine app sandbox entitlement: {app}')
         entitlements = {'com.apple.security.app-sandbox': match.group(1) == 'true'} if match else {}
-    home = Path.home()
-    if entitlements.get('com.apple.security.app-sandbox'):
-        home /= f'Library/Containers/{bundle_id}/Data'
-    return home / 'Library/Application Support/SIDEY/BuildReview'
+    return directory_for_bundle(bundle_id, bool(entitlements.get('com.apple.security.app-sandbox')))
+
+
+def issue_ticket(app, receipt, executable, directory):
+    session = str(uuid.uuid4())
+    ticket = {**receipt, 'session': session, 'executable': str(executable.resolve()),
+              'issued_at': time.time()}
+    ticket_path = directory / f"{receipt['build_id']}.ticket.json"
+    ready_path = directory / f'{session}.ready.json'
+    write_json(ticket_path, ticket)
+    write_json(app.parent / 'SideyLastLaunch.json', {'ticket': ticket, 'ready': str(ready_path)})
+    return ticket, ready_path
 
 
 def prepare_launch(app, target=None):
     receipt, info = verify(app, target=target, configuration='Debug')
     directory = ticket_directory(app, receipt['bundle_id'])
-    session = str(uuid.uuid4())
     executable = str((app / 'Contents/MacOS' / info['CFBundleExecutable']).resolve())
-    ticket = {**receipt, 'session': session, 'executable': executable, 'issued_at': time.time()}
-    ticket_path = directory / f"{receipt['build_id']}.ticket.json"
-    ready_path = directory / f'{session}.ready.json'
-    write_json(ticket_path, ticket)
-    write_json(app.parent / "SideyLastLaunch.json", {"ticket": ticket, "ready": str(ready_path)})
-    return ticket, ready_path
+    return issue_ticket(app, receipt, Path(executable), directory)
 
 
 def main():

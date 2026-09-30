@@ -8,12 +8,47 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_provenance as p
 from open_current import verify_running
 
 
 class ProvenanceTests(unittest.TestCase):
+    def test_debug_build_issues_sandbox_ticket_after_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', str(root)], check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(root), '-c', 'user.name=T', '-c', 'user.email=t@example.test',
+                            '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-m', 'fixture'],
+                           check=True, capture_output=True)
+            entitlements = root / 'Config/SIDEY.entitlements'
+            entitlements.parent.mkdir()
+            entitlements.write_bytes(plistlib.dumps({'com.apple.security.app-sandbox': True}))
+            app = root / 'Products/SIDEY.app'
+            env = {'TARGET_NAME': 'SIDEY', 'CONFIGURATION': 'Debug',
+                   'PRODUCT_BUNDLE_IDENTIFIER': 'app.sidey.desktop.appstore',
+                   'DERIVED_FILE_DIR': str(root / 'derived'), 'TARGET_BUILD_DIR': str(app.parent),
+                   'UNLOCALIZED_RESOURCES_FOLDER_PATH': 'SIDEY.app/Contents/Resources',
+                   'FULL_PRODUCT_NAME': 'SIDEY.app', 'EXECUTABLE_NAME': 'SIDEY',
+                   'CODE_SIGN_ENTITLEMENTS': 'Config/SIDEY.entitlements', 'SRCROOT': str(root)}
+            original = p.source_state
+            with patch.dict(os.environ, env), patch.object(p, 'source_state', side_effect=lambda: original(root)), \
+                 patch.object(p, 'issue_ticket') as issue_ticket:
+                p.begin()
+                state = json.loads((root / 'derived/SideyBuildReceipt.json').read_text())
+                p.finish()
+            self.assertTrue((app / 'Contents/Resources/SideyBuildReceipt.json').exists())
+            issue_ticket.assert_called_once_with(
+                app, state, app / 'Contents/MacOS/SIDEY',
+                p.directory_for_bundle('app.sidey.desktop.appstore', True))
+
+    def test_xcode_schemes_do_not_use_unreliable_run_preactions(self):
+        for name in ('SIDEY', 'SIDEYFeedback', 'SIDEYStoreReview'):
+            with self.subTest(scheme=name):
+                scheme = ET.parse(p.ROOT / f'macos/SIDEY.xcodeproj/xcshareddata/xcschemes/{name}.xcscheme')
+                self.assertIsNone(scheme.find('./LaunchAction/PreActions'))
+
     def test_ticket_directory_uses_sandbox_for_current_codesign_output(self):
         output = (b'[Dict]\n\t[Key] com.apple.security.app-sandbox\n'
                   b'\t[Value]\n\t\t[Bool] true\n')
