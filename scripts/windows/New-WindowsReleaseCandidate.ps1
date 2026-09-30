@@ -62,7 +62,8 @@ try {
     }
     Invoke-SideyNativeCommand -FilePath 'python' `
         -ArgumentList @('-X', 'utf8', 'scripts/skills/verify_release_consistency.py',
-            '--platform', 'windows') -Description 'Windows release metadata check'
+            '--platform', 'windows', '--allow-unreleased-source') `
+        -Description 'Windows release candidate metadata check'
     Invoke-SideyNativeCommand -FilePath 'python' `
         -ArgumentList @('scripts/validate_pixel_assets.py') -Description 'Pixel asset check'
     Invoke-SideyNativeCommand -FilePath 'python' `
