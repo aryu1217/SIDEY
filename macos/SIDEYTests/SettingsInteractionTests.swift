@@ -417,8 +417,9 @@ final class SettingsInteractionTests: XCTestCase {
         XCTAssertEqual(purchaseCalls, 0)
     }
 
-    func testProfileCosmeticTileForwardsOwnedAndDefaultSelections() {
+    func testProfileCosmeticTileOpensOwnedDetailAndSelectsDefault() {
         var requests: [(CommerceProductKind, String?)] = []
+        var detailedProductIDs: [String] = []
         let productTile = ProfileCosmeticTile(
             kind: .bubble,
             product: .bunnyPinkBubble,
@@ -426,9 +427,10 @@ final class SettingsInteractionTests: XCTestCase {
             isSelected: false,
             isPending: false,
             isDisabled: false,
-            onSelect: { requests.append(($0, $1)) }
+            onSelect: { requests.append(($0, $1)) },
+            onShowDetail: { detailedProductIDs.append($0) }
         )
-        productTile.requestSelection()
+        productTile.requestPrimaryAction()
 
         let defaultTile = ProfileCosmeticTile(
             kind: .bubble,
@@ -437,9 +439,10 @@ final class SettingsInteractionTests: XCTestCase {
             isSelected: false,
             isPending: false,
             isDisabled: false,
-            onSelect: { requests.append(($0, $1)) }
+            onSelect: { requests.append(($0, $1)) },
+            onShowDetail: { detailedProductIDs.append($0) }
         )
-        defaultTile.requestSelection()
+        defaultTile.requestPrimaryAction()
 
         let blockedTile = ProfileCosmeticTile(
             kind: .bubble,
@@ -452,11 +455,10 @@ final class SettingsInteractionTests: XCTestCase {
         )
         blockedTile.requestSelection()
 
-        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(detailedProductIDs, [CommerceProduct.bunnyPinkBubble.id])
+        XCTAssertEqual(requests.count, 1)
         XCTAssertEqual(requests[0].0, .bubble)
-        XCTAssertEqual(requests[0].1, CommerceProduct.bunnyPinkBubble.catalogItemID)
-        XCTAssertEqual(requests[1].0, .bubble)
-        XCTAssertNil(requests[1].1)
+        XCTAssertNil(requests[0].1)
     }
 
     func testOwnedProfileCosmeticsRenderAtSupportedSizesAndAppearances() throws {
