@@ -85,6 +85,19 @@ def required_scopes(paths):
     """Return deterministic job IDs required to validate *paths*."""
 
     result = {'shared'}
+    changed = set(paths)
+    windows_build_only = (
+        {'release/version.json', 'release/windows.json', 'windows/Version.props'}
+        <= changed
+        and not {'release/macos.json', 'macos/Config/Version.xcconfig',
+                 'release/app-store-localizations.json'} & changed
+    )
+    mac_build_only = (
+        {'release/version.json', 'release/macos.json',
+         'macos/Config/Version.xcconfig'}
+        <= changed
+        and not {'release/windows.json', 'windows/Version.props'} & changed
+    )
     for path in paths:
         platform = validation_platform_for(path)
         if platform:
@@ -95,7 +108,12 @@ def required_scopes(paths):
         if asset_change or path == 'scripts/validate_pixel_assets.py':
             result.update(('macos', 'windows', 'web'))
         if path == 'release/version.json':
-            result.update(('macos', 'windows', 'web'))
+            if windows_build_only:
+                result.update(('windows', 'web'))
+            elif mac_build_only:
+                result.add('macos')
+            else:
+                result.update(('macos', 'windows', 'web'))
         elif path == 'release/macos.json':
             result.add('macos')
         elif path == 'release/windows.json':

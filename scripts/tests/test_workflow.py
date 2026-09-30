@@ -1063,6 +1063,13 @@ class WorkflowTests(unittest.TestCase):
         )
         self.assertEqual(w.required_scopes(['release/macos.json']), ['macos', 'shared'])
         self.assertEqual(w.required_scopes(['release/windows.json']), ['shared', 'windows'])
+        self.assertEqual(w.required_scopes([
+            'release/version.json', 'release/windows.json', 'windows/Version.props',
+        ]), ['shared', 'web', 'windows'])
+        self.assertEqual(w.required_scopes([
+            'release/version.json', 'release/macos.json',
+            'macos/Config/Version.xcconfig',
+        ]), ['macos', 'shared'])
 
     def test_workflow_scopes_only_run_affected_platforms(self):
         self.assertEqual(
