@@ -353,7 +353,7 @@
           "修正商店中的較長說明無法依照視窗寬度換行的問題。"
         ],
         "notes": [
-          "安裝程式未經程式碼簽署，因此 Windows Smart App Control 等安全性設定可能阻止其執行。"
+          "安裝程式未經程式碼簽署，因此 [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) 等安全性設定可能阻止其執行。請參閱先前發布的 [GitHub 留言](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)。"
         ]
       },
       "2.1.0": {

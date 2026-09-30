@@ -817,7 +817,10 @@ test("Windows 2.2640.12 release links resolve to localized anchors and retain th
     const copy = bundles[locale].releases.windows[version];
     assert.equal(copy.notes.length, 1, `${locale}: installation risk retained`);
     assert.match(copy.notes[0], /Windows Smart App Control/);
-    assert.ok(read(`${routeFor(locale)}/whats-new/windows/index.html`).includes(escapeHTML(copy.notes[0])));
+    const html = read(`${routeFor(locale)}/whats-new/windows/index.html`);
+    assert.ok(html.includes('href="https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview"'));
+    assert.ok(html.includes('href="https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037"'));
+    assert.ok(!html.includes(escapeHTML(copy.notes[0])), `${locale}: links render as HTML, not Markdown text`);
   }
 });
 
@@ -837,7 +840,12 @@ test("both platform histories preserve only 2.0+ and render complete categorized
           assert.equal(copy[category].length, bundles.ko.releases[platform][release.version][category].length, `${release.version}/${locale}/${category}: translation coverage`);
           for (const text of copy[category]) {
             assert.doesNotMatch(text, /(?:\bPR\s*\d+|#\d+|@[a-zA-Z0-9-]+)/);
-            assert.ok(html.includes(text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("'", "&#39;").replaceAll('"', "&quot;")), `${release.version}/${locale}: rendered translation`);
+            const textParts = category === "notes"
+              ? text.split(/\[[^\]]+\]\(https:\/\/[^)\s]+\)/).filter(Boolean)
+              : [text];
+            for (const part of textParts) {
+              assert.ok(html.includes(part.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("'", "&#39;").replaceAll('"', "&quot;")), `${release.version}/${locale}: rendered translation`);
+            }
             if (locale !== "ko") assert.doesNotMatch(text, /[\uac00-\ud7af]/);
           }
         }

@@ -353,7 +353,7 @@
           "상점 안내 문구가 긴 경우 창 너비에 맞춰 줄바꿈하도록 고쳤어요."
         ],
         "notes": [
-          "설치 파일은 코드 서명되지 않아 Windows Smart App Control 등 보안 설정에 따라 실행이 차단될 수 있어요."
+          "설치 파일은 코드 서명되지 않아 [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) 등 보안 설정에 따라 실행이 차단될 수 있습니다. 이미 게시된 [GitHub 이슈](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)를 참고해 주세요."
         ]
       },
       "2.1.0": {

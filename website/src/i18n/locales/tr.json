@@ -353,7 +353,7 @@
           "Mağazadaki uzun açıklamaların pencere genişliğine göre satırlara bölünmesi düzeltildi."
         ],
         "notes": [
-          "Yükleyici kod imzalı değildir; Windows Smart App Control gibi güvenlik ayarları çalışmasını engelleyebilir."
+          "Yükleyici kod imzalı değildir; [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) gibi güvenlik ayarları çalışmasını engelleyebilir. Daha önce yayımlanan [GitHub yorumuna](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037) bakın."
         ]
       },
       "2.1.0": {

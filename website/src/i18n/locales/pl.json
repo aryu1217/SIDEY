@@ -353,7 +353,7 @@
           "Naprawiono zawijanie długich objaśnień w sklepie tak, aby mieściły się w szerokości okna."
         ],
         "notes": [
-          "Instalator nie ma podpisu kodu, więc ustawienia zabezpieczeń, takie jak Windows Smart App Control, mogą zablokować jego uruchomienie."
+          "Instalator nie ma podpisu kodu, więc ustawienia zabezpieczeń, takie jak [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview), mogą zablokować jego uruchomienie. Więcej informacji znajdziesz w opublikowanym wcześniej [komentarzu na GitHubie](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

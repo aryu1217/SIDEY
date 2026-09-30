@@ -353,7 +353,7 @@
           "Исправљено је преламање дугих упутстава у продавници према ширини прозора."
         ],
         "notes": [
-          "Инсталациони програм нема потпис кода, па безбедносна подешавања као што је Windows Smart App Control могу да блокирају његово покретање."
+          "Инсталациони програм нема потпис кода, па безбедносна подешавања као што је [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) могу да блокирају његово покретање. Погледајте раније објављен [коментар на GitHub-у](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

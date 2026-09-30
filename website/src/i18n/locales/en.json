@@ -353,7 +353,7 @@
           "Fixed long store guidance wrapping to fit the window width."
         ],
         "notes": [
-          "The installer is not code-signed, so security settings such as Windows Smart App Control may block it from running."
+          "The installer is not code-signed, so security settings such as [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) may block it from running. Please refer to the previously published [GitHub issue](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

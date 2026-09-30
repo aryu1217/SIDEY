@@ -353,7 +353,7 @@
           "Corregimos el ajuste de línea de las instrucciones largas de la tienda para que se adapten al ancho de la ventana."
         ],
         "notes": [
-          "El instalador no tiene firma de código, por lo que ajustes de seguridad como Windows Smart App Control pueden impedir su ejecución."
+          "El instalador no tiene firma de código, por lo que ajustes de seguridad como [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) pueden impedir su ejecución. Consulte el [comentario ya publicado en GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

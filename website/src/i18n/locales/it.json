@@ -353,7 +353,7 @@
           "Corretto il ritorno a capo delle istruzioni lunghe del negozio per adattarle alla larghezza della finestra."
         ],
         "notes": [
-          "Il programma di installazione non è firmato digitalmente, quindi impostazioni di sicurezza come Windows Smart App Control potrebbero impedirne l’esecuzione."
+          "Il programma di installazione non è firmato digitalmente, quindi impostazioni di sicurezza come [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) potrebbero impedirne l’esecuzione. Consulta il [commento già pubblicato su GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

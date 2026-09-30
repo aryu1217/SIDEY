@@ -353,7 +353,7 @@
           "Am remediat încadrarea pe rânduri a instrucțiunilor lungi din magazin în funcție de lățimea ferestrei."
         ],
         "notes": [
-          "Programul de instalare nu are semnătură de cod, așa că setări de securitate precum Windows Smart App Control îi pot bloca rularea."
+          "Programul de instalare nu are semnătură de cod, așa că setări de securitate precum [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) îi pot bloca rularea. Consultați [comentariul publicat anterior pe GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

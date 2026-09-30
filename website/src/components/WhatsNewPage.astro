@@ -28,6 +28,18 @@ const dateFormatter = new Intl.DateTimeFormat(dateLocales[locale] ?? locale, {
   day: "numeric",
 });
 const initialReleaseCount = 3;
+const noteLinkPattern = /\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g;
+function noteSegments(note: string): { text: string; href?: string }[] {
+  const segments: { text: string; href?: string }[] = [];
+  let end = 0;
+  for (const match of note.matchAll(noteLinkPattern)) {
+    if (match.index > end) segments.push({ text: note.slice(end, match.index) });
+    segments.push({ text: match[1], href: match[2] });
+    end = match.index + match[0].length;
+  }
+  if (end < note.length) segments.push({ text: note.slice(end) });
+  return segments;
+}
 ---
 
 <InfoLayout locale={locale} title={`${platformLabel} ${copy.title} · SIDEY`} description={copy.intro} canonicalPath={resolvedCanonicalPath}>
@@ -57,7 +69,7 @@ const initialReleaseCount = 3;
           ))}
           {release.locales[locale].notes.length > 0 && <section class="release-section">
             <h3>{copy.versionNotes}</h3>
-            <ul>{release.locales[locale].notes.map((point) => <li>{point}</li>)}</ul>
+            <ul>{release.locales[locale].notes.map((point) => <li>{noteSegments(point).map((segment) => segment.href ? <a href={segment.href}>{segment.text}</a> : segment.text)}</li>)}</ul>
           </section>}
         </div></div>
       </details>

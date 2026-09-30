@@ -353,7 +353,7 @@
           "תוקנה גלישת שורות בהסברים ארוכים בחנות כך שיתאימו לרוחב החלון."
         ],
         "notes": [
-          "קובץ ההתקנה אינו חתום בחתימת קוד, ולכן הגדרות אבטחה כגון Windows Smart App Control עלולות לחסום את הפעלתו."
+          "קובץ ההתקנה אינו חתום בחתימת קוד, ולכן הגדרות אבטחה כגון [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) עלולות לחסום את הפעלתו. למידע נוסף, עיינו ב[תגובה שכבר פורסמה ב-GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

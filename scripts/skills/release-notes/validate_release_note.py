@@ -12,6 +12,9 @@ from typing import Sequence
 CHANGE_HEADINGS = ("## 새로운 기능", "## 개선 사항", "## 버그 수정")
 LANGUAGE_HEADING = "## 다른 언어로 보기"
 LANGUAGES = (("ko", "한국어"), ("en", "English"), ("ja", "日本語"), ("zh-hant", "繁體中文"))
+WINDOWS_LOCALES = tuple(locale.lower() for locale in json.loads(
+    (Path(__file__).resolve().parents[3] / "assets/v1/ui-localizations.json").read_text(encoding="utf-8")
+)["consumers"]["windows"]["locales"])
 PUBLIC_REFERENCES = re.compile(
     r"\bPR\s*#?\s*\d+|#\d+|(?<![\w.])@[A-Za-z0-9][A-Za-z0-9-]*",
     re.IGNORECASE
@@ -23,7 +26,7 @@ class NoteError(RuntimeError):
 
 
 def language_footer(target: str) -> list[str]:
-    """Return exact version-linked language navigation."""
+    """Return the historical four-link navigation for older notes."""
     match = re.fullmatch(r"windows-v([0-9]+(?:\.[0-9]+)+)", target)
     if match is None:
         raise NoteError("Target must be an exact windows-v<version> tag")
@@ -33,6 +36,32 @@ def language_footer(target: str) -> list[str]:
         f"- [{label}](https://sidey-app.github.io/SIDEY/{locale}/whats-new/windows/{anchor})"
         for locale, label in LANGUAGES
     ]
+
+
+def validate_language_footer(footer: list[str], target: str) -> None:
+    """Accept published four-link notes and complete current-locale navigation."""
+    if footer == language_footer(target):
+        return
+    if len(footer) != 1:
+        raise NoteError("Language navigation must contain valid version-linked website URLs")
+    parts = footer[0].split(" | ")
+    if len(parts) != len(WINDOWS_LOCALES):
+        raise NoteError("Language navigation must cover all Windows website locales")
+    version = target.removeprefix("windows-v")
+    anchor = f"#v{version}" if int(version.split(".")[0]) >= 2 else ""
+    locales: list[str] = []
+    labels: list[str] = []
+    for part in parts:
+        match = re.fullmatch(r"\[([^\]]+)\]\((https://sidey-app\.github\.io/SIDEY/([a-z0-9-]+)/whats-new/windows/[^)]*)\)", part)
+        if match is None:
+            raise NoteError("Language navigation contains an invalid website link")
+        label, url, locale = match.groups()
+        if url != f"https://sidey-app.github.io/SIDEY/{locale}/whats-new/windows/{anchor}":
+            raise NoteError("Language navigation contains a wrong version anchor")
+        labels.append(label)
+        locales.append(locale)
+    if set(locales) != set(WINDOWS_LOCALES) or len(set(labels)) != len(labels):
+        raise NoteError("Language navigation must link every locale exactly once")
 
 
 def validate_evidence(evidence: object, baseline: str, target: str) -> None:
@@ -68,7 +97,9 @@ def validate_note(source: str, baseline: str, target: str, evidence: object | No
         # The legally required corresponding-source notice may identify the exact
         # source with a full commit hash. It is not public change attribution.
         hash_pattern = r"\b[0-9a-f]{7,39}\b" if in_license_notice else r"\b[0-9a-f]{7,40}\b"
-        if re.search(hash_pattern, line, re.IGNORECASE):
+        # GitHub issue-comment permalinks use long decimal IDs, not source hashes.
+        line_without_issue_comment_id = re.sub(r"#issuecomment-\d+", "", line)
+        if re.search(hash_pattern, line_without_issue_comment_id, re.IGNORECASE):
             raise NoteError("Public release notes must not display commit attribution outside the source license notice")
     headings = [(index, line) for index, line in enumerate(lines) if line in CHANGE_HEADINGS]
     if not headings:
@@ -101,8 +132,7 @@ def validate_note(source: str, baseline: str, target: str, evidence: object | No
     if footer_index <= headings[-1][0]:
         raise NoteError("Language navigation must follow all change categories")
     footer = [line for line in lines[footer_index + 1:] if line.strip()]
-    if footer != language_footer(target):
-        raise NoteError("Language navigation must contain four exact version-linked website URLs")
+    validate_language_footer(footer, target)
     if evidence is not None:
         validate_evidence(evidence, baseline, target)
 

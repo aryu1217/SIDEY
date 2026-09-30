@@ -21,11 +21,8 @@ ARM64 Windows 지원을 더하고, 업데이트와 친구 간 연결을 더 안�
 
 ## 설치 전 확인
 
-설치 파일은 코드 서명되지 않아 Windows Smart App Control 등 보안 설정에 따라 실행이 차단될 수 있어요.
+설치 파일은 코드 서명되지 않아 [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) 등 보안 설정에 따라 실행이 차단될 수 있습니다. 이미 게시된 [GitHub 이슈](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)를 참고해 주세요.
 
 ## 다른 언어로 보기
 
-- [한국어](https://sidey-app.github.io/SIDEY/ko/whats-new/windows/#v2.2640.12)
-- [English](https://sidey-app.github.io/SIDEY/en/whats-new/windows/#v2.2640.12)
-- [日本語](https://sidey-app.github.io/SIDEY/ja/whats-new/windows/#v2.2640.12)
-- [繁體中文](https://sidey-app.github.io/SIDEY/zh-hant/whats-new/windows/#v2.2640.12)
+[한국어](https://sidey-app.github.io/SIDEY/ko/whats-new/windows/#v2.2640.12) | [English](https://sidey-app.github.io/SIDEY/en/whats-new/windows/#v2.2640.12) | [日本語](https://sidey-app.github.io/SIDEY/ja/whats-new/windows/#v2.2640.12) | [简体中文](https://sidey-app.github.io/SIDEY/zh-hans/whats-new/windows/#v2.2640.12) | [繁體中文](https://sidey-app.github.io/SIDEY/zh-hant/whats-new/windows/#v2.2640.12) | [Русский](https://sidey-app.github.io/SIDEY/ru/whats-new/windows/#v2.2640.12) | [Українська](https://sidey-app.github.io/SIDEY/uk/whats-new/windows/#v2.2640.12) | [Italiano](https://sidey-app.github.io/SIDEY/it/whats-new/windows/#v2.2640.12) | [Português (Portugal)](https://sidey-app.github.io/SIDEY/pt-pt/whats-new/windows/#v2.2640.12) | [Español](https://sidey-app.github.io/SIDEY/es/whats-new/windows/#v2.2640.12) | [Čeština](https://sidey-app.github.io/SIDEY/cs/whats-new/windows/#v2.2640.12) | [Türkçe](https://sidey-app.github.io/SIDEY/tr/whats-new/windows/#v2.2640.12) | [Română](https://sidey-app.github.io/SIDEY/ro/whats-new/windows/#v2.2640.12) | [Български](https://sidey-app.github.io/SIDEY/bg/whats-new/windows/#v2.2640.12) | [Português (Brasil)](https://sidey-app.github.io/SIDEY/pt-br/whats-new/windows/#v2.2640.12) | [Српски (ћирилица)](https://sidey-app.github.io/SIDEY/sr-cyrl/whats-new/windows/#v2.2640.12) | [Polski](https://sidey-app.github.io/SIDEY/pl/whats-new/windows/#v2.2640.12) | [Srpski (latinica)](https://sidey-app.github.io/SIDEY/sr-latn/whats-new/windows/#v2.2640.12) | [Nederlands (België)](https://sidey-app.github.io/SIDEY/nl-be/whats-new/windows/#v2.2640.12) | [Français](https://sidey-app.github.io/SIDEY/fr/whats-new/windows/#v2.2640.12) | [Nederlands](https://sidey-app.github.io/SIDEY/nl/whats-new/windows/#v2.2640.12) | [עברית](https://sidey-app.github.io/SIDEY/he/whats-new/windows/#v2.2640.12) | [Deutsch](https://sidey-app.github.io/SIDEY/de/whats-new/windows/#v2.2640.12)

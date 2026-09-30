@@ -353,7 +353,7 @@
           "Opravili jsme zalamování dlouhých pokynů v obchodě podle šířky okna."
         ],
         "notes": [
-          "Instalační program nemá podpis kódu, takže jeho spuštění mohou blokovat bezpečnostní nastavení, například Windows Smart App Control."
+          "Instalační program nemá podpis kódu, takže jeho spuštění mohou blokovat bezpečnostní nastavení, například [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview). Podívejte se na již zveřejněný [komentář na GitHubu](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

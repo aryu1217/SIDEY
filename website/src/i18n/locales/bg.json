@@ -353,7 +353,7 @@
           "Поправихме пренасянето на дългите указания в магазина според ширината на прозореца."
         ],
         "notes": [
-          "Инсталаторът няма подпис на кода, затова настройки за сигурност като Windows Smart App Control може да блокират изпълнението му."
+          "Инсталаторът няма подпис на кода, затова настройки за сигурност като [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) може да блокират изпълнението му. Вижте вече публикувания [коментар в GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

@@ -73,6 +73,14 @@ class ValidateReleaseNoteTests(unittest.TestCase):
         self.assert_invalid(note() + "\nhttps://github.com/sidey-app/SIDEY/compare/a...b",
                             "must not claim")
 
+    def test_accepts_public_issue_comment_permalink_in_installation_guidance(self):
+        guidance = (
+            "\n\n## 설치 전 확인\n\n"
+            "설치 안내는 [GitHub 이슈](https://github.com/sidey-app/SIDEY/issues/4"
+            "#issuecomment-5750233037)를 참고해 주세요.\n"
+        )
+        VALIDATOR.validate_note(note().replace(footer(), guidance + footer()), BASE, TARGET)
+
     def test_requires_exact_footer_version_locales_order_and_final_position(self):
         for source in [
             note().replace("#v2.0.0", "#v2.0.1"),
@@ -95,6 +103,16 @@ class ValidateReleaseNoteTests(unittest.TestCase):
             with self.subTest(target=target):
                 with self.assertRaisesRegex(VALIDATOR.NoteError, "exact"):
                     VALIDATOR.language_footer(target)
+
+    def test_accepts_complete_current_locale_footer_and_checks_anchors(self):
+        links = [
+            f"[{locale}](https://sidey-app.github.io/SIDEY/{locale}/whats-new/windows/#v2.0.0)"
+            for locale in VALIDATOR.WINDOWS_LOCALES
+        ]
+        source = note().replace(footer(), "\n\n## 다른 언어로 보기\n\n" + " | ".join(links) + "\n")
+        VALIDATOR.validate_note(source, BASE, TARGET)
+        self.assert_invalid(source.replace("#v2.0.0", "#v2.0.1", 1), "Language navigation")
+        self.assert_invalid(source.replace("/de/whats-new/", "/en/whats-new/"), "Language navigation")
 
     def test_preserves_required_agpl_source_hash_only_in_license_notice(self):
         source_hash = "92088b671cebd073623701d15442b1ba3c8638e8"

@@ -353,7 +353,7 @@
           "修复了商店中的较长说明无法根据窗口宽度换行的问题。"
         ],
         "notes": [
-          "安装程序未进行代码签名，因此 Windows Smart App Control 等安全设置可能阻止其运行。"
+          "安装程序未进行代码签名，因此 [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) 等安全设置可能阻止其运行。请参阅此前发布的 [GitHub 评论](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)。"
         ]
       },
       "2.1.0": {

@@ -381,7 +381,7 @@
           "ストアの長い案内文がウィンドウの幅に合わせて折り返されるように修正しました。"
         ],
         "notes": [
-          "インストーラーはコード署名されていないため、Windows Smart App Control などのセキュリティ設定で実行がブロックされる場合があります。"
+          "インストーラーはコード署名されていないため、[Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) などのセキュリティ設定で実行がブロックされる場合があります。以前に公開した[GitHub のコメント](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)をご参照ください。"
         ]
       },
       "2.1.0": {

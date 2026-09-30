@@ -353,7 +353,7 @@
           "Виправлено перенесення довгого тексту пояснень у магазині відповідно до ширини вікна."
         ],
         "notes": [
-          "Інсталятор не має цифрового підпису коду, тому параметри безпеки, зокрема Windows Smart App Control, можуть блокувати його запуск."
+          "Інсталятор не має цифрового підпису коду, тому параметри безпеки, зокрема [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview), можуть блокувати його запуск. Ознайомтеся з раніше опублікованим [коментарем на GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

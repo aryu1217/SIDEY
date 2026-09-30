@@ -353,7 +353,7 @@
           "Correction du retour à la ligne des longues explications de la boutique pour les adapter à la largeur de la fenêtre."
         ],
         "notes": [
-          "Le programme d’installation n’est pas signé numériquement ; des paramètres de sécurité tels que Windows Smart App Control peuvent donc bloquer son exécution."
+          "Le programme d’installation n’est pas signé numériquement ; des paramètres de sécurité tels que [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) peuvent donc bloquer son exécution. Consultez le [commentaire déjà publié sur GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

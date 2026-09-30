@@ -353,7 +353,7 @@
           "Lange toelichtingen in de winkel worden nu correct afgebroken volgens de breedte van het venster."
         ],
         "notes": [
-          "Het installatieprogramma is niet digitaal ondertekend, waardoor beveiligingsinstellingen zoals Windows Smart App Control het uitvoeren ervan kunnen blokkeren."
+          "Het installatieprogramma is niet digitaal ondertekend, waardoor beveiligingsinstellingen zoals [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) het uitvoeren ervan kunnen blokkeren. Raadpleeg de eerder gepubliceerde [GitHub-reactie](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

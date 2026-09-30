@@ -72,6 +72,8 @@
   p { max-width: 43.75rem; color: var(--muted); }
   ul { display: grid; gap: .4375rem; margin: .625rem 0 0; padding-left: 1.2rem; }
   li { color: #55565d; font-size: .86rem; line-height: 1.65; }
+  li a { color: var(--brand-dark); text-decoration: underline; text-underline-offset: .15em; overflow-wrap: anywhere; }
+  li a:focus-visible { outline: .125rem solid currentColor; outline-offset: .125rem; }
 }
 
 .release-section {

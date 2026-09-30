@@ -353,7 +353,7 @@
           "Der Zeilenumbruch langer Hinweise im Shop wurde an die Fensterbreite angepasst."
         ],
         "notes": [
-          "Das Installationsprogramm ist nicht mit einer Codesignatur versehen, daher können Sicherheitseinstellungen wie Windows Smart App Control die Ausführung blockieren."
+          "Das Installationsprogramm ist nicht mit einer Codesignatur versehen, daher können Sicherheitseinstellungen wie [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) die Ausführung blockieren. Weitere Informationen finden Sie im bereits veröffentlichten [GitHub-Kommentar](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {

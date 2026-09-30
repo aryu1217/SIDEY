@@ -353,7 +353,7 @@
           "Corrigimos a quebra de linha das instruções longas da loja para se adaptarem à largura da janela."
         ],
         "notes": [
-          "O instalador não tem assinatura de código, pelo que definições de segurança como o Windows Smart App Control podem impedir a sua execução."
+          "O instalador não tem assinatura de código, pelo que definições de segurança como o [Windows Smart App Control](https://learn.microsoft.com/ko-kr/windows/apps/develop/smart-app-control/overview) podem impedir a sua execução. Consulte o [comentário já publicado no GitHub](https://github.com/sidey-app/SIDEY/issues/4#issuecomment-5750233037)."
         ]
       },
       "2.1.0": {
