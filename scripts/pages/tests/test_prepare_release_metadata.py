@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
 import json
 from pathlib import Path
 import shutil
@@ -11,10 +12,148 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts" / "pages"))
-from prepare_release_metadata import prepare, read_manifest, validate_repository
+from prepare_release_metadata import (
+    prepare, read_incremental_manifest, read_manifest, validate_repository,
+)
 
 
 class PrepareReleaseMetadataTests(unittest.TestCase):
+    @staticmethod
+    def write_incremental(directory: Path, version: str = "2.0.1") -> Path:
+        prefix = f"SIDEY-Windows-x64-v{version}"
+        updater = directory / f"{prefix}-Update.exe"
+        updater.write_bytes(b"update executable")
+        files = []
+        payload = bytearray()
+        for name in ("SIDEY.exe", "Runtime/SIDEY.Host.exe",
+                     "Runtime/SIDEY.UninstallHelper.exe", "Runtime/empty.txt"):
+            content = b"" if name.endswith("empty.txt") else name.encode()
+            compressed = gzip.compress(content, mtime=0)
+            files.append({
+                "path": name, "sha256": hashlib.sha256(content).hexdigest(),
+                "size": len(content), "offset": len(payload), "length": len(compressed),
+            })
+            payload.extend(compressed)
+        payload_path = directory / f"{prefix}-Payload.bin"
+        payload_path.write_bytes(payload)
+        manifest = directory / f"{prefix}-Update.json"
+        manifest.write_text(json.dumps({
+            "schema": 1, "version": version,
+            "updater": {"name": updater.name, "size": updater.stat().st_size,
+                        "sha256": hashlib.sha256(updater.read_bytes()).hexdigest()},
+            "payload": {"name": payload_path.name, "size": len(payload),
+                        "sha256": hashlib.sha256(payload).hexdigest()},
+            "files": files,
+        }), encoding="utf-8")
+        return manifest
+
+    def test_publishes_incremental_trust_root_and_preserves_full_installer(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-Incremental-Pages-") as temporary:
+            root = Path(temporary)
+            manifest = self.write_manifest(root)
+            installer = root / "SIDEY-Windows-x64-v2.0.1-Setup.exe"
+            installer.write_bytes(b"full installer")
+            incremental = self.write_incremental(root)
+            prepare(ROOT / "website" / "dist", root / "site", manifest, installer,
+                    public_repository="sidey-app/SIDEY-public-staging",
+                    windows_incremental_manifest=incremental)
+            published = json.loads((root / "site/windows-latest.json").read_text(
+                encoding="utf-8"))
+            self.assertTrue(published["installer_url"].endswith(installer.name))
+            self.assertEqual(published["incremental"], {
+                "manifest_url": "https://github.com/sidey-app/SIDEY-public-staging/"
+                                "releases/download/windows-v2.0.1/" + incremental.name,
+                "sha256": hashlib.sha256(incremental.read_bytes()).hexdigest(),
+            })
+            self.assertEqual(published, json.loads(
+                (root / "site/windows/update.json").read_text(encoding="utf-8")))
+
+    def test_rejects_incomplete_or_modified_incremental_artifacts(self) -> None:
+        for action in ("missing-updater", "missing-payload", "updater-hash", "payload-size"):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                path = self.write_incremental(root)
+                data = json.loads(path.read_text(encoding="utf-8"))
+                field = "updater" if "updater" in action else "payload"
+                artifact = root / data[field]["name"]
+                if action.startswith("missing"):
+                    artifact.unlink()
+                elif action.endswith("hash"):
+                    artifact.write_bytes(b"X" * artifact.stat().st_size)
+                else:
+                    artifact.write_bytes(artifact.read_bytes() + b"X")
+                with self.assertRaises(ValueError):
+                    read_incremental_manifest(path, "2.0.1")
+
+    def test_rejects_invalid_incremental_file_contract(self) -> None:
+        cases = {
+            "traversal": {"path": "Runtime/../escape.dll"},
+            "absolute": {"path": "/escape.dll"},
+            "drive": {"path": "C:/escape.dll"},
+            "backslash": {"path": "Runtime\\escape.dll"},
+            "reserved": {"path": "Runtime/CON.txt"},
+            "clock-reserved": {"path": "Runtime/CLOCK$"},
+            "console-input-reserved": {"path": "Runtime/CONIN$.txt"},
+            "console-output-reserved": {"path": "Runtime/CONOUT$"},
+            "long-path": {"path": "Runtime/" + "a" * 241},
+            "trailing-dot": {"path": "Runtime/file."},
+            "duplicate": {"path": "sidey.EXE"},
+            "uninstaller": {"path": "Uninstall.exe"},
+            "hash": {"sha256": "bad"},
+            "negative-size": {"size": -1},
+            "boolean-size": {"size": True},
+            "negative-offset": {"offset": -1},
+            "empty-range": {"length": 0},
+            "large-range": {"length": 128 * 1024 * 1024 + 1},
+            "total-size": {"size": 2 * 1024 * 1024 * 1024},
+            "unbounded": {"offset": 1000000},
+            "overlap": {"offset": 0},
+        }
+        for name, mutation in cases.items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as temporary:
+                path = self.write_incremental(Path(temporary))
+                data = json.loads(path.read_text(encoding="utf-8"))
+                data["files"][-1].update(mutation)
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    read_incremental_manifest(path, "2.0.1")
+
+    def test_rejects_incremental_resources_over_client_limits(self) -> None:
+        for case in ("manifest-size", "file-count", "updater-size", "payload-size"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                path = self.write_incremental(Path(temporary))
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if case == "manifest-size":
+                    data["padding"] = "x" * (4 * 1024 * 1024)
+                elif case == "file-count":
+                    data["files"] = data["files"] * 2501
+                elif case == "updater-size":
+                    data["updater"]["size"] = 128 * 1024 * 1024 + 1
+                else:
+                    data["payload"]["size"] = 2 * 1024 * 1024 * 1024 + 1
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    read_incremental_manifest(path, "2.0.1")
+
+    def test_rejects_wrong_version_artifact_name_and_missing_required_files(self) -> None:
+        for case in ("version", "schema", "artifact-name", "required-file", "parent-file"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                path = self.write_incremental(Path(temporary))
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if case == "version":
+                    data["version"] = "2.0.2"
+                elif case == "schema":
+                    data["schema"] = True
+                elif case == "artifact-name":
+                    data["updater"]["name"] = "../other.exe"
+                elif case == "required-file":
+                    data["files"].pop(0)
+                else:
+                    data["files"][-1]["path"] = "Runtime"
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    read_incremental_manifest(path, "2.0.1")
+
     def test_headver_manifest_uses_one_windows_version(self) -> None:
         with tempfile.TemporaryDirectory(prefix="SIDEY-HeadVer-") as temporary:
             path = Path(temporary) / "windows.json"

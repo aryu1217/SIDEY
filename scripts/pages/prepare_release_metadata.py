@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--windows-release-manifest", type=Path, required=True)
     parser.add_argument("--windows-release-installer", type=Path, required=True)
     parser.add_argument("--windows-legacy-installer", type=Path)
+    parser.add_argument("--windows-incremental-manifest", type=Path)
     parser.add_argument(
         "--public-repository",
         default=DEFAULT_PUBLIC_REPOSITORY,
@@ -104,6 +105,83 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def read_incremental_manifest(path: Path, version: str) -> dict[str, object]:
+    """Validate the complete optional release trio before publishing its trust root."""
+    prefix = f"SIDEY-Windows-x64-v{version}"
+    if path.name != f"{prefix}-Update.json":
+        raise ValueError("Incremental manifest filename does not match the release")
+    if path.stat().st_size > 4 * 1024 * 1024:
+        raise ValueError("Incremental manifest exceeds the client size limit")
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if (not isinstance(manifest, dict) or type(manifest.get("schema")) is not int
+            or manifest.get("schema") != 1 or manifest.get("version") != version):
+        raise ValueError("Incremental manifest schema or version does not match the release")
+
+    def valid_hash(value: object) -> bool:
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value) is not None
+
+    for field, suffix in (("updater", "Update.exe"), ("payload", "Payload.bin")):
+        artifact = manifest.get(field)
+        name = f"{prefix}-{suffix}"
+        if (not isinstance(artifact, dict) or artifact.get("name") != name
+                or not valid_hash(artifact.get("sha256"))
+                or type(artifact.get("size")) is not int or artifact["size"] <= 0
+                or artifact["size"] > (128 * 1024 * 1024 if field == "updater"
+                                       else 2 * 1024 * 1024 * 1024)):
+            raise ValueError(f"Invalid incremental {field} metadata")
+        artifact_path = path.parent / name
+        if (not artifact_path.is_file() or artifact_path.stat().st_size != artifact["size"]
+                or sha256(artifact_path).lower() != artifact["sha256"].lower()):
+            raise ValueError(f"Incremental {field} hash or size mismatch; complete trio required")
+
+    files = manifest.get("files")
+    if not isinstance(files, list) or not 1 <= len(files) <= 10000:
+        raise ValueError("Incremental manifest requires a complete file list")
+    seen: set[str] = set()
+    ranges: list[tuple[int, int]] = []
+    total_size = 0
+    reserved = re.compile(
+        r"(?:CON|PRN|AUX|NUL|CLOCK\$|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)",
+        re.I,
+    )
+    for entry in files:
+        if not isinstance(entry, dict):
+            raise ValueError("Invalid incremental file entry")
+        relative = entry.get("path")
+        if (not isinstance(relative, str) or not 1 <= len(relative) <= 240
+                or any(ord(char) < 32 or char in '\\:<>"|?*' for char in relative)
+                or any(part in ("", ".", "..") or part.endswith((" ", "."))
+                       or reserved.match(part) for part in relative.split("/"))):
+            raise ValueError("Unsafe incremental file path")
+        normalized = relative.casefold()
+        if normalized in seen or normalized == "uninstall.exe":
+            raise ValueError("Duplicate or generated incremental file path")
+        seen.add(normalized)
+        if (not valid_hash(entry.get("sha256"))
+                or type(entry.get("size")) is not int or entry["size"] < 0
+                or type(entry.get("offset")) is not int or entry["offset"] < 0
+                or type(entry.get("length")) is not int
+                or not 1 <= entry["length"] <= 128 * 1024 * 1024):
+            raise ValueError("Invalid incremental file hash, size or range")
+        total_size += entry["size"]
+        if total_size > 2 * 1024 * 1024 * 1024:
+            raise ValueError("Incremental files exceed the client uncompressed size limit")
+        end = entry["offset"] + entry["length"]
+        if end > manifest["payload"]["size"]:
+            raise ValueError("Incremental file range exceeds payload")
+        ranges.append((entry["offset"], end))
+    if not {"sidey.exe", "runtime/sidey.host.exe", "runtime/sidey.uninstallhelper.exe"} <= seen:
+        raise ValueError("Incremental manifest is missing required application executables")
+    ranges.sort()
+    if any(end > next_start for (_, end), (next_start, _) in zip(ranges, ranges[1:])):
+        raise ValueError("Incremental file ranges overlap")
+    if any(parent.casefold() in seen for relative in seen
+           for parent in ("/".join(relative.split("/")[:index])
+                          for index in range(1, len(relative.split("/"))))):
+        raise ValueError("Incremental file paths conflict with parent directories")
+    return manifest
+
+
 def require_anchor(html: str, element_id: str, **attributes: str) -> None:
     lookaheads = [rf'(?=[^>]*\bid="{re.escape(element_id)}")']
     lookaheads.extend(
@@ -148,6 +226,7 @@ def prepare(
     windows_release_installer: Path,
     public_repository: str = DEFAULT_PUBLIC_REPOSITORY,
     windows_legacy_installer: Path | None = None,
+    windows_incremental_manifest: Path | None = None,
 ) -> tuple[str, str]:
     website_dir = website_dir.resolve(strict=True)
     windows_release_manifest = windows_release_manifest.resolve(strict=True)
@@ -159,6 +238,9 @@ def prepare(
     product_version = str(windows_manifest["version"])
     update_version = str(windows_manifest["updateVersion"])
     release_version = str(windows_manifest["releaseVersion"])
+    if windows_incremental_manifest is not None:
+        windows_incremental_manifest = windows_incremental_manifest.resolve(strict=True)
+        read_incremental_manifest(windows_incremental_manifest, release_version)
     release_name = f"SIDEY-Windows-x64-v{release_version}-Setup.exe"
     if windows_release_installer.name != release_name:
         raise ValueError(
@@ -209,6 +291,14 @@ def prepare(
             "update_installer_url": update_url,
             "update_sha256": update_hash,
         })
+    if windows_incremental_manifest is not None:
+        published_windows_manifest["incremental"] = {
+            "manifest_url": (
+                f"https://github.com/{public_repository}/releases/download/"
+                f"windows-v{release_version}/{windows_incremental_manifest.name}"
+            ),
+            "sha256": sha256(windows_incremental_manifest),
+        }
     manifest_text = json.dumps(published_windows_manifest, indent=2) + "\n"
     for relative_path in ("windows-latest.json", "windows/update.json"):
         path = output_dir / relative_path
@@ -250,6 +340,7 @@ def main() -> int:
         args.windows_release_installer,
         args.public_repository,
         args.windows_legacy_installer,
+        args.windows_incremental_manifest,
     )
     print("ReleaseMetadataPrepared=true")
     print(f"WindowsVersion={windows_version}")

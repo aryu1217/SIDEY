@@ -155,6 +155,11 @@ jobs:
           }
           $tag = "windows-v$releaseVersion"
           $installerName = "SIDEY-Windows-x64-v${releaseVersion}-Setup.exe"
+          $incrementalNames = @(
+            "SIDEY-Windows-x64-v${releaseVersion}-Update.exe",
+            "SIDEY-Windows-x64-v${releaseVersion}-Update.json",
+            "SIDEY-Windows-x64-v${releaseVersion}-Payload.bin"
+          )
 
           $release = gh release view $tag --json isDraft,isPrerelease,assets |
             ConvertFrom-Json
@@ -169,8 +174,16 @@ jobs:
               Where-Object { [string]$_.tag -ceq $tag } |
               ForEach-Object { [string]$_.name }
           )
-          $expectedAssetNames = @($installerName) + $complianceAssetNames
           $assetNames = @($release.assets | ForEach-Object { [string]$_.name })
+          $presentIncrementalNames = @($incrementalNames | Where-Object {
+            $assetNames -ccontains $_
+          })
+          if ($presentIncrementalNames.Count -ne 0 -and
+              $presentIncrementalNames.Count -ne $incrementalNames.Count) {
+            throw "Windows incremental release requires all three assets: $tag"
+          }
+          $expectedAssetNames = @($installerName) + $complianceAssetNames +
+            $presentIncrementalNames
           $unexpectedAssetNames = @($assetNames | Where-Object {
             $expectedAssetNames -cnotcontains $_
           })
@@ -196,6 +209,18 @@ jobs:
             '--windows-release-installer', "./build/windows-pages-release/$installerName",
             '--public-repository', $env:PUBLIC_REPOSITORY
           )
+          if ($presentIncrementalNames.Count -ne 0) {
+            foreach ($incrementalName in $incrementalNames) {
+              gh release download $tag `
+                --pattern $incrementalName `
+                --dir ./build/windows-pages-release `
+                --clobber
+            }
+            $metadataArguments += @(
+              '--windows-incremental-manifest',
+              "./build/windows-pages-release/SIDEY-Windows-x64-v${releaseVersion}-Update.json"
+            )
+          }
           if ($releaseVersion -cne $productVersion) {
             $legacyTag = "windows-v$productVersion"
             $legacyInstallerName = "SIDEY-Windows-x64-v${productVersion}-Setup.exe"
