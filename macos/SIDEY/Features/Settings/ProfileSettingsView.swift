@@ -4,6 +4,7 @@ struct ProfileSettingsView: View {
     @Bindable var model: AppModel
     let actions: SettingsActions
     let storeAvailability: StoreAvailability
+    @State private var selectedProductID: String?
 
     private var bubbleProducts: [CommerceProduct] {
         model.ownedProfileCosmeticProducts(for: .bubble)
@@ -47,24 +48,17 @@ struct ProfileSettingsView: View {
                 }
             }
             Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Text("profile.character.label")
-                    .font(.headline)
-                Text("profile.character.description")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("profile.character.label")
+                .font(.headline)
             CharacterSelectionGrid(
                 maximumColumns: 5,
                 characters: model.selectableCharacters,
                 confirmedSelection: model.selectedCharacterID,
                 pendingSelection: model.pendingCharacterID,
                 isDisabled: model.pendingCharacterID != nil || model.groupMutationsDisabled,
-                onSelect: actions.onSetCharacter
+                onSelect: actions.onSetCharacter,
+                onShowDetail: showCharacterDetail
             )
-            Text("profile.duplicates_allowed")
-                .font(.caption)
-                .foregroundStyle(.secondary)
             if showsCosmeticEquipment {
                 Divider()
                 ProfileCosmeticEquipmentSection(
@@ -73,7 +67,8 @@ struct ProfileSettingsView: View {
                     selectedCatalogItemID: model.equippedBubbleStyleID,
                     pendingRequest: model.cosmeticEquipmentRequest(for: .bubble),
                     selectedCharacterID: model.selectedCharacterID,
-                    onSelect: actions.onSetEquippedCosmetic
+                    onSelect: actions.onSetEquippedCosmetic,
+                    onShowDetail: showProductDetail
                 )
                 Divider()
                 ProfileCosmeticEquipmentSection(
@@ -82,8 +77,31 @@ struct ProfileSettingsView: View {
                     selectedCatalogItemID: model.equippedThrowableID,
                     pendingRequest: model.cosmeticEquipmentRequest(for: .throwable),
                     selectedCharacterID: model.selectedCharacterID,
-                    onSelect: actions.onSetEquippedCosmetic
+                    onSelect: actions.onSetEquippedCosmetic,
+                    onShowDetail: showProductDetail
                 )
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { selectedProductID != nil },
+            set: { if !$0 { selectedProductID = nil } }
+        )) {
+            if let selectedProductID,
+               let state = detailProductState(id: selectedProductID) {
+                StoreProductDetailSheet(
+                    productState: state,
+                    relatedProductState: CommerceCatalog.keepsake(for: state.id).flatMap {
+                        model.commerceProduct(id: $0.id)
+                    },
+                    isPurchaseInProgress: model.commerceProducts.contains { $0.isWorking },
+                    actions: actions,
+                    availability: storeAvailability,
+                    onEquip: { equip(state.product) },
+                    isEquipDisabled: equipmentDisabled(for: state.product),
+                    isEquipPending: equipmentPending(for: state.product)
+                ) {
+                    self.selectedProductID = nil
+                }
             }
         }
 
@@ -97,6 +115,63 @@ struct ProfileSettingsView: View {
     private var validNickname: Bool {
         ProfileValidator.isValidNickname(model.nickname)
     }
+
+    private func showCharacterDetail(_ characterID: String) {
+        guard let product = CommerceCatalog.characterProducts.first(where: {
+            $0.characterID == characterID
+        }) else {
+            actions.onSetCharacter(characterID)
+            return
+        }
+        selectedProductID = product.id
+    }
+
+    private func showProductDetail(_ productID: String) {
+        selectedProductID = productID
+    }
+
+    private func detailProductState(id: String) -> CommerceProductState? {
+        guard let product = CommerceCatalog.product(id: id) else { return nil }
+        var state = model.commerceProduct(id: id) ?? CommerceProductState(
+            product: product,
+            purchaseState: .owned,
+            isWorking: false
+        )
+        // The profile inventory is entitlement-backed even while StoreKit state refreshes.
+        state.purchaseState = .owned
+        state.isEquipped = switch state.product.kind {
+        case .character: state.product.characterID == model.selectedCharacterID
+        case .bubble: state.product.catalogItemID == model.equippedBubbleStyleID
+        case .throwable: state.product.catalogItemID == model.equippedThrowableID
+        }
+        return state
+    }
+
+    private func equipmentDisabled(for product: CommerceProduct) -> Bool {
+        if model.groupMutationsDisabled { return true }
+        switch product.kind {
+        case .character: return model.pendingCharacterID != nil
+        case .bubble, .throwable: return model.cosmeticEquipmentRequest(for: product.kind) != nil
+        }
+    }
+
+    private func equipmentPending(for product: CommerceProduct) -> Bool {
+        switch product.kind {
+        case .character: return model.pendingCharacterID == product.characterID
+        case .bubble, .throwable:
+            return model.cosmeticEquipmentRequest(for: product.kind)?.catalogItemID == product.catalogItemID
+        }
+    }
+
+    private func equip(_ product: CommerceProduct) {
+        guard !equipmentDisabled(for: product) else { return }
+        switch product.kind {
+        case .character:
+            if let characterID = product.characterID { actions.onSetCharacter(characterID) }
+        case .bubble, .throwable:
+            actions.onSetEquippedCosmetic(product.kind, product.catalogItemID)
+        }
+    }
 }
 
 struct ProfileCosmeticEquipmentSection: View {
@@ -106,6 +181,7 @@ struct ProfileCosmeticEquipmentSection: View {
     let pendingRequest: CosmeticEquipmentRequest?
     let selectedCharacterID: String
     let onSelect: (CommerceProductKind, String?) -> Void
+    let onShowDetail: (String) -> Void
 
     private let columns = Array(
         repeating: GridItem(.flexible(minimum: 76), spacing: 10, alignment: .top),
@@ -114,13 +190,8 @@ struct ProfileCosmeticEquipmentSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(kind.localizedTitle)
-                    .font(.headline)
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text(kind.localizedTitle)
+                .font(.headline)
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                 ProfileCosmeticTile(
@@ -130,7 +201,8 @@ struct ProfileCosmeticEquipmentSection: View {
                     isSelected: selectedCatalogItemID == nil,
                     isPending: pendingRequest?.catalogItemID == nil && pendingRequest != nil,
                     isDisabled: pendingRequest != nil,
-                    onSelect: onSelect
+                    onSelect: onSelect,
+                    onShowDetail: onShowDetail
                 )
                 ForEach(products, id: \.id) { product in
                     ProfileCosmeticTile(
@@ -140,20 +212,13 @@ struct ProfileCosmeticEquipmentSection: View {
                         isSelected: selectedCatalogItemID == product.catalogItemID,
                         isPending: pendingRequest?.catalogItemID == product.catalogItemID,
                         isDisabled: pendingRequest != nil,
-                        onSelect: onSelect
+                        onSelect: onSelect,
+                        onShowDetail: onShowDetail
                     )
                 }
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text(kind.selectionAccessibilityLabel))
-        }
-    }
-
-    private var description: LocalizedStringResource {
-        switch kind {
-        case .bubble: "profile.cosmetics.bubble.description"
-        case .throwable: "profile.cosmetics.throwable.description"
-        case .character: "profile.cosmetics.character.description"
         }
     }
 }
@@ -166,10 +231,11 @@ struct ProfileCosmeticTile: View {
     let isPending: Bool
     let isDisabled: Bool
     let onSelect: (CommerceProductKind, String?) -> Void
+    var onShowDetail: ((String) -> Void)? = nil
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        Button(action: requestSelection) {
+        Button(action: requestPrimaryAction) {
             VStack(spacing: 7) {
                 preview
                     .frame(height: 58)
@@ -246,10 +312,17 @@ struct ProfileCosmeticTile: View {
             : "profile.selection.state.not_selected"
     }
 
-    private var accessibilityHint: LocalizedStringResource {
-        isSelected
-            ? "profile.cosmetics.hint.current"
-            : "profile.cosmetics.hint.select"
+    private var accessibilityHint: String {
+        if product != nil { return L10n.text("store.product.detail.hint") }
+        return isSelected ? L10n.text("profile.cosmetics.hint.current") : ""
+    }
+
+    func requestPrimaryAction() {
+        if let product, let onShowDetail {
+            onShowDetail(product.id)
+        } else {
+            requestSelection()
+        }
     }
 
     func requestSelection() {

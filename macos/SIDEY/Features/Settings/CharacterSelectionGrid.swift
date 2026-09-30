@@ -7,6 +7,7 @@ struct CharacterSelectionGrid: View {
     let pendingSelection: String?
     let isDisabled: Bool
     let onSelect: (String) -> Void
+    let onShowDetail: ((String) -> Void)?
 
     init(
         maximumColumns: Int,
@@ -14,7 +15,8 @@ struct CharacterSelectionGrid: View {
         confirmedSelection: String,
         pendingSelection: String? = nil,
         isDisabled: Bool = false,
-        onSelect: @escaping (String) -> Void
+        onSelect: @escaping (String) -> Void,
+        onShowDetail: ((String) -> Void)? = nil
     ) {
         self.maximumColumns = maximumColumns
         self.characters = characters
@@ -22,6 +24,7 @@ struct CharacterSelectionGrid: View {
         self.pendingSelection = pendingSelection
         self.isDisabled = isDisabled
         self.onSelect = onSelect
+        self.onShowDetail = onShowDetail
     }
 
     private var columns: [GridItem] {
@@ -41,7 +44,10 @@ struct CharacterSelectionGrid: View {
                         PixelCharacterCatalog.canonicalID(for: $0) == character.id
                     } ?? false,
                     isDisabled: isDisabled,
-                    onSelect: { onSelect(character.id) }
+                    onSelect: { onSelect(character.id) },
+                    onShowDetail: onShowDetail.map { showDetail in
+                        { showDetail(character.id) }
+                    }
                 )
             }
         }
@@ -56,9 +62,16 @@ private struct CharacterSelectionCard: View {
     let isPending: Bool
     let isDisabled: Bool
     let onSelect: () -> Void
+    let onShowDetail: (() -> Void)?
 
     var body: some View {
-        Button(action: onSelect) {
+        Button(action: {
+            if character.entitlementKey != nil, let onShowDetail {
+                onShowDetail()
+            } else {
+                onSelect()
+            }
+        }) {
             VStack(spacing: 8) {
                 Image(nsImage: PixelCharacterPreviewImage.image(for: character))
                     .interpolation(.none)
@@ -83,6 +96,8 @@ private struct CharacterSelectionCard: View {
         .disabled(isDisabled)
         .accessibilityLabel(Text(localizedName))
         .accessibilityValue(Text(accessibilityValue))
+        .accessibilityHint(character.entitlementKey != nil && onShowDetail != nil
+            ? L10n.text("store.product.detail.hint") : "")
     }
 
     private var localizedName: LocalizedStringResource {

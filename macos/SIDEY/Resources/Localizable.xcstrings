@@ -8225,35 +8225,6 @@
         }
       }
     },
-    "profile.character.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose the pixel character that represents you on your friends’ screens."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "友だちの画面で自分を表すピクセルキャラクターを選べます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "친구의 화면에서 나를 나타낼 픽셀 캐릭터를 선택할 수 있습니다."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選擇在朋友螢幕上代表你的像素角色。"
-          }
-        }
-      }
-    },
     "profile.character.label": {
       "extractionState": "manual",
       "localizations": {
@@ -8341,35 +8312,6 @@
         }
       }
     },
-    "profile.cosmetics.bubble.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a speech bubble you own. It applies to all your groups immediately."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "持っている吹き出しを選ぶと、すべてのグループにすぐ適用されます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보유한 말풍선을 고르면 모든 그룹에 바로 적용됩니다."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選擇已擁有的訊息泡泡後，會立即套用到所有群組。"
-          }
-        }
-      }
-    },
     "profile.cosmetics.bubble.selection.accessibility": {
       "extractionState": "manual",
       "localizations": {
@@ -8395,35 +8337,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "訊息泡泡選擇"
-          }
-        }
-      }
-    },
-    "profile.cosmetics.character.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a character you own. It applies to all your groups immediately."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "持っているキャラクターを選ぶと、すべてのグループにすぐ適用されます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보유한 캐릭터를 고르면 모든 그룹에 바로 적용됩니다."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選擇已擁有的角色後，會立即套用到所有群組。"
           }
         }
       }
@@ -8544,64 +8457,6 @@
         }
       }
     },
-    "profile.cosmetics.hint.select": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Applies to all your groups immediately"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選択すると、すべてのグループにすぐ適用されます"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "선택하면 모든 그룹에 바로 적용됩니다"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選取後會立即套用到所有群組"
-          }
-        }
-      }
-    },
-    "profile.cosmetics.throwable.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a tossable toy you own. It applies to all your groups immediately."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "持っている投げて遊ぶおもちゃを選ぶと、すべてのグループにすぐ適用されます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보유한 던지기 장난감을 고르면 모든 그룹에 바로 적용됩니다."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選擇已擁有的投擲玩具後，會立即套用到所有群組。"
-          }
-        }
-      }
-    },
     "profile.cosmetics.throwable.selection.accessibility": {
       "extractionState": "manual",
       "localizations": {
@@ -8660,31 +8515,31 @@
         }
       }
     },
-    "profile.duplicates_allowed": {
+    "profile.equip.action": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You can use the same character or nickname as another member of the group."
+            "value": "Use"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "同じグループ内でキャラクターやニックネームが重複してもかまいません。"
+            "value": "使用する"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "그룹 안에서 다른 멤버와 같은 캐릭터나 닉네임을 사용할 수 있습니다."
+            "value": "사용하기"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "同一群組內可以使用相同的角色和暱稱。"
+            "value": "使用"
           }
         }
       }

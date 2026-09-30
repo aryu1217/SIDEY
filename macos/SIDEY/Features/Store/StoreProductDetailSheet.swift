@@ -6,6 +6,9 @@ struct StoreProductDetailSheet: View {
     var isPurchaseInProgress = false
     let actions: SettingsActions
     var availability: StoreAvailability = .appStore
+    var onEquip: (() -> Void)? = nil
+    var isEquipDisabled = false
+    var isEquipPending = false
     let onClose: () -> Void
     @State private var playsPreviewSound = true
     @State private var contentHeight: CGFloat = 640
@@ -55,7 +58,9 @@ struct StoreProductDetailSheet: View {
                 HStack(alignment: .top, spacing: 12) {
                     StoreDetailPurchaseCard(state: productState, actions: actions,
                         availability: availability, purchaseInProgress: isPurchaseInProgress,
-                        showsDescription: productState.product.kind == .character)
+                        showsDescription: productState.product.kind == .character,
+                        onEquip: onEquip, isEquipDisabled: isEquipDisabled,
+                        isEquipPending: isEquipPending)
                     if let relatedProductState {
                         StoreDetailPurchaseCard(state: relatedProductState, actions: actions,
                             availability: availability, purchaseInProgress: isPurchaseInProgress,
@@ -85,6 +90,9 @@ private struct StoreDetailPurchaseCard: View {
     let availability: StoreAvailability
     let purchaseInProgress: Bool
     var showsDescription = false
+    var onEquip: (() -> Void)? = nil
+    var isEquipDisabled = false
+    var isEquipPending = false
 
     private var kindLabel: String {
         state.product.isKeepsake ? L10n.text("store.kind.keepsake") : state.product.kind.title
@@ -125,10 +133,20 @@ private struct StoreDetailPurchaseCard: View {
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, minHeight: 30)
                 .accessibilityLabel(L10n.format("store.product.processing.accessibility", state.displayName))
         } else if state.purchaseState == .owned {
-            Text(state.isEquipped
-                 ? L10n.text("store.product.equipped")
-                 : L10n.text("store.purchase.owned"))
-                .font(.callout.weight(.medium)).frame(maxWidth: .infinity, minHeight: 30)
+            if isEquipPending {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity, minHeight: 30)
+                    .accessibilityLabel(L10n.text("profile.applying"))
+            } else if let onEquip, !state.isEquipped {
+                Button(L10n.text("profile.equip.action"), action: onEquip)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isEquipDisabled)
+                    .frame(maxWidth: .infinity, minHeight: 30)
+            } else {
+                Text(state.isEquipped
+                     ? L10n.text("store.product.equipped")
+                     : L10n.text("store.purchase.owned"))
+                    .font(.callout.weight(.medium)).frame(maxWidth: .infinity, minHeight: 30)
+            }
         } else if case .error = state.purchaseState {
             Button(L10n.text("store.status.retry")) { actions.onRefreshCommerceState(state.id) }
                 .disabled(purchaseInProgress)
