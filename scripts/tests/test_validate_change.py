@@ -123,62 +123,6 @@ class GateTests(unittest.TestCase):
                 with self.assertRaisesRegex(WorkflowError, "platform boundary"):
                     validate_paths("shared/localization", paths)
 
-    def test_one_time_locale_source_split_can_update_both_native_consumers(self):
-        source = "assets/v1/locale/client/ko.json"
-        legacy_source = "assets/v1/commerce-localizations.json"
-        consumers = [
-            "macos/SIDEY/Domain/L10n.swift",
-            "windows/src/Sidey.Core/Localization/I18n.cs",
-        ]
-        root = Path(".")
-
-        with patch(
-            "sidey_tools.repository.git",
-            side_effect=[legacy_source, ""],
-        ) as git:
-            self.assertEqual(
-                validate_paths(
-                    "shared/locale-source-split",
-                    [source, legacy_source, *consumers],
-                    root=root,
-                    base="base",
-                    revision="head",
-                ),
-                "shared",
-            )
-        self.assertEqual(
-            git.call_args_list,
-            [
-                call(root, "ls-tree", "--name-only", "base", "--", legacy_source),
-                call(root, "ls-tree", "--name-only", "head", "--", legacy_source),
-            ],
-        )
-
-        invalid_cases = (
-            ([source, *consumers], None),
-            ([source, legacy_source, *consumers], None),
-            ([source, legacy_source, *consumers], [legacy_source, legacy_source]),
-            ([source, legacy_source, *consumers], ["", legacy_source]),
-        )
-        for paths, revisions in invalid_cases:
-            with self.subTest(paths=paths, revisions=revisions):
-                context = (
-                    patch("sidey_tools.repository.git", side_effect=revisions)
-                    if revisions is not None
-                    else patch("sidey_tools.repository.git")
-                )
-                with context, self.assertRaisesRegex(
-                    WorkflowError,
-                    "platform boundary",
-                ):
-                    validate_paths(
-                        "shared/locale-source-split",
-                        paths,
-                        root=root if revisions is not None else None,
-                        base="base" if revisions is not None else None,
-                        revision="head",
-                    )
-
     def test_renamed_platform_workflows_keep_their_ownership(self):
         expected_platforms = {
             "release/macos.json": "macos",
@@ -360,34 +304,6 @@ class GateTests(unittest.TestCase):
                 root=Path("."), base="base", revision="head",
             )
         self.assertEqual(run.call_count, 2)
-
-    def test_headver_migration_is_atomic_and_preserves_macos_build(self):
-        paths = [
-            "release/version.json",
-            "release/macos.json",
-            "macos/Config/Version.xcconfig",
-            "release/windows.json",
-            "windows/Version.props",
-            "release/app-store-localizations.json",
-            "windows/src/Sidey.Platform.Windows/Deployment/WindowsUpdateService.cs",
-        ]
-        before = {"schema": 1, "productVersion": "2.1.0",
-                  "windowsRevision": 0, "macBuild": 37}
-        after = {"schema": 2, "head": 2, "yearweek": "2640",
-                 "windowsBuild": 1, "macBuild": 37}
-        local_before = {"release": {"version": "2.1.0", "build": 37}}
-        local_after = {"release": {"version": "2.2640.37", "build": 37}}
-        with (patch("sidey_tools.repository.git", side_effect=[
-                json.dumps(before), json.dumps(after), json.dumps(local_before),
-                json.dumps(local_after)]),
-              patch("sidey_tools.repository.run") as run):
-            self.assertEqual(validate_paths("shared/headver-migration", paths,
-                                            root=Path("."), base="base", revision="head"),
-                             "shared")
-        self.assertEqual(run.call_count, 2)
-        with self.assertRaisesRegex(WorkflowError, "platform boundary"):
-            validate_paths("shared/other-task", paths,
-                           root=Path("."), base="base", revision="head")
 
     def test_windows_headver_build_change_stays_on_windows_branch(self):
         paths = ["release/version.json", "release/windows.json",

@@ -423,8 +423,8 @@ def run_scope_checks(root, scope):
 def local_checks(root, platform, paths=()):
     run(root, 'git', 'diff', '--check', capture=False)
     run(
-        root, sys.executable, '-X', 'utf8', '-m', 'unittest',
-        'discover', '-s', 'scripts/tests', capture=False,
+        root, sys.executable, '-X', 'utf8',
+        'scripts/skills/run_common_tests.py', capture=False,
     )
     run(
         root, sys.executable, '-X', 'utf8', '-m', 'unittest',

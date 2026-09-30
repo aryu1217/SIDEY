@@ -2,6 +2,7 @@ import contextlib
 import io
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -17,12 +18,27 @@ spec.loader.exec_module(w)
 
 
 class WorkflowTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        template = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(template.cleanup)
+        cls.template_root = Path(template.name)
+        remote = cls.template_root / 'origin.git'
+        primary = cls.template_root / 'main'
+        other = cls.template_root / 'other'
+        cls.command(cls.template_root, 'git', 'init', '--bare', str(remote))
+        cls.command(cls.template_root, 'git', 'clone', str(remote), str(primary))
+        cls.configure(primary)
+        w.git(primary, 'checkout', '-b', 'main')
+        (primary / 'README.md').write_text('initial\n')
+        cls.commit(primary, 'initial')
+        w.git(primary, 'push', '-u', 'origin', 'main')
+        w.git(remote, 'symbolic-ref', 'HEAD', 'refs/heads/main')
+        cls.command(cls.template_root, 'git', 'clone', str(remote), str(other))
+        cls.configure(other)
+
     def setUp(self):
-        remote_patch = patch.object(
-            w,
-            'main_remote',
-            return_value='origin',
-        )
+        remote_patch = patch.object(w, 'main_remote', return_value='origin')
         remote_patch.start()
         self.addCleanup(remote_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
@@ -31,32 +47,23 @@ class WorkflowTests(unittest.TestCase):
         self.remote = self.root / 'origin.git'
         self.primary = self.root / 'main'
         self.other = self.root / 'other'
-        self.command(self.root, 'git', 'init', '--bare', str(self.remote))
-        self.command(self.root, 'git', 'clone', str(self.remote), str(self.primary))
-        self.configure(self.primary)
-        w.git(self.primary, 'checkout', '-b', 'main')
-        (self.primary / 'README.md').write_text('initial\n')
-        self.commit(self.primary, 'initial')
-        w.git(self.primary, 'push', '-u', 'origin', 'main')
-        w.git(self.remote, 'symbolic-ref', 'HEAD', 'refs/heads/main')
-        self.command(self.root, 'git', 'clone', str(self.remote), str(self.other))
-        self.configure(self.other)
+        for name in ('origin.git', 'main', 'other'):
+            shutil.copytree(self.template_root / name, self.root / name)
+        for repo in (self.primary, self.other):
+            w.git(repo, 'remote', 'set-url', 'origin', str(self.remote))
 
-    def command(self, root, *args):
+    @staticmethod
+    def command(root, *args):
         return w.run(root, *args)
 
-    def test_subprocess_output_decodes_utf8_and_legacy_locale(self):
-        self.assertEqual(w.decode_output('기여자'.encode('utf-8')), '기여자')
-        with patch.object(w.locale, 'getencoding', return_value='cp949'):
-            self.assertEqual(w.decode_output('검증'.encode('cp949')), '검증')
-        self.assertEqual(w.decode_output(b'first\r\nsecond\rthird'), 'first\nsecond\nthird')
-
-    def configure(self, root):
+    @staticmethod
+    def configure(root):
         w.git(root, 'config', 'user.email', 'workflow@example.test')
         w.git(root, 'config', 'user.name', 'Workflow test')
         w.git(root, 'config', 'commit.gpgsign', 'false')
 
-    def commit(self, root, message):
+    @staticmethod
+    def commit(root, message):
         w.git(root, 'add', '.')
         w.git(root, 'commit', '-m', message)
 
@@ -560,150 +567,6 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(opened), 1)
         self.assertEqual(w.read_state(path)['task']['status'], 'complete')
 
-    def test_merge_uses_github_squash_defaults_without_message_overrides(self):
-        with patch.object(w, 'run') as run:
-            w.merge_task_pr(self.primary, '108', 'checked-head')
-        command = run.call_args.args[1:]
-        self.assertEqual(
-            command,
-            (
-                'gh', 'pr', 'merge', '108', '--squash',
-                '--match-head-commit', 'checked-head',
-            ),
-        )
-        self.assertNotIn('--subject', command)
-        self.assertNotIn('--body-file', command)
-
-    def test_publish_preserves_existing_pr_body_without_editing_or_merging(self):
-        template = self.write_general_pr_template()
-        body = template.read_text(encoding='utf-8')
-        task = {
-            'checked': {'base': 'base', 'head': 'checked-head'},
-            'status': 'checked',
-        }
-        old_pr = {
-            'number': 42,
-            'headRefOid': 'old-head',
-            'isCrossRepository': False,
-        }
-        current_pr = {**old_pr, 'headRefOid': 'checked-head'}
-        views = iter((
-            {'title': 'fix(auth): 인증 오류 수정', 'body': body},
-            {'title': 'fix(auth): 인증 오류 수정', 'body': body},
-        ))
-        commands = []
-
-        def response(root, *args, **kwargs):
-            commands.append(args)
-            if args[:3] == ('gh', 'pr', 'view'):
-                return json.dumps(next(views))
-            return ''
-
-        args = w.argparse.Namespace(task='task', title=None, body_file=None)
-        with (
-            patch.object(w, 'owned_task', return_value=task),
-            patch.object(w, 'dirty_paths', return_value=[]),
-            patch.object(
-                w,
-                'source_repository',
-                return_value='sidey-app/SIDEY-source',
-            ),
-            patch.object(w, 'fetch_main', return_value='base'),
-            patch.object(w, 'attest'),
-            patch.object(w, 'changed_paths', return_value=['docs/guide.md']),
-            patch.object(w, 'validate_paths'),
-            patch.object(
-                w,
-                'publish_head',
-                return_value='sidey-app:shared/task',
-            ),
-            patch.object(w, 'open_task_prs', side_effect=([old_pr], [current_pr])),
-            patch.object(w, 'branch', return_value='shared/task'),
-            patch.object(w, 'head', return_value='checked-head'),
-            patch.object(w, 'git') as git,
-            patch.object(w, 'update_task') as update_task,
-            patch.object(w, 'run', side_effect=response),
-        ):
-            result = w.publish(self.primary, args)
-
-        git.assert_called_once_with(
-            self.primary,
-            'push',
-            '-u',
-            'origin',
-            'shared/task',
-        )
-        self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
-        self.assertFalse(any(command[:3] == ('gh', 'pr', 'merge') for command in commands))
-        self.assertFalse(any(command[:3] == ('gh', 'pr', 'create') for command in commands))
-        self.assertEqual(result, {
-            'status': 'published',
-            'pr': '42',
-            'head': 'checked-head',
-        })
-        self.assertEqual(update_task.call_args.args[2]['status'], 'published')
-
-    def test_publish_creates_pr_with_exact_validated_body_file(self):
-        template = self.write_general_pr_template()
-        body = template.read_text(encoding='utf-8')
-        task = {
-            'checked': {'base': 'base', 'head': 'checked-head'},
-            'status': 'checked',
-        }
-        current_pr = {
-            'number': 42,
-            'headRefOid': 'checked-head',
-            'isCrossRepository': False,
-        }
-        commands = []
-
-        def response(root, *args, **kwargs):
-            commands.append(args)
-            if args[:3] == ('gh', 'pr', 'view'):
-                return json.dumps({
-                    'title': 'fix(auth): 인증 오류 수정',
-                    'body': body,
-                })
-            return ''
-
-        args = w.argparse.Namespace(
-            task='task',
-            title='fix(auth): 인증 오류 수정',
-            body_file=str(template),
-        )
-        with (
-            patch.object(w, 'owned_task', return_value=task),
-            patch.object(w, 'dirty_paths', return_value=[]),
-            patch.object(
-                w,
-                'source_repository',
-                return_value='sidey-app/SIDEY-source',
-            ),
-            patch.object(w, 'fetch_main', return_value='base'),
-            patch.object(w, 'attest'),
-            patch.object(w, 'changed_paths', return_value=['docs/guide.md']),
-            patch.object(w, 'validate_paths'),
-            patch.object(
-                w,
-                'publish_head',
-                return_value='sidey-app:shared/task',
-            ),
-            patch.object(w, 'open_task_prs', side_effect=([], [current_pr])),
-            patch.object(w, 'branch', return_value='shared/task'),
-            patch.object(w, 'head', return_value='checked-head'),
-            patch.object(w, 'git'),
-            patch.object(w, 'update_task'),
-            patch.object(w, 'run', side_effect=response),
-        ):
-            w.publish(self.primary, args)
-
-        create = next(command for command in commands if command[:3] == ('gh', 'pr', 'create'))
-        body_file = Path(create[create.index('--body-file') + 1])
-        self.assertEqual(body_file, template.resolve())
-        self.assertEqual(body_file.read_text(encoding='utf-8'), body)
-        self.assertNotIn('Co-authored-by:', body)
-        self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
-
     def advance(self):
         (self.other / 'advance.md').write_text('remote update\n')
         self.commit(self.other, 'advance main')
@@ -766,27 +629,6 @@ class WorkflowTests(unittest.TestCase):
         (task / 'windows/new.cs').write_text('source\n')
         with self.assertRaises(w.WorkflowError):
             w.validate_paths('shared/task', w.changed_paths(task, 'origin/main', dirty=True))
-
-    def test_main_cannot_implement(self):
-        with self.assertRaises(w.WorkflowError):
-            w.validate_paths('main', ['README.md'])
-
-    def test_platform_branches_reject_shared_changes(self):
-        for name in ('macos/task', 'windows/task'):
-            with self.assertRaises(w.WorkflowError):
-                w.validate_paths(name, ['docs/architecture.md'])
-
-    def test_platform_release_manifests_follow_their_native_branches(self):
-        self.assertEqual(w.platform_for('release/macos.json'), 'macos')
-        self.assertEqual(w.platform_for('release/windows.json'), 'windows')
-        self.assertEqual(
-            w.validate_paths('macos/release', ['release/macos.json']),
-            'macos',
-        )
-        self.assertEqual(
-            w.validate_paths('windows/release', ['release/windows.json']),
-            'windows',
-        )
 
     def test_shared_commits_already_in_main_are_excluded(self):
         task = self.start(platform='macos')
@@ -890,10 +732,43 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(w.head(self.primary), old)
         self.assertEqual((self.primary / 'README.md').read_text(), 'owned by user')
 
+class WorkflowContractTests(unittest.TestCase):
+    def test_subprocess_output_decodes_utf8_and_legacy_locale(self):
+        self.assertEqual(w.decode_output('기여자'.encode('utf-8')), '기여자')
+        with patch.object(w.locale, 'getencoding', return_value='cp949'):
+            self.assertEqual(w.decode_output('검증'.encode('cp949')), '검증')
+        self.assertEqual(w.decode_output(b'first\r\nsecond\rthird'), 'first\nsecond\nthird')
+
+
+    def test_main_cannot_implement(self):
+        with self.assertRaises(w.WorkflowError):
+            w.validate_paths('main', ['README.md'])
+
+
+    def test_platform_branches_reject_shared_changes(self):
+        for name in ('macos/task', 'windows/task'):
+            with self.assertRaises(w.WorkflowError):
+                w.validate_paths(name, ['docs/architecture.md'])
+
+
+    def test_platform_release_manifests_follow_their_native_branches(self):
+        self.assertEqual(w.platform_for('release/macos.json'), 'macos')
+        self.assertEqual(w.platform_for('release/windows.json'), 'windows')
+        self.assertEqual(
+            w.validate_paths('macos/release', ['release/macos.json']),
+            'macos',
+        )
+        self.assertEqual(
+            w.validate_paths('windows/release', ['release/windows.json']),
+            'windows',
+        )
+
+
     def test_catalog_runs_public_consumers(self):
         self.assertEqual(set(w.required_scopes(['assets/v1/commerce-catalog.json'])),
                          {'shared', 'macos', 'windows', 'web'})
         self.assertIn('windows', w.required_scopes(['website/src/pages/ko/terms.md']))
+
 
     def test_contributor_architecture_only_changes_require_repository_validation(self):
         paths = [
@@ -930,6 +805,7 @@ class WorkflowTests(unittest.TestCase):
             'windows',
         )
 
+
     def test_contributor_classification_does_not_hide_product_changes(self):
         self.assertEqual(
             w.required_scopes(['AGENTS.md', 'macos/Sources/SIDEY/App.swift']),
@@ -939,6 +815,7 @@ class WorkflowTests(unittest.TestCase):
             w.required_scopes(['website/AGENTS.md', 'website/src/pages/index.astro']),
             ['shared', 'web'],
         )
+
 
     def test_commit_text_validation_fails_before_repository_mutation(self):
         w.require_valid_commit_text('Commit message', 'chore(Shared): 기여자 구조 정리')
@@ -950,111 +827,6 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(w.WorkflowError, 'commit policy'):
             w.require_valid_commit_text('PR title', 'Invalid title', subject_only=True)
 
-    def write_general_pr_template(self):
-        template = self.primary / '.github/PULL_REQUEST_TEMPLATE/general.md'
-        template.parent.mkdir(parents=True, exist_ok=True)
-        template.write_text(
-            '<!-- SIDEY_GENERAL_PR_TEMPLATE: keep -->\n\n'
-            '## PR 유형\n\n- [ ] macOS 구현\n\n'
-            '## 변경 내용\n\n설명\n\n'
-            '## 검증\n\n검증\n\n'
-            '## 확인 사항\n\n- [ ] 확인\n',
-            encoding='utf-8',
-        )
-        return template
-
-    def test_general_pr_body_accepts_filled_template_and_extra_sections(self):
-        template = self.write_general_pr_template()
-        body = template.read_text(encoding='utf-8').replace('[ ]', '[x]')
-        body += '\n## 추가 정보\n\n검토 참고 사항\n'
-        self.assertEqual(
-            w.require_pr_body(self.primary, body, ['docs/guide.md']),
-            'general',
-        )
-
-    def test_pr_body_is_not_subject_to_commit_line_length(self):
-        template = self.write_general_pr_template()
-        body = template.read_text(encoding='utf-8').replace('[ ]', '[x]')
-        body += '\n## Additional context\n\n' + ('detail ' * 20) + '\n'
-
-        self.assertGreater(max(map(len, body.splitlines())), 72)
-        self.assertEqual(
-            w.require_valid_pr(
-                self.primary,
-                'chore(Shared): 기여자 구조 정리',
-                body,
-                ['docs/guide.md'],
-            ),
-            'general',
-        )
-
-    def test_custom_pr_body_allows_changed_sections_but_rejects_empty_text(self):
-        self.write_general_pr_template()
-        self.assertEqual(
-            w.require_pr_body(self.primary, '# 캐릭터 에셋 PR\n', ['docs/guide.md']),
-            'general',
-        )
-        marker = w.GENERAL_PR_MARKER
-        missing = f'{marker}\n\n## PR 유형\n\n## 검증\n\n## 확인 사항\n'
-        self.assertEqual(w.require_pr_body(self.primary, missing, ['docs/guide.md']), 'general')
-        reordered = (
-            f'{marker}\n\n## 변경 내용\n\n## PR 유형\n\n'
-            '## 검증\n\n## 확인 사항\n'
-        )
-        self.assertEqual(w.require_pr_body(self.primary, reordered, ['docs/guide.md']), 'general')
-        with self.assertRaisesRegex(w.WorkflowError, 'description'):
-            w.require_pr_body(self.primary, marker, ['docs/guide.md'])
-
-    def test_general_pr_body_file_requires_existing_utf8_file(self):
-        self.write_general_pr_template()
-        with self.assertRaisesRegex(w.WorkflowError, 'Cannot read --body-file'):
-            w.require_pr_body_file(
-                self.primary,
-                'missing.md',
-                ['docs/guide.md'],
-            )
-        invalid = self.primary / 'invalid.md'
-        invalid.write_bytes(b'\x80')
-        with self.assertRaisesRegex(w.WorkflowError, 'UTF-8'):
-            w.require_pr_body_file(
-                self.primary,
-                invalid,
-                ['docs/guide.md'],
-            )
-
-    def test_local_python_checks_are_locale_independent(self):
-        with patch.object(w, 'run') as run:
-            w.local_checks(self.primary, 'shared')
-        python_commands = [
-            call.args[1:]
-            for call in run.call_args_list
-            if call.args[1] == w.sys.executable
-        ]
-        self.assertTrue(python_commands)
-        self.assertTrue(all(command[1:3] == ('-X', 'utf8') for command in python_commands))
-        self.assertIn(
-            (
-                w.sys.executable, '-X', 'utf8', '-m', 'unittest', 'discover', '-s',
-                'scripts/skills/release-notes/tests',
-            ),
-            python_commands,
-        )
-
-    def test_platform_checks_use_native_host_routes(self):
-        with patch.object(w, 'run') as execute, patch.object(w.sys, 'platform', 'darwin'):
-            w.local_checks(self.primary, 'macos', ['macos/Sources/SIDEY/App.swift'])
-        self.assertIn(
-            str(self.primary / 'scripts/macos/tests/test_native.sh'),
-            [call.args[1] for call in execute.call_args_list],
-        )
-
-        with patch.object(w, 'run') as execute, patch.object(w.os, 'name', 'nt'):
-            w.local_checks(self.primary, 'windows', ['windows/src/Sidey.App/App.xaml.cs'])
-        commands = [call.args[1:4] for call in execute.call_args_list]
-        self.assertIn(('dotnet', 'restore', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'format', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'build', 'SIDEY.Windows.slnx'), commands)
-        self.assertIn(('dotnet', 'test', 'SIDEY.Windows.slnx'), commands)
 
     def test_release_manifests_run_the_matching_native_checks(self):
         self.assertEqual(
@@ -1070,6 +842,7 @@ class WorkflowTests(unittest.TestCase):
             'release/version.json', 'release/macos.json',
             'macos/Config/Version.xcconfig',
         ]), ['macos', 'shared'])
+
 
     def test_workflow_scopes_only_run_affected_platforms(self):
         self.assertEqual(
@@ -1091,6 +864,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(w.required_scopes(['scripts/pages/prepare_release_metadata.py']),
                          ['shared', 'web'])
 
+
     def test_platform_workflow_only_changes_do_not_require_app_review(self):
         self.assertFalse(
             w.app_review_required(
@@ -1109,6 +883,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(w.app_review_required('macos', ['macos/AGENTS.md']))
         self.assertFalse(w.app_review_required('windows', ['windows/docs/build.md']))
 
+
     def test_platform_app_inputs_still_require_app_review(self):
         self.assertTrue(w.app_review_required('macos', ['macos/Sources/SIDEY/App.swift']))
         self.assertTrue(w.app_review_required('windows', ['windows/SIDEY/App.xaml.cs']))
@@ -1121,6 +896,7 @@ class WorkflowTests(unittest.TestCase):
             ]))
         self.assertTrue(w.app_review_required('macos', ['release/macos.json']))
         self.assertTrue(w.app_review_required('windows', ['release/windows.json']))
+
 
     def test_ci_workflow_and_scope_logic_run_every_check(self):
         every_scope = {'shared', 'macos', 'windows', 'web'}
@@ -1135,6 +911,7 @@ class WorkflowTests(unittest.TestCase):
             every_scope,
         )
 
+
     def test_validation_contract_changes_run_all_checks(self):
         self.assertEqual(
             set(w.required_scopes([
@@ -1143,6 +920,7 @@ class WorkflowTests(unittest.TestCase):
             ])),
             {'shared', 'macos', 'windows', 'web'},
         )
+
 
     def test_policy_and_contributor_changes_are_repository_only(self):
         self.assertEqual(
@@ -1153,15 +931,294 @@ class WorkflowTests(unittest.TestCase):
             ['shared'],
         )
 
+
     def test_windows_docs_stay_owned_without_running_windows_build(self):
         paths = ['windows/docs/debugging.md', 'windows/docs/code-style.md']
         self.assertEqual(w.required_scopes(paths), ['shared'])
         self.assertTrue(all(w.platform_for(path) == 'windows' for path in paths))
         self.assertEqual(w.validate_paths('windows/docs-refresh', paths), 'windows')
 
+
     def test_checkout_attributes_require_native_and_web_verification(self):
         self.assertEqual(set(w.required_scopes(['.gitattributes'])),
                          {'shared', 'macos', 'windows', 'web'})
+
+
+
+class WorkflowCommandTests(unittest.TestCase):
+    def setUp(self):
+        self.primary = Path(__file__).resolve().parents[2] / 'workflow-command-fixture'
+
+    def test_merge_uses_github_squash_defaults_without_message_overrides(self):
+        with patch.object(w, 'run') as run:
+            w.merge_task_pr(self.primary, '108', 'checked-head')
+        command = run.call_args.args[1:]
+        self.assertEqual(
+            command,
+            (
+                'gh', 'pr', 'merge', '108', '--squash',
+                '--match-head-commit', 'checked-head',
+            ),
+        )
+        self.assertNotIn('--subject', command)
+        self.assertNotIn('--body-file', command)
+
+
+    def test_local_python_checks_are_locale_independent(self):
+        with patch.object(w, 'run') as run:
+            w.local_checks(self.primary, 'shared')
+        python_commands = [
+            call.args[1:]
+            for call in run.call_args_list
+            if call.args[1] == w.sys.executable
+        ]
+        self.assertTrue(python_commands)
+        self.assertTrue(all(command[1:3] == ('-X', 'utf8') for command in python_commands))
+        self.assertIn(
+            (w.sys.executable, '-X', 'utf8', 'scripts/skills/run_common_tests.py'),
+            python_commands,
+        )
+        self.assertIn(
+            (
+                w.sys.executable, '-X', 'utf8', '-m', 'unittest', 'discover', '-s',
+                'scripts/skills/release-notes/tests',
+            ),
+            python_commands,
+        )
+
+
+    def test_platform_checks_use_native_host_routes(self):
+        with patch.object(w, 'run') as execute, patch.object(w.sys, 'platform', 'darwin'):
+            w.local_checks(self.primary, 'macos', ['macos/Sources/SIDEY/App.swift'])
+        self.assertIn(
+            str(self.primary / 'scripts/macos/tests/test_native.sh'),
+            [call.args[1] for call in execute.call_args_list],
+        )
+
+        with patch.object(w, 'run') as execute, patch.object(w.os, 'name', 'nt'):
+            w.local_checks(self.primary, 'windows', ['windows/src/Sidey.App/App.xaml.cs'])
+        commands = [call.args[1:4] for call in execute.call_args_list]
+        self.assertIn(('dotnet', 'restore', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'format', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'build', 'SIDEY.Windows.slnx'), commands)
+        self.assertIn(('dotnet', 'test', 'SIDEY.Windows.slnx'), commands)
+
+
+
+class WorkflowFileTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.primary = Path(temporary.name)
+
+    def write_general_pr_template(self):
+        template = self.primary / '.github/PULL_REQUEST_TEMPLATE/general.md'
+        template.parent.mkdir(parents=True, exist_ok=True)
+        template.write_text(
+            '<!-- SIDEY_GENERAL_PR_TEMPLATE: keep -->\n\n'
+            '## PR 유형\n\n- [ ] macOS 구현\n\n'
+            '## 변경 내용\n\n설명\n\n'
+            '## 검증\n\n검증\n\n'
+            '## 확인 사항\n\n- [ ] 확인\n',
+            encoding='utf-8',
+        )
+        return template
+
+
+    def test_publish_preserves_existing_pr_body_without_editing_or_merging(self):
+        template = self.write_general_pr_template()
+        body = template.read_text(encoding='utf-8')
+        task = {
+            'checked': {'base': 'base', 'head': 'checked-head'},
+            'status': 'checked',
+        }
+        old_pr = {
+            'number': 42,
+            'headRefOid': 'old-head',
+            'isCrossRepository': False,
+        }
+        current_pr = {**old_pr, 'headRefOid': 'checked-head'}
+        views = iter((
+            {'title': 'fix(auth): 인증 오류 수정', 'body': body},
+            {'title': 'fix(auth): 인증 오류 수정', 'body': body},
+        ))
+        commands = []
+
+        def response(root, *args, **kwargs):
+            commands.append(args)
+            if args[:3] == ('gh', 'pr', 'view'):
+                return json.dumps(next(views))
+            return ''
+
+        args = w.argparse.Namespace(task='task', title=None, body_file=None)
+        with (
+            patch.object(w, 'owned_task', return_value=task),
+            patch.object(w, 'dirty_paths', return_value=[]),
+            patch.object(
+                w,
+                'source_repository',
+                return_value='sidey-app/SIDEY-source',
+            ),
+            patch.object(w, 'fetch_main', return_value='base'),
+            patch.object(w, 'attest'),
+            patch.object(w, 'changed_paths', return_value=['docs/guide.md']),
+            patch.object(w, 'validate_paths'),
+            patch.object(
+                w,
+                'publish_head',
+                return_value='sidey-app:shared/task',
+            ),
+            patch.object(w, 'open_task_prs', side_effect=([old_pr], [current_pr])),
+            patch.object(w, 'branch', return_value='shared/task'),
+            patch.object(w, 'head', return_value='checked-head'),
+            patch.object(w, 'git') as git,
+            patch.object(w, 'update_task') as update_task,
+            patch.object(w, 'run', side_effect=response),
+        ):
+            result = w.publish(self.primary, args)
+
+        git.assert_called_once_with(
+            self.primary,
+            'push',
+            '-u',
+            'origin',
+            'shared/task',
+        )
+        self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
+        self.assertFalse(any(command[:3] == ('gh', 'pr', 'merge') for command in commands))
+        self.assertFalse(any(command[:3] == ('gh', 'pr', 'create') for command in commands))
+        self.assertEqual(result, {
+            'status': 'published',
+            'pr': '42',
+            'head': 'checked-head',
+        })
+        self.assertEqual(update_task.call_args.args[2]['status'], 'published')
+
+
+    def test_publish_creates_pr_with_exact_validated_body_file(self):
+        template = self.write_general_pr_template()
+        body = template.read_text(encoding='utf-8')
+        task = {
+            'checked': {'base': 'base', 'head': 'checked-head'},
+            'status': 'checked',
+        }
+        current_pr = {
+            'number': 42,
+            'headRefOid': 'checked-head',
+            'isCrossRepository': False,
+        }
+        commands = []
+
+        def response(root, *args, **kwargs):
+            commands.append(args)
+            if args[:3] == ('gh', 'pr', 'view'):
+                return json.dumps({
+                    'title': 'fix(auth): 인증 오류 수정',
+                    'body': body,
+                })
+            return ''
+
+        args = w.argparse.Namespace(
+            task='task',
+            title='fix(auth): 인증 오류 수정',
+            body_file=str(template),
+        )
+        with (
+            patch.object(w, 'owned_task', return_value=task),
+            patch.object(w, 'dirty_paths', return_value=[]),
+            patch.object(
+                w,
+                'source_repository',
+                return_value='sidey-app/SIDEY-source',
+            ),
+            patch.object(w, 'fetch_main', return_value='base'),
+            patch.object(w, 'attest'),
+            patch.object(w, 'changed_paths', return_value=['docs/guide.md']),
+            patch.object(w, 'validate_paths'),
+            patch.object(
+                w,
+                'publish_head',
+                return_value='sidey-app:shared/task',
+            ),
+            patch.object(w, 'open_task_prs', side_effect=([], [current_pr])),
+            patch.object(w, 'branch', return_value='shared/task'),
+            patch.object(w, 'head', return_value='checked-head'),
+            patch.object(w, 'git'),
+            patch.object(w, 'update_task'),
+            patch.object(w, 'run', side_effect=response),
+        ):
+            w.publish(self.primary, args)
+
+        create = next(command for command in commands if command[:3] == ('gh', 'pr', 'create'))
+        body_file = Path(create[create.index('--body-file') + 1])
+        self.assertEqual(body_file, template.resolve())
+        self.assertEqual(body_file.read_text(encoding='utf-8'), body)
+        self.assertNotIn('Co-authored-by:', body)
+        self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
+
+
+    def test_general_pr_body_accepts_filled_template_and_extra_sections(self):
+        template = self.write_general_pr_template()
+        body = template.read_text(encoding='utf-8').replace('[ ]', '[x]')
+        body += '\n## 추가 정보\n\n검토 참고 사항\n'
+        self.assertEqual(
+            w.require_pr_body(self.primary, body, ['docs/guide.md']),
+            'general',
+        )
+
+
+    def test_pr_body_is_not_subject_to_commit_line_length(self):
+        template = self.write_general_pr_template()
+        body = template.read_text(encoding='utf-8').replace('[ ]', '[x]')
+        body += '\n## Additional context\n\n' + ('detail ' * 20) + '\n'
+
+        self.assertGreater(max(map(len, body.splitlines())), 72)
+        self.assertEqual(
+            w.require_valid_pr(
+                self.primary,
+                'chore(Shared): 기여자 구조 정리',
+                body,
+                ['docs/guide.md'],
+            ),
+            'general',
+        )
+
+
+    def test_custom_pr_body_allows_changed_sections_but_rejects_empty_text(self):
+        self.write_general_pr_template()
+        self.assertEqual(
+            w.require_pr_body(self.primary, '# 캐릭터 에셋 PR\n', ['docs/guide.md']),
+            'general',
+        )
+        marker = w.GENERAL_PR_MARKER
+        missing = f'{marker}\n\n## PR 유형\n\n## 검증\n\n## 확인 사항\n'
+        self.assertEqual(w.require_pr_body(self.primary, missing, ['docs/guide.md']), 'general')
+        reordered = (
+            f'{marker}\n\n## 변경 내용\n\n## PR 유형\n\n'
+            '## 검증\n\n## 확인 사항\n'
+        )
+        self.assertEqual(w.require_pr_body(self.primary, reordered, ['docs/guide.md']), 'general')
+        with self.assertRaisesRegex(w.WorkflowError, 'description'):
+            w.require_pr_body(self.primary, marker, ['docs/guide.md'])
+
+
+    def test_general_pr_body_file_requires_existing_utf8_file(self):
+        self.write_general_pr_template()
+        with self.assertRaisesRegex(w.WorkflowError, 'Cannot read --body-file'):
+            w.require_pr_body_file(
+                self.primary,
+                'missing.md',
+                ['docs/guide.md'],
+            )
+        invalid = self.primary / 'invalid.md'
+        invalid.write_bytes(b'\x80')
+        with self.assertRaisesRegex(w.WorkflowError, 'UTF-8'):
+            w.require_pr_body_file(
+                self.primary,
+                invalid,
+                ['docs/guide.md'],
+            )
+
 
 
 if __name__ == '__main__':

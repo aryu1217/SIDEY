@@ -50,14 +50,6 @@ PRODUCT_VERSION_MIRRORS = {
     "windows/Version.props",
     "release/app-store-localizations.json",
 }
-HEADVER_MIGRATION_PLATFORM_PATHS = PRODUCT_VERSION_MIRRORS | {
-    "scripts/macos/archive_app_store.sh",
-    "scripts/macos/tests/test_native.sh",
-    "windows/src/Sidey.Platform.Windows/Deployment/WindowsUpdateService.cs",
-    "windows/tests/Sidey.Platform.Windows.Tests/DistributionSourceTests.cs",
-    "windows/tests/Sidey.Platform.Windows.Tests/WindowsReleaseContractTests.cs",
-    "windows/tests/Sidey.Platform.Windows.Tests/WindowsUpdateServiceTests.cs",
-}
 STABLE_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 
 
@@ -171,52 +163,6 @@ def validate_product_version_transition(
         run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
 
 
-def validate_headver_migration(root: str | Path | None, base: str | None,
-                               revision: str) -> None:
-    """Allow the exact legacy-to-HeadVer source and mirror transition once."""
-    if root is None or base is None:
-        raise WorkflowError("HeadVer migration requires an explicit root and base")
-    try:
-        before = json.loads(git(root, "show", f"{base}:release/version.json"))
-        after = json.loads(git(root, "show", f"{revision}:release/version.json"))
-        localization_before = json.loads(git(
-            root, "show", f"{base}:release/app-store-localizations.json"))
-        localization_after = json.loads(git(
-            root, "show", f"{revision}:release/app-store-localizations.json"))
-    except (json.JSONDecodeError, WorkflowError) as error:
-        raise WorkflowError(f"Cannot compare HeadVer migration to the base: {error}") from error
-    if (
-        not isinstance(before, dict) or before.get("schema") != 1
-        or not isinstance(after, dict)
-        or set(after) != {"schema", "head", "yearweek", "windowsBuild", "macBuild"}
-        or after.get("schema") != 2
-        or type(after.get("head")) is not int
-        or type(after.get("yearweek")) is not str
-        or re.fullmatch(r"[0-9]{4}", after["yearweek"]) is None
-        or type(after.get("windowsBuild")) is not int
-        or after["windowsBuild"] < 1
-        or STABLE_VERSION.fullmatch(str(before.get("productVersion", ""))) is None
-        or (after["head"], int(after["yearweek"]), after["windowsBuild"])
-        <= tuple(map(int, before["productVersion"].split(".")))
-        or type(after.get("macBuild")) is not int
-        or after["macBuild"] != before.get("macBuild")
-        or not isinstance(localization_before, dict)
-        or not isinstance(localization_after, dict)
-        or localization_before.get("release") != {
-            "version": before.get("productVersion"), "build": before.get("macBuild")
-        }
-        or localization_after.get("release") != {
-            "version": f"{after['head']}.{after['yearweek']}.{after['macBuild']}",
-            "build": after["macBuild"]
-        }
-        or {k: v for k, v in localization_before.items() if k != "release"}
-        != {k: v for k, v in localization_after.items() if k != "release"}
-    ):
-        raise WorkflowError("HeadVer migration must preserve macBuild and localization content")
-    for platform in ("macos", "windows"):
-        run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
-
-
 def git(root: str | Path, *args: str) -> str:
     """Run Git from *root* and return its standard output."""
 
@@ -309,10 +255,6 @@ def validate_paths(
         and "release/version.json" in paths
         and PRODUCT_VERSION_MIRRORS.issubset(paths)
     )
-    headver_migration_change = (
-        branch_name == "shared/headver-migration"
-        and product_version_change
-    )
     localization_source_change = (
         platform == "shared"
         and any(
@@ -327,42 +269,15 @@ def validate_paths(
             for path in paths
         )
     )
-    # The per-locale source split removes this legacy file exactly once. That
-    # migration also changes both native consumers atomically so no temporary
-    # compatibility keys or broken intermediate main revision are required.
-    # Check the revisions themselves so a later change cannot recreate the
-    # path merely to reopen this platform-boundary exception.
-    legacy_source = "assets/v1/commerce-localizations.json"
-    locale_source_split_change = (
-        localization_source_change
-        and legacy_source in paths
-        and root is not None
-        and base is not None
-        and git(root, "ls-tree", "--name-only", base, "--", legacy_source)
-        == legacy_source
-        and not git(
-            root,
-            "ls-tree",
-            "--name-only",
-            revision,
-            "--",
-            legacy_source,
-        )
-    )
     invalid = [
         path for path in paths
         if platform_for(path) != platform
         and not (mac_build_change and path == "release/version.json")
         and not (windows_build_change and path == "release/version.json")
         and not (product_version_change and path in PRODUCT_VERSION_MIRRORS)
-        and not (headver_migration_change and path in HEADVER_MIGRATION_PLATFORM_PATHS)
         and not (
             localization_source_change
             and path in LOCALIZATION_PLATFORM_PATHS
-        )
-        and not (
-            locale_source_split_change
-            and platform_for(path) in {"macos", "windows"}
         )
     ]
     if invalid:
@@ -371,10 +286,7 @@ def validate_paths(
             f"{branch_name} crosses its platform boundary: {changed}"
         )
     if product_version_change:
-        if headver_migration_change:
-            validate_headver_migration(root, base, revision)
-        else:
-            validate_product_version_transition(root, base, revision)
+        validate_product_version_transition(root, base, revision)
     if mac_build_change:
         mirrors = {"release/macos.json", "macos/Config/Version.xcconfig"}
         if not mirrors.issubset(paths):
