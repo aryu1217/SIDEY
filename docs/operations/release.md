@@ -106,10 +106,35 @@ Metadata와 binary를 같은 review에 제출할 때도 upload, submission과 ma
 ### Windows
 
 기존 [SIDEY Windows release workflow](../../.github/workflows/windows-release.yml)는
-참고용으로 남겨 두며 실행하지 않는다. 현재 자동 게시 경로는 없으므로 새 Windows
-릴리스에는 정확한 source의 실기 검사, installer 생성·검증, 공개 자산 재다운로드와
-SHA-256 대조를 포함한 별도 수동 절차를 확정해야 한다. Local build나 artifact 존재만으로
-공개 release를 대체하지 않는다.
+참고용으로 남겨 두며 실행하지 않는다. 승인된 Windows 릴리스는 깨끗하고 검증된
+정확한 source commit에서 `scripts/windows/New-WindowsReleaseCandidate.ps1`로 x64와
+ARM64 후보를 함께 만든 뒤 `scripts/windows/Publish-WindowsRelease.ps1`의 사전 검사를
+통과해야 한다. 각 아키텍처의 `Setup.exe`, `Update.exe`, `Update.json`, `Payload.bin`
+네 파일, 총 여덟 파일 중 하나라도 빠지면 게시하지 않는다. 두 설치 파일은 서로 다른
+아키텍처용이며 같은 이름으로 덮어쓰거나 한쪽 설치 파일을 양쪽 링크에 연결하지 않는다.
+
+```powershell
+$candidate = 'build/windows/release-candidate'
+./scripts/windows/New-WindowsReleaseCandidate.ps1 -OutputDirectory $candidate
+./scripts/windows/tests/Test-WindowsReleaseCandidate.ps1 -CandidateDirectory $candidate
+./scripts/windows/Publish-WindowsRelease.ps1 -CandidateDirectory $candidate
+```
+
+후보의 정확한 source, release version, 실기 검사 결과, 릴리스 노트를 검토한 뒤 별도로
+승인된 게시 단계에서만 `Publish-WindowsRelease.ps1 -Publish`를 실행한다. 이 경로는
+공개 `sidey-app/SIDEY`에 draft를 만들고 여덟 자산을 다시 내려받아 각 SHA-256을
+후보와 대조한 다음에만 공개한다. ARM64 실기 검사를 수행하지 않았다면 그 공백을
+릴리스 검토에 명시한다. Local build나 후보 파일만으로 공개 릴리스를 주장하지 않는다.
+`-Publish` 실행에는 검증한 후보 디렉터리와 해당 Windows 릴리스 노트를 지정한다.
+
+```powershell
+$release = Get-Content release/windows.json -Raw | ConvertFrom-Json
+$notes = "docs/releases/windows-v$($release.releaseVersion).md"
+./scripts/windows/Publish-WindowsRelease.ps1 -CandidateDirectory $candidate -ReleaseNotesPath $notes -Publish
+```
+게시 후에는 공개 자산과 x64·ARM64 다운로드 및 업데이트 링크가 각각 같은 공개
+릴리스를 가리키는지 확인한다. 웹사이트 게시는 별도 승인과 공개 저장소의 웹사이트
+배포 절차를 따른다.
 
 AGPL-covered historical binary를 계속 공개하는 release에는 binary를 만든 정확한 commit의
 Corresponding Source archive, AGPL license와 필요한 notice가 함께 있어야 한다. Archive가
