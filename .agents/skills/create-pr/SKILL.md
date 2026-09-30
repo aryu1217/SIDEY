@@ -14,9 +14,19 @@ are not accepted. This applies equally to agent-created and manual pull requests
 
 Separate local preparation from remote publication. Drafting a title, body or
 preview does not authorize a push or pull request creation. Immediately before
-the first remote mutation, confirm that the current user request explicitly
-authorizes publishing the branch and creating the pull request. If it does
-not, return the prepared title and body without changing remote state.
+the first remote mutation, confirm that the user request and established session
+authorization explicitly cover publishing the branch and the intended PR
+creation or update. A request to fix the same open PR can authorize its update;
+it does not authorize another PR. If publication is not authorized, return the
+prepared title and body without changing remote state.
+
+Follow the [logical task and Git boundaries](../remote-branch-workflow/SKILL.md#logical-task-and-git-boundaries).
+One logical task normally produces one pull request. Do not create separate PRs
+merely because the branch contains implementation, tests, documentation,
+configuration, workflow, localization, or packaging changes required to complete
+the same task. Multiple focused commits do not imply multiple PRs. Reuse the
+task-owned worktree and branch; invoking this skill is an operation within the
+task, not a new task.
 
 ## Prepare
 
@@ -42,11 +52,22 @@ creation. Do not replace it with an ad hoc `git push` or `gh pr create` path.
 After publication, read the pull request back and confirm its number, URL,
 base, head commit, title and body.
 
-Stop after the pull request exists. Do not merge it, wait indefinitely for CI,
-release, upload or deploy. Those operations require separate instructions.
+Stop after the pull request is created or updated and verified. Do not merge
+it, wait indefinitely for CI, release, upload or deploy. Those operations
+require separate instructions.
 GitHub owns the squash commit title and body through the repository's merge
 message settings; do not pass custom squash subject or body overrides.
 
-If the branch already has a pull request, update or reuse it only when it
-targets the same task branch and exact reviewed head. Otherwise stop and report
-the conflict.
+If an open PR already targets this logical task's owning repository, base, and
+branch, update it by default. Make same-task follow-up fixes, tests, or
+documentation in the existing worktree, commit, review the complete diff, rerun
+required validation for the new exact HEAD, and push under the applicable
+authorization and workflow checks. Refresh the PR description when needed to
+describe the complete final change. Do not create a replacement docs or test PR.
+
+An existing PR may still show the previous head before the follow-up push;
+that alone is not a task conflict. Verify that the remote head is the expected
+prior task checkpoint, preserve unexpected remote changes, and confirm after
+publication that the PR identifies the exact newly reviewed and validated HEAD.
+A different task, repository, base, branch, or unexpected head is a conflict to
+resolve, not a reason to silently create another PR.

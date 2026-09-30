@@ -1,0 +1,7 @@
+interface:
+  display_name: "Remote-backed Branch Workflow"
+  short_description: "Start or resume a recoverable SIDEY task branch"
+  default_prompt: "Use $remote-branch-workflow to start or resume my SIDEY logical task on its owning branch and keep checkpoints recoverable."
+
+policy:
+  allow_implicit_invocation: true
