@@ -25,24 +25,12 @@ struct OverlayHistoryView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(10)
-            .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             composer
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            LinearGradient(
-                colors: [
-                    Color.accentColor.opacity(0.12),
-                    Color(nsColor: .windowBackgroundColor),
-                    Color.accentColor.opacity(0.05)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.72))
         .onChange(of: model.realtimeActiveRoomID, initial: true) { _, roomID in
             onTypingChanged(false)
             history.roomDidChange(to: roomID)
@@ -50,15 +38,9 @@ struct OverlayHistoryView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 38, height: 38)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-                .accessibilityHidden(true)
+        HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.text("history.title"))
+                Label(L10n.text("history.title"), systemImage: "clock.arrow.circlepath")
                     .font(.headline)
                 Text(L10n.format(
                     "history.retention_notice",
@@ -69,8 +51,6 @@ struct OverlayHistoryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .glassEffect(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var loadingView: some View {
@@ -136,8 +116,8 @@ struct OverlayHistoryView: View {
                 .disabled(!model.canSubmitDraft)
                 .accessibilityLabel(L10n.text("message.send.accessibility"))
             }
-            .padding(10)
-            .glassEffect(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal, 10)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
@@ -267,12 +247,7 @@ struct HistoryMessageCard: View {
             }
         }
         .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.14))
-        }
+        .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
