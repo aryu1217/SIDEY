@@ -48,7 +48,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         let releaseChannel = AppReleaseChannel.resolve()
         let coordinator: AppCoordinator
-        if let suiteName = environment["SIDEY_PREFERENCES_SUITE"],
+        if releaseChannel.isLocalMembershipTest,
+           let suiteName = releaseChannel.preferencesSuiteName,
+           let defaults = UserDefaults(suiteName: suiteName) {
+            coordinator = AppCoordinator(
+                preferencesStore: .userDefaults(defaults),
+                legacyMigrator: .none,
+                releaseChannel: releaseChannel,
+                onLandingFirstFrame: { [weak launchProbe] in
+                    launchProbe?.markFirstFrame()
+                }
+            )
+        } else if let suiteName = environment["SIDEY_PREFERENCES_SUITE"],
            let defaults = UserDefaults(suiteName: suiteName) {
             coordinator = AppCoordinator(
                 preferencesStore: .userDefaults(defaults),

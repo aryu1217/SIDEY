@@ -38,8 +38,8 @@ extension AppCoordinator {
             advanceFirstRunTransition()
             return
         }
-        let requireExistingSession = model.preferences.onboardingComplete
-            || releaseChannel.requiresAppleAuthentication
+        let requireExistingSession = !releaseChannel.isLocalMembershipTest
+            && (model.preferences.onboardingComplete || releaseChannel.requiresAppleAuthentication)
         backendConnectionStatus = nil
         model.setActiveRoomRealtimeConnected(false)
         model.connectionState = .connecting
@@ -55,18 +55,33 @@ extension AppCoordinator {
                     messagingTransport = existing
                 } else {
                     do {
-                        let runtime = try await FirebaseV2ProductionFactory.makeRouter(
-                            backend: backend,
-                            configuration: runtimeConfiguration,
-                            keychain: KeychainStore(
-                                service: releaseChannel.keychainService,
-                                session: keychainAccessSession
+                        if releaseChannel.isLocalMembershipTest {
+                            let adapter = SideyBackendRealtimeAdapter(
+                                backend: backend,
+                                events: backend.events
                             )
-                        )
-                        messagingTransport = runtime.router
+                            messagingTransport = try RoomMessagingTransportRouter(
+                                selection: RealtimeTransportSelection.resolve(
+                                    requested: .legacySupabase,
+                                    firebaseV2Allowed: false
+                                ),
+                                makeLegacy: { adapter },
+                                shutdownShared: { await backend.shutdown() }
+                            )
+                        } else {
+                            let runtime = try await FirebaseV2ProductionFactory.makeRouter(
+                                backend: backend,
+                                configuration: runtimeConfiguration,
+                                keychain: KeychainStore(
+                                    service: releaseChannel.keychainService,
+                                    session: keychainAccessSession
+                                )
+                            )
+                            messagingTransport = runtime.router
+                            realtimeRolloutMonitor = runtime.rolloutMonitor
+                            realtimeRolloutRefreshInterval = runtime.initialRefreshInterval
+                        }
                         self.messagingTransport = messagingTransport
-                        realtimeRolloutMonitor = runtime.rolloutMonitor
-                        realtimeRolloutRefreshInterval = runtime.initialRefreshInterval
                         realtimeTransportInitializationError = nil
                     } catch {
                         realtimeTransportInitializationError = error

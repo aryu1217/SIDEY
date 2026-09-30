@@ -1107,14 +1107,20 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
             } catch is CancellationError {
                 break
             } catch {
+                if requestedAccessRevision != nil {
+                    isReconcilingHint = false
+                    // The selected Firebase adapter must fail closed when a
+                    // newer grant cannot be verified. The shared Supabase
+                    // backend still owns Presence and the router's recovery
+                    // path, so retiring it here would require an app restart.
+                    await failClosed(message: L10n.text(
+                        "firebase.transport.error.reconciliation_failed"
+                    ))
+                    return
+                }
                 eventContinuation.yield(.technicalError(
                     L10n.text("firebase.transport.error.reconciliation_failed")
                 ))
-                if requestedAccessRevision != nil {
-                    isReconcilingHint = false
-                    await shutdown()
-                    return
-                }
             }
         } while (needsAnotherHintReconciliation || pendingMinimumAccessRevision != nil)
             && !isShutDown

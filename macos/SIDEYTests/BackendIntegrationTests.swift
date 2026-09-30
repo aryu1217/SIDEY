@@ -3,6 +3,218 @@ import XCTest
 @testable import SIDEY
 
 final class BackendIntegrationTests: XCTestCase {
+    func testFourthMemberJoinsWithoutDisconnectingThreeConnectedMembers() async throws {
+        executionTimeAllowance = 180
+        var environment = ProcessInfo.processInfo.environment
+        let testBundle = Bundle(for: Self.self)
+        let integrationFlag = configuredValue(
+            environment: environment,
+            environmentKey: "SIDEY_RUN_BACKEND_INTEGRATION",
+            bundle: testBundle,
+            bundleKey: "SIDEYRunBackendIntegration"
+        )
+        guard integrationFlag == "1" else {
+            throw XCTSkip("명시적인 로컬·staging 환경에서만 통합 테스트 실행")
+        }
+        environment["SIDEY_SUPABASE_URL"] = configuredValue(
+            environment: environment,
+            environmentKey: "SIDEY_SUPABASE_URL",
+            bundle: testBundle,
+            bundleKey: "SIDEYSupabaseURL"
+        )
+        environment["SIDEY_SUPABASE_PUBLISHABLE_KEY"] = configuredValue(
+            environment: environment,
+            environmentKey: "SIDEY_SUPABASE_PUBLISHABLE_KEY",
+            bundle: testBundle,
+            bundleKey: "SIDEYSupabasePublishableKey"
+        )
+        guard environment["SIDEY_SUPABASE_URL"]?.isEmpty == false,
+              environment["SIDEY_SUPABASE_PUBLISHABLE_KEY"]?.isEmpty == false
+        else {
+            XCTFail("통합 테스트에는 SIDEY_SUPABASE_URL과 SIDEY_SUPABASE_PUBLISHABLE_KEY가 필요합니다.")
+            return
+        }
+        let configuration = try RuntimeConfiguration.resolve(
+            releaseChannel: .staging,
+            environment: environment
+        )
+        guard !configuration.isProductionBackend else {
+            XCTFail("통합 테스트는 SIDEY production backend에서 실행할 수 없습니다.")
+            return
+        }
+
+        let stores = (0..<4).map { _ in
+            KeychainStore(service: "app.sidey.desktop.integration.\(UUID().uuidString)")
+        }
+        let clients = stores.map { SideyBackend(configuration: configuration, keychain: $0) }
+        let probes = (0..<4).map { _ in BackendEventProbe() }
+        let eventTasks = (0..<4).map { index in
+            Task { await probes[index].consume(clients[index].events) }
+        }
+        var createdRoomID: UUID?
+        var phase = "boot"
+
+        do {
+            for index in 0..<4 {
+                try await bootLocalClient(clients[index])
+                _ = try await clients[index].upsertProfile(nickname: "입장 연속성 \(index + 1)")
+            }
+
+            phase = "three-member room setup"
+            let created = try await clients[0].createRoom(
+                name: "입장 연속성 \(Int.random(in: 1000...9999))"
+            )
+            createdRoomID = created.roomID
+            for index in 1...2 {
+                let joined = try await clients[index].joinRoom(inviteCode: created.inviteCode)
+                XCTAssertEqual(joined.roomID, created.roomID)
+            }
+            var memberIDs: [UUID] = []
+            for client in clients {
+                let userID = await client.currentUserID()
+                memberIDs.append(try XCTUnwrap(userID))
+            }
+            let initialMembers = Set(memberIDs.prefix(3))
+            for index in 0..<3 {
+                let snapshot = try await clients[index].loadSnapshot()
+                let reconciliation = try await clients[index].syncRealtime(
+                    rooms: snapshot.rooms,
+                    activeRoomID: created.roomID
+                )
+                let room = try XCTUnwrap(
+                    reconciliation.snapshot.rooms.first(where: { $0.id == created.roomID })
+                )
+                XCTAssertEqual(Set(room.members.map(\.userID)), initialMembers)
+            }
+            try await waitUntil("기존 세 클라이언트 Realtime 구독") {
+                for probe in probes.prefix(3) {
+                    if !(await probe.isConnected) { return false }
+                }
+                return true
+            }
+
+            var snapshotsBeforeJoin: [Int] = []
+            var notReadyBeforeJoin: [Int] = []
+            var disconnectsBeforeJoin: [Int] = []
+            for probe in probes.prefix(3) {
+                snapshotsBeforeJoin.append(await probe.snapshotCount)
+                notReadyBeforeJoin.append(await probe.notReadyAfterReadyCount)
+                disconnectsBeforeJoin.append(await probe.disconnectedAfterConnectCount)
+            }
+            let snapshotCountsAtJoin = snapshotsBeforeJoin
+
+            phase = "fourth member joins while three clients stay connected"
+            let joined = try await clients[3].joinRoom(inviteCode: created.inviteCode)
+            XCTAssertEqual(joined.roomID, created.roomID)
+            let fourthSnapshot = try await clients[3].loadSnapshot()
+            let fourthReconciliation = try await clients[3].syncRealtime(
+                rooms: fourthSnapshot.rooms,
+                activeRoomID: created.roomID
+            )
+            let fourthRoom = try XCTUnwrap(
+                fourthReconciliation.snapshot.rooms.first(where: { $0.id == created.roomID })
+            )
+            let allMembers = Set(memberIDs)
+            XCTAssertEqual(Set(fourthRoom.members.map(\.userID)), allMembers)
+            try await waitUntil("네 번째 클라이언트 Realtime 구독") {
+                await probes[3].isConnected
+            }
+
+            phase = "existing members receive fourth member snapshot"
+            try await waitUntil("기존 세 클라이언트의 신규 멤버 자동 반영") {
+                for index in 0..<3 {
+                    if !(await probes[index].hasRoomMembers(
+                        after: snapshotCountsAtJoin[index],
+                        roomID: created.roomID,
+                        expected: allMembers
+                    )) { return false }
+                }
+                return true
+            }
+
+            phase = "bidirectional messages after join"
+            let oldToNew = try await clients[0].sendMessage(
+                roomID: created.roomID,
+                body: "기존에서 신규 \(UUID().uuidString.prefix(8))"
+            )
+            try await waitUntil("신규 멤버가 기존 멤버의 메시지 수신") {
+                await probes[3].messageIDs.contains(oldToNew.id)
+            }
+            let newToOld = try await clients[3].sendMessage(
+                roomID: created.roomID,
+                body: "신규에서 기존 \(UUID().uuidString.prefix(8))"
+            )
+            try await waitUntil("기존 세 멤버가 신규 멤버의 메시지 수신") {
+                for probe in probes.prefix(3) {
+                    if !(await probe.messageIDs.contains(newToOld.id)) { return false }
+                }
+                return true
+            }
+
+            phase = "fourth member presence after join"
+            try await clients[3].setLocalPresence(.away)
+            let fourthUserID = memberIDs[3]
+            try await waitUntil("기존 세 멤버가 신규 멤버 Presence 수신") {
+                for probe in probes.prefix(3) {
+                    if (await probe.presence[fourthUserID]) != .away { return false }
+                }
+                return true
+            }
+
+            phase = "existing connections remain ready"
+            for index in 0..<3 {
+                let isReady = await probes[index].isConnected
+                let notReadyAfterJoin = await probes[index].notReadyAfterReadyCount
+                let disconnectsAfterJoin = await probes[index].disconnectedAfterConnectCount
+                XCTAssertTrue(isReady, "기존 클라이언트 \(index + 1) 연결 유지")
+                XCTAssertEqual(
+                    notReadyAfterJoin,
+                    notReadyBeforeJoin[index],
+                    "기존 클라이언트 \(index + 1)의 연결 준비 상태가 중단됨"
+                )
+                XCTAssertEqual(
+                    disconnectsAfterJoin,
+                    disconnectsBeforeJoin[index],
+                    "기존 클라이언트 \(index + 1)의 전송 연결이 끊김"
+                )
+            }
+
+            phase = "cleanup room"
+            try await clients[0].deleteRoom(created.roomID)
+            createdRoomID = nil
+        } catch {
+            XCTFail("4인 입장 통합 테스트 실패 단계: \(phase) · \(error)")
+            if let createdRoomID {
+                try? await clients[0].deleteRoom(createdRoomID)
+            }
+            for client in clients { try? await client.deleteOwnAccountForTesting() }
+            for task in eventTasks { task.cancel() }
+            for client in clients { await client.shutdown() }
+            for store in stores { try? store.deleteAll() }
+            throw error
+        }
+
+        for client in clients { try await client.deleteOwnAccountForTesting() }
+        for task in eventTasks { task.cancel() }
+        for client in clients { await client.shutdown() }
+        for store in stores { try store.deleteAll() }
+    }
+
+    private func bootLocalClient(_ client: SideyBackend) async throws {
+        do {
+            _ = try await client.boot()
+        } catch {
+            // Auth and PostgREST can differ by a second in local Docker.
+            // Reuse the same issued session once.
+            let detail = String(describing: error)
+            guard detail.contains("PGRST303"), detail.contains("JWT issued at future") else {
+                throw error
+            }
+            try await Task.sleep(for: .seconds(2))
+            _ = try await client.boot()
+        }
+    }
+
     func testTwoNativeClientsMessageTypingPresenceAndCleanup() async throws {
         // This scenario intentionally includes 10 s and 30 s profile-change gaps,
         // then forces a disconnect/recovery cycle. Keep XCTest's watchdog from
@@ -322,6 +534,7 @@ final class BackendIntegrationTests: XCTestCase {
 
 private actor BackendEventProbe {
     private(set) var isConnected = false
+    private(set) var notReadyAfterReadyCount = 0
     private(set) var messageIDs: Set<UUID> = []
     private(set) var typingStarted = false
     private(set) var typingStopped = false
@@ -334,6 +547,7 @@ private actor BackendEventProbe {
     private(set) var roomMemberIDs: [UUID: Set<UUID>] = [:]
     private(set) var members: [UUID: Profile] = [:]
     private var hasConnected = false
+    private var hasBeenReady = false
 
     func hasPresenceUpdate(userID: UUID, state: PresenceState, after count: Int) -> Bool {
         presence[userID] == state && presenceUpdateCounts[userID, default: 0] > count
@@ -382,6 +596,11 @@ private actor BackendEventProbe {
                     hasConnected = true
                 } else if hasConnected {
                     disconnectedAfterConnectCount += 1
+                }
+                if status.isReady {
+                    hasBeenReady = true
+                } else if hasBeenReady {
+                    notReadyAfterReadyCount += 1
                 }
                 isConnected = status.isReady
             case .message(let message):
