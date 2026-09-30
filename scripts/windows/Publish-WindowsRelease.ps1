@@ -123,11 +123,6 @@ try {
         @(Compare-Object $expectedNames $remoteNames -CaseSensitive).Count -ne 0) {
         throw 'Windows release draft must target the pinned public commit and contain exactly eight assets.'
     }
-    $tagTargetCommit = gh api "repos/$PublicRepository/git/ref/tags/$tag" --jq .object.sha
-    if ($LASTEXITCODE -ne 0 -or $tagTargetCommit -cne $publicTargetCommit) {
-        throw 'Windows release tag does not target the pinned public repository commit.'
-    }
-
     $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     $verifyPath = Join-Path $temporaryRoot `
         "sidey-windows-release-verify-$([Guid]::NewGuid().ToString('N'))"
@@ -163,6 +158,11 @@ try {
     Invoke-SideyNativeCommand -FilePath 'gh' `
         -ArgumentList @('release', 'edit', $tag, '--repo', $PublicRepository, '--draft=false') `
         -Description 'Publish verified Windows release'
+    # GitHub creates the tag ref when a draft is published, not when it is created.
+    $tagTargetCommit = gh api "repos/$PublicRepository/git/ref/tags/$tag" --jq .object.sha
+    if ($LASTEXITCODE -ne 0 -or $tagTargetCommit -cne $publicTargetCommit) {
+        throw 'Windows release tag does not target the pinned public repository commit.'
+    }
     $publishedJson = gh release view $tag --repo $PublicRepository `
         --json isDraft,isPrerelease,targetCommitish,assets
     if ($LASTEXITCODE -ne 0) {
