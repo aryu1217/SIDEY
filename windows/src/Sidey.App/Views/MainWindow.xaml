@@ -1329,9 +1329,6 @@
                       <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
                         <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.notify.title}, Mode=OneWay}" IsChecked="{Binding NotifyWhenUpdateAvailable, Mode=TwoWay}" />
                       </Border>
-                      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="20,12">
-                        <CheckBox Content="{Binding Value, Source={i18n:I18n Key=settings.update.show_after.title}, Mode=OneWay}" IsChecked="{Binding ShowReleaseNotesAfterUpdate, Mode=TwoWay}" />
-                      </Border>
                     </StackPanel>
                   </StackPanel>
                 </Border>

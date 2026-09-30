@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Detalji ispravke"
       },
-      "show_after": {
-        "title": "Prikaži detalje posle ažuriranja"
-      },
       "title": "Ispravke"
     },
     "window": {

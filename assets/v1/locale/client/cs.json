@@ -1403,9 +1403,6 @@
           },
           "notify": {
             "title": "Upozorňovat na nové aktualizace"
-          },
-          "show_after": {
-            "title": "Po aktualizaci zobrazit podrobnosti"
           }
         }
       },

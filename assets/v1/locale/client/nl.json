@@ -1403,9 +1403,6 @@
           },
           "notify": {
             "title": "Meldingen over nieuwe updates tonen"
-          },
-          "show_after": {
-            "title": "Na het bijwerken de details tonen"
           }
         }
       },

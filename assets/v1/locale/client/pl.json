@@ -618,9 +618,6 @@
           },
           "notify": {
             "title": "Powiadamiaj o nowych aktualizacjach"
-          },
-          "show_after": {
-            "title": "Pokaż szczegóły po aktualizacji"
           }
         }
       },

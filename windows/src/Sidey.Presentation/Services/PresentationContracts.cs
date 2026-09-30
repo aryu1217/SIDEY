@@ -23,8 +23,7 @@ public sealed record AvailableUpdate(
 
 public sealed record UpdatePreferences(
     bool AutoInstall = true,
-    bool NotifyWhenAvailable = true,
-    bool ShowReleaseNotesAfterUpdate = true);
+    bool NotifyWhenAvailable = true);
 
 public interface IUpdateService
 {

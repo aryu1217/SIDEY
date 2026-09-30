@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Wat is er nieuw"
       },
-      "show_after": {
-        "title": "Na het bijwerken de details tonen"
-      },
       "title": "Updates"
     },
     "window": {

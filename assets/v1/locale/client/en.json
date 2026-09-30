@@ -1403,9 +1403,6 @@
           },
           "notify": {
             "title": "Notify me about new updates"
-          },
-          "show_after": {
-            "title": "Show update details after updating"
           }
         }
       },

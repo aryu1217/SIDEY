@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Podrobnosti aktualizace"
       },
-      "show_after": {
-        "title": "Po aktualizaci zobrazit podrobnosti"
-      },
       "title": "Aktualizace"
     },
     "window": {

@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Dettagli aggiornamento"
       },
-      "show_after": {
-        "title": "Mostra i dettagli dopo l'aggiornamento"
-      },
       "title": "Aggiornamenti"
     },
     "window": {

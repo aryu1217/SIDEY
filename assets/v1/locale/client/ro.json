@@ -1403,9 +1403,6 @@
           },
           "notify": {
             "title": "Anunță-mă despre actualizările noi"
-          },
-          "show_after": {
-            "title": "Arată detaliile după actualizare"
           }
         }
       },

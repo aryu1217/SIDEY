@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "업데이트 내용"
       },
-      "show_after": {
-        "title": "업데이트 후 업데이트 내용 표시"
-      },
       "title": "업데이트"
     },
     "window": {

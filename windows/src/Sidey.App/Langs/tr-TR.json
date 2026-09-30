@@ -652,9 +652,6 @@
       "release_notes": {
         "action": "Güncelleştirme ayrıntıları"
       },
-      "show_after": {
-        "title": "Güncellemeden sonra ayrıntıları göster"
-      },
       "title": "Güncelleştirmeler"
     },
     "window": {

@@ -1403,9 +1403,6 @@
           },
           "notify": {
             "title": "Obavesti me o novim ispravkama"
-          },
-          "show_after": {
-            "title": "Prikaži detalje posle ažuriranja"
           }
         }
       },

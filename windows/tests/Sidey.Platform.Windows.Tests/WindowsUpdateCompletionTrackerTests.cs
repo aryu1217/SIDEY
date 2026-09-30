@@ -12,7 +12,7 @@ public sealed class WindowsUpdateCompletionTrackerTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         File.WriteAllText(Path.Combine(_directory, "last-launched-version.txt"), "1.0.0");
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
+        WindowsUpdateCompletionTracker tracker = new(StatePath());
 
         Assert.Null(tracker.PendingNotificationVersion("1.4.1000"));
         Assert.True(tracker.TryMarkLaunched("1.4.1000"));
@@ -24,9 +24,12 @@ public sealed class WindowsUpdateCompletionTrackerTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         File.WriteAllText(StatePath(), "1.4.1000");
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
+        WindowsUpdateCompletionTracker tracker = new(StatePath());
 
         Assert.Equal("1.4.1000", tracker.PendingNotificationVersion("1.4.1000"));
+        Assert.True(tracker.TryMarkLaunched("1.4.1000"));
+        Assert.Null(tracker.PendingNotificationVersion("1.4.1000"));
+        Assert.False(File.Exists(StatePath()));
         Assert.True(tracker.TryMarkLaunched("1.4.1000"));
         Assert.Null(tracker.PendingNotificationVersion("1.4.1000"));
     }
@@ -39,60 +42,21 @@ public sealed class WindowsUpdateCompletionTrackerTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         File.WriteAllText(StatePath(), marker);
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
+        WindowsUpdateCompletionTracker tracker = new(StatePath());
 
         Assert.Null(tracker.PendingNotificationVersion("1.4.1000"));
         Assert.True(tracker.TryMarkLaunched("1.4.1000"));
         Assert.False(File.Exists(StatePath()));
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void CompletedUpdateConsumesMarkerAndHonorsReleaseNotesPreference(bool showReleaseNotes)
-    {
-        Directory.CreateDirectory(_directory);
-        File.WriteAllText(StatePath(), "1.4.1000");
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
-
-        Assert.True(tracker.TryConsumeCompletedUpdate(
-            "1.4.1000", showReleaseNotes, out bool shouldOpenReleaseNotes));
-
-        Assert.Equal(showReleaseNotes, shouldOpenReleaseNotes);
-        Assert.False(File.Exists(StatePath()));
-        Assert.True(tracker.TryConsumeCompletedUpdate(
-            "1.4.1000", true, out bool shouldOpenOnNextLaunch));
-        Assert.False(shouldOpenOnNextLaunch);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("1.4.999")]
-    [InlineData("1.4.1001")]
-    public void MissingOrDifferentBuildMarkerDoesNotOpenReleaseNotes(string? marker)
-    {
-        Directory.CreateDirectory(_directory);
-        if (marker is not null)
-            File.WriteAllText(StatePath(), marker);
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
-
-        Assert.True(tracker.TryConsumeCompletedUpdate(
-            "1.4.1000", true, out bool shouldOpenReleaseNotes));
-
-        Assert.False(shouldOpenReleaseNotes);
-        Assert.False(File.Exists(StatePath()));
-    }
-
     [Fact]
-    public void UnreadableCompletionStateDoesNotOpenReleaseNotesOrReportConsumption()
+    public void UnreadableCompletionStateDoesNotReportConsumption()
     {
         Directory.CreateDirectory(StatePath());
-        var tracker = new WindowsUpdateCompletionTracker(StatePath());
+        WindowsUpdateCompletionTracker tracker = new(StatePath());
 
-        Assert.False(tracker.TryConsumeCompletedUpdate(
-            "1.4.1000", true, out bool shouldOpenReleaseNotes));
-
-        Assert.False(shouldOpenReleaseNotes);
+        Assert.Null(tracker.PendingNotificationVersion("1.4.1000"));
+        Assert.False(tracker.TryMarkLaunched("1.4.1000"));
         Assert.True(Directory.Exists(StatePath()));
     }
 

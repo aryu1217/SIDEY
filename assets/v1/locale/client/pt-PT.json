@@ -1456,9 +1456,6 @@
           },
           "notify": {
             "title": "Notificar-me sobre novas atualizações"
-          },
-          "show_after": {
-            "title": "Mostrar detalhes após a atualização"
           }
         }
       },
