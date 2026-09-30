@@ -15,7 +15,7 @@ Read only the sources relevant to the task:
 - Backend ownership and catalog handoff: [`docs/BACKEND.md`](docs/BACKEND.md)
 - Commerce metadata: [`assets/v1/commerce-catalog.json`](assets/v1/commerce-catalog.json)
 - Asset metadata and platform support: [`assets/v1/manifest.json`](assets/v1/manifest.json)
-- Shared product version and platform build counters: [`release/version.json`](release/version.json)
+- Shared HeadVer head/week and platform build counters: [`release/version.json`](release/version.json)
 - Generated App Store target and public Windows release mirrors:
   [`release/macos.json`](release/macos.json) and [`release/windows.json`](release/windows.json)
 
@@ -87,8 +87,14 @@ Codex-assisted new commits must include `Co-authored-by: codex <codex@openai.com
 - A `macos/*` branch must not edit, move, delete, format, generate, build, test, or release Windows implementation files. This includes `windows/**` and Windows-specific workflows, installers, assets, and documentation.
 - A `windows/*` branch must not edit, move, delete, format, generate, build, test, or release macOS implementation files. This includes `macos/**` and macOS-specific scripts, workflows, packages, assets, and documentation.
 - Shared changes belong on `shared/*`. Do not mix new shared-file edits into a platform implementation commit. Land the shared change independently, then merge or cherry-pick that reviewed commit into the platform branch that needs it.
-- Exception for an atomic Product Version transition: a `shared/*` branch may update `release/version.json` together with its generated macOS and Windows version mirrors (`release/macos.json`, `macos/Config/Version.xcconfig`, `release/windows.json`, and `windows/Version.props`) and the matching release version in `release/app-store-localizations.json`. The Product Version must increase, `windowsRevision` must reset to `0`, and `macBuild` must stay unchanged. The workflow verifies the source change against the branch base, checks the generated mirrors, and permits only the release version field to change in the App Store localization manifest; other platform paths remain isolated.
-- Exception for a macOS build counter only: a `macos/*` branch may update `release/version.json` together with its generated `release/macos.json` and `macos/Config/Version.xcconfig` mirrors. Its `productVersion`, `windowsRevision`, schema and keys must stay unchanged, and `macBuild` must increase. The workflow compares the exact source against the branch base before accepting this exception.
+- Exception for an atomic HeadVer head/week transition: a `shared/*` branch may update `release/version.json` with both generated platform mirrors and the matching release version in `release/app-store-localizations.json`. The head/week pair must increase while both platform builds stay unchanged. The workflow verifies the source change against the branch base and checks generated mirrors.
+- Exception for a macOS build counter only: a `macos/*` branch may increase `macBuild` in `release/version.json` together with its generated `release/macos.json` and `macos/Config/Version.xcconfig` mirrors and the matching App Store localization release identity. All other source fields stay unchanged.
+- Exception for a Windows build counter only: a `windows/*` branch may increase `windowsBuild` in `release/version.json` together with its generated `release/windows.json` and `windows/Version.props` mirrors. All other source fields stay unchanged. Official development builds reserve a unique number on the remote before generating an executable; failed builds may leave gaps.
+- One-time HeadVer migration: `shared/headver-migration` may update the common version source,
+  generated macOS and Windows mirrors, the App Store localization release identity, and the
+  exact native readers and tests listed in the workflow path validator. The base must have
+  legacy schema 1, the target must have HeadVer schema 2, and the macOS build stays unchanged.
+  This exception does not allow unrelated native changes.
 - If a platform task reveals work needed on the other platform, record a follow-up instead of implementing it on the current branch.
 - Do not switch or clean a dirty worktree owned by another task or agent. Create an isolated worktree on the correctly prefixed branch.
 - macOS remains the reference implementation. Windows follows through its own branch without rewriting or opportunistically modifying macOS code.

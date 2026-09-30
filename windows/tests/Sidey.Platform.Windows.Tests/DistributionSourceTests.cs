@@ -93,24 +93,24 @@ public sealed class DistributionSourceTests
     }
 
     [Fact]
-    public void GeneratedVersionPropertiesSeparateProductAndWindowsUpdateVersions()
+    public void GeneratedVersionPropertiesUseTheWindowsHeadVerBuild()
     {
         var properties = XDocument.Load(RepositoryPath("windows", "Version.props"));
         XElement propertyGroup = properties.Descendants("PropertyGroup").Single();
         string productVersion = Value(properties, "SideyProductVersion");
-        int windowsRevision = int.Parse(Value(properties, "SideyWindowsRevision"));
+        int windowsBuild = int.Parse(Value(properties, "SideyWindowsBuild"));
         string updateVersion = Value(properties, "SideyWindowsUpdateVersion");
         string releaseVersion = Value(properties, "SideyWindowsReleaseVersion");
         string msixVersion = Value(properties, "SideyMsixVersion");
         int[] productParts = [.. productVersion.Split('.').Select(int.Parse)];
 
         Assert.Equal(3, productParts.Length);
-        Assert.InRange(windowsRevision, 0, 999);
-        Assert.Equal(
-            $"{productParts[0]}.{productParts[1]}.{productParts[2] * 1000 + windowsRevision}.0",
-            msixVersion);
-        Assert.Equal(msixVersion[..msixVersion.LastIndexOf('.')], updateVersion);
-        Assert.Equal(windowsRevision == 0 ? productVersion : updateVersion, releaseVersion);
+        Assert.Equal(4, productVersion.Split('.')[1].Length);
+        Assert.Equal(windowsBuild, productParts[2]);
+        Assert.InRange(windowsBuild, 1, 65535);
+        Assert.Equal($"{productVersion}.0", msixVersion);
+        Assert.Equal(productVersion, updateVersion);
+        Assert.Equal(productVersion, releaseVersion);
         Assert.Equal(productVersion, Value(properties, "Version"));
         Assert.Equal(productVersion, Value(properties, "VersionPrefix"));
         Assert.Equal(productVersion, Value(properties, "InformationalVersion"));

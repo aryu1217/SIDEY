@@ -42,7 +42,7 @@ def load_manifest(platform: str) -> dict[str, object]:
         required.add("build")
     elif windows_generated:
         required.update({
-            "windowsRevision",
+            "windowsBuild",
             "updateVersion",
             "releaseVersion",
             "msixVersion",
@@ -64,9 +64,9 @@ def load_manifest(platform: str) -> dict[str, object]:
         )
     elif windows_generated:
         require(
-            isinstance(data["windowsRevision"], int)
-            and 0 <= data["windowsRevision"] <= 999,
-            f"{path} must contain a Windows revision from 0 through 999",
+            type(data["windowsBuild"]) is int
+            and 1 <= data["windowsBuild"] <= 65535,
+            f"{path} must contain a Windows build from 1 through 65535",
         )
         for key in ("updateVersion", "releaseVersion"):
             require(
@@ -75,8 +75,8 @@ def load_manifest(platform: str) -> dict[str, object]:
             )
     source = load_version(ROOT)
     require(
-        data["version"] == source.product_version,
-        f"{path} product version does not match release/version.json",
+        data["version"] == (source.mac_version if platform == "macos" else source.windows_version),
+        f"{path} version does not match release/version.json",
     )
     if platform == "macos":
         require(
@@ -84,8 +84,8 @@ def load_manifest(platform: str) -> dict[str, object]:
             f"{path} build does not match release/version.json",
         )
     elif windows_generated:
-        require(data["windowsRevision"] == source.windows_revision,
-                f"{path} revision does not match release/version.json")
+        require(data["windowsBuild"] == source.windows_build,
+                f"{path} build does not match release/version.json")
         require(data["updateVersion"] == source.windows_update_version,
                 f"{path} update version does not match release/version.json")
         require(data["releaseVersion"] == source.windows_release_version,

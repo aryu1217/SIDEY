@@ -20,8 +20,10 @@ public sealed class WindowsReleaseContractTests
         string sourceVersion = versionProperties.Descendants("SideyProductVersion").Single().Value;
         Assert.Equal(publicVersion, sourceVersion);
         Assert.Equal(
-            int.Parse(versionProperties.Descendants("SideyWindowsRevision").Single().Value),
-            manifest.GetProperty("windowsRevision").GetInt32());
+            int.Parse(versionProperties.Descendants("SideyWindowsBuild").Single().Value),
+            manifest.GetProperty("windowsBuild").GetInt32());
+        Assert.Equal(publicVersion, manifest.GetProperty("updateVersion").GetString());
+        Assert.Equal(publicVersion, manifest.GetProperty("releaseVersion").GetString());
         Assert.Equal(
             versionProperties.Descendants("SideyWindowsUpdateVersion").Single().Value,
             manifest.GetProperty("updateVersion").GetString());

@@ -7,7 +7,7 @@
 배포 surface이며 현재 application source를 제공하지 않는다. 다만 계속 배포하는 과거
 AGPL binary의 정확한 Corresponding Source archive와 license notice는 release별로 유지한다.
 
-공통 Product Version, Windows revision과 macOS build number는
+공통 HeadVer head·ISO yearweek와 플랫폼별 build number는
 [`release/version.json`](../../release/version.json)이 소유한다. macOS의 App Store target
 manifest와 Xcode version 설정, Windows의 공개 release manifest와 MSBuild version 설정은
 이 원본에서 생성하고 검증한다. macOS metadata는 빌드 계약이며 App Store 심사·게시 완료를 뜻하지 않는다.
@@ -16,12 +16,11 @@ version으로 표시하지 않고 App Store 제품 페이지로 연결한다.
 
 Windows의 공개 version과 channel은 generated mirror인
 [`release/windows.json`](../../release/windows.json)을 통해 기존 release 소비자에 제공한다.
-사용자 표시는 Product Version, update 비교는 `Major.Minor.(Patch * 1000 + Windows revision)`,
-binary FileVersion은 같은 값에 마지막 `0`을 붙인 MSIX-compatible version을 사용한다. 현재
-배포는 계속 self-contained NSIS Setup EXE이며 MSIX package를 만들지 않는다. Revision `000`
-release는 기존 client가 인식하는 Product Version tag와 installer를 bridge로 유지한다. 이후
-revision의 update manifest는 기존 bridge와 최신 update artifact를 함께 제공하고 website는
-최신 artifact를 가리킨다. Windows target framework, minimum OS contract와
+사용자 표시와 update 비교는 같은 `{head}.{yearweek}.{windowsBuild}`를 사용하고,
+binary FileVersion은 마지막 `0`을 붙인 MSIX-compatible version을 사용한다. 현재
+배포는 계속 self-contained NSIS Setup EXE이며 MSIX package를 만들지 않는다. 과거
+revision 기반 release의 tag와 업데이트 계약은 유지한다. 새 HeadVer release의 공개
+update manifest는 구버전 client가 읽을 수 있는 기본 필드만 사용한다. Windows target framework, minimum OS contract와
 binary version은 [`windows/src/Sidey.App/Sidey.App.csproj`](../../windows/src/Sidey.App/Sidey.App.csproj)
 및 관련 project files에 있다.
 

@@ -254,7 +254,7 @@ def load_desired_state(manifest_path: Path, commerce_path: Path, catalog_path: P
             raise ValidationError(f"Version source must be an object: {version_path}")
         manifest_source = dict(manifest_source)
         manifest_source["release"] = {
-            "version": version_source.get("productVersion"),
+            "version": f"{version_source.get('head')}.{version_source.get('yearweek')}.{version_source.get('macBuild')}",
             "build": version_source.get("macBuild"),
         }
     manifest = validate_manifest(manifest_source)

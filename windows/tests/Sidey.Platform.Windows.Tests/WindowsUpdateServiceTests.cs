@@ -17,9 +17,10 @@ public sealed class WindowsUpdateServiceTests
     }
 
     [Theory]
+    [InlineData("2.2640.1", "2.2640.1", "2.2640.1")]
     [InlineData("2.0.1", "2.0.1000", "2.0.1")]
     [InlineData("2.0.1", "2.0.1001", "2.0.1001")]
-    public void CurrentReleaseIdentityUsesProductForRevisionZeroAndUpdateForLaterRevisions(
+    public void CurrentReleaseIdentitySupportsHeadVerAndPreviouslyInstalledVersions(
         string productVersion,
         string updateVersion,
         string expectedReleaseVersion)
@@ -66,6 +67,55 @@ public sealed class WindowsUpdateServiceTests
         WindowsUpdateManifest? update = await service.CheckAsync();
 
         Assert.Null(update);
+    }
+
+    [Fact]
+    public async Task HeadVerManifestOffersTheNextWindowsBuild()
+    {
+        const string Manifest = """
+            {
+              "channel": "production",
+              "version": "2.2640.2",
+              "tag": "windows-v2.2640.2",
+              "installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.2/SIDEY-Windows-x64-v2.2640.2-Setup.exe",
+              "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+            """;
+        using HttpResponseMessage response = JsonResponse(Manifest);
+        using var client = new HttpClient(new StubHandler(response));
+        WindowsUpdateService service = CreateService(client, "2.2640.1", "2.2640.1");
+
+        WindowsUpdateManifest? update = await service.CheckAsync();
+
+        Assert.NotNull(update);
+        Assert.Equal("2.2640.2", update.ProductVersion);
+        Assert.Equal("2.2640.2", update.UpdateVersion);
+        Assert.Equal("windows-v2.2640.2", update.UpdateTag);
+        Assert.EndsWith("v2.2640.2-Setup.exe", update.InstallerUri.AbsoluteUri, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HeadVerManifestRejectsDivergentProductAndUpdateVersions()
+    {
+        const string Manifest = """
+            {
+              "channel": "production",
+              "version": "2.2640.2",
+              "tag": "windows-v2.2640.2",
+              "installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.2/SIDEY-Windows-x64-v2.2640.2-Setup.exe",
+              "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+              "product_version": "2.2640.2",
+              "update_version": "2.2640.3",
+              "update_tag": "windows-v2.2640.3",
+              "update_installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.3/SIDEY-Windows-x64-v2.2640.3-Setup.exe",
+              "update_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+            """;
+        using HttpResponseMessage response = JsonResponse(Manifest);
+        using var client = new HttpClient(new StubHandler(response));
+        WindowsUpdateService service = CreateService(client, "2.2640.1", "2.2640.1");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.CheckAsync());
     }
 
     [Fact]
@@ -362,7 +412,7 @@ public sealed class WindowsUpdateServiceTests
     }
 
     [Fact]
-    public async Task NewContractUpdateVersionMustUseTheEncodedWindowsVersion()
+    public async Task LegacyContractRejectsAnUpdateVersionOutsideTheEncodedRange()
     {
         const string Manifest = """
             {
@@ -372,9 +422,9 @@ public sealed class WindowsUpdateServiceTests
               "installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.1/SIDEY-Windows-x64-v2.0.1-Setup.exe",
               "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "product_version": "2.0.1",
-              "update_version": "2.0.1",
-              "update_tag": "windows-v2.0.1",
-              "update_installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.1/SIDEY-Windows-x64-v2.0.1-Setup.exe",
+              "update_version": "2.0.100",
+              "update_tag": "windows-v2.0.100",
+              "update_installer_url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.100/SIDEY-Windows-x64-v2.0.100-Setup.exe",
               "update_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
             }
             """;

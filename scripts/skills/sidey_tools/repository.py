@@ -50,6 +50,14 @@ PRODUCT_VERSION_MIRRORS = {
     "windows/Version.props",
     "release/app-store-localizations.json",
 }
+HEADVER_MIGRATION_PLATFORM_PATHS = PRODUCT_VERSION_MIRRORS | {
+    "scripts/macos/archive_app_store.sh",
+    "scripts/macos/tests/test_native.sh",
+    "windows/src/Sidey.Platform.Windows/Deployment/WindowsUpdateService.cs",
+    "windows/tests/Sidey.Platform.Windows.Tests/DistributionSourceTests.cs",
+    "windows/tests/Sidey.Platform.Windows.Tests/WindowsReleaseContractTests.cs",
+    "windows/tests/Sidey.Platform.Windows.Tests/WindowsUpdateServiceTests.cs",
+}
 STABLE_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 
 
@@ -71,6 +79,34 @@ def validate_product_version_transition(
         raise WorkflowError(
             f"Cannot compare Product Version against the base: {error}"
         ) from error
+
+    if (isinstance(before, dict) and isinstance(after, dict)
+            and before.get("schema") == after.get("schema") == 2):
+        keys = {"schema", "head", "yearweek", "windowsBuild", "macBuild"}
+        if (set(before) != keys or set(after) != keys
+                or type(before["head"]) is not int or type(after["head"]) is not int
+                or type(before["yearweek"]) is not str
+                or type(after["yearweek"]) is not str
+                or (after["head"], after["yearweek"])
+                <= (before["head"], before["yearweek"])
+                or after["windowsBuild"] != before["windowsBuild"]
+                or after["macBuild"] != before["macBuild"]):
+            raise WorkflowError("Shared HeadVer head/yearweek transition must preserve builds")
+        localization_path = "release/app-store-localizations.json"
+        localization_before = json.loads(git(root, "show", f"{base}:{localization_path}"))
+        localization_after = json.loads(git(root, "show", f"{revision}:{localization_path}"))
+        expected_before = f"{before['head']}.{before['yearweek']}.{before['macBuild']}"
+        expected_after = f"{after['head']}.{after['yearweek']}.{after['macBuild']}"
+        if (localization_before.get("release") != {
+                "version": expected_before, "build": before["macBuild"]}
+                or localization_after.get("release") != {
+                    "version": expected_after, "build": after["macBuild"]}
+                or {k: v for k, v in localization_before.items() if k != "release"}
+                != {k: v for k, v in localization_after.items() if k != "release"}):
+            raise WorkflowError("App Store localization manifest may change only its matching release version")
+        for platform in ("macos", "windows"):
+            run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
+        return
 
     keys = {"schema", "productVersion", "windowsRevision", "macBuild"}
     if (
@@ -131,6 +167,52 @@ def validate_product_version_transition(
             "App Store localization manifest may change only its matching release version"
         )
 
+    for platform in ("macos", "windows"):
+        run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
+
+
+def validate_headver_migration(root: str | Path | None, base: str | None,
+                               revision: str) -> None:
+    """Allow the exact legacy-to-HeadVer source and mirror transition once."""
+    if root is None or base is None:
+        raise WorkflowError("HeadVer migration requires an explicit root and base")
+    try:
+        before = json.loads(git(root, "show", f"{base}:release/version.json"))
+        after = json.loads(git(root, "show", f"{revision}:release/version.json"))
+        localization_before = json.loads(git(
+            root, "show", f"{base}:release/app-store-localizations.json"))
+        localization_after = json.loads(git(
+            root, "show", f"{revision}:release/app-store-localizations.json"))
+    except (json.JSONDecodeError, WorkflowError) as error:
+        raise WorkflowError(f"Cannot compare HeadVer migration to the base: {error}") from error
+    if (
+        not isinstance(before, dict) or before.get("schema") != 1
+        or not isinstance(after, dict)
+        or set(after) != {"schema", "head", "yearweek", "windowsBuild", "macBuild"}
+        or after.get("schema") != 2
+        or type(after.get("head")) is not int
+        or type(after.get("yearweek")) is not str
+        or re.fullmatch(r"[0-9]{4}", after["yearweek"]) is None
+        or type(after.get("windowsBuild")) is not int
+        or after["windowsBuild"] < 1
+        or STABLE_VERSION.fullmatch(str(before.get("productVersion", ""))) is None
+        or (after["head"], int(after["yearweek"]), after["windowsBuild"])
+        <= tuple(map(int, before["productVersion"].split(".")))
+        or type(after.get("macBuild")) is not int
+        or after["macBuild"] != before.get("macBuild")
+        or not isinstance(localization_before, dict)
+        or not isinstance(localization_after, dict)
+        or localization_before.get("release") != {
+            "version": before.get("productVersion"), "build": before.get("macBuild")
+        }
+        or localization_after.get("release") != {
+            "version": f"{after['head']}.{after['yearweek']}.{after['macBuild']}",
+            "build": after["macBuild"]
+        }
+        or {k: v for k, v in localization_before.items() if k != "release"}
+        != {k: v for k, v in localization_after.items() if k != "release"}
+    ):
+        raise WorkflowError("HeadVer migration must preserve macBuild and localization content")
     for platform in ("macos", "windows"):
         run(root, sys.executable, "scripts/sidey_version.py", "--check", platform)
 
@@ -221,10 +303,15 @@ def validate_paths(
 
     platform = match[1]
     mac_build_change = platform == "macos" and "release/version.json" in paths
+    windows_build_change = platform == "windows" and "release/version.json" in paths
     product_version_change = (
         platform == "shared"
         and "release/version.json" in paths
         and PRODUCT_VERSION_MIRRORS.issubset(paths)
+    )
+    headver_migration_change = (
+        branch_name == "shared/headver-migration"
+        and product_version_change
     )
     localization_source_change = (
         platform == "shared"
@@ -266,7 +353,9 @@ def validate_paths(
         path for path in paths
         if platform_for(path) != platform
         and not (mac_build_change and path == "release/version.json")
+        and not (windows_build_change and path == "release/version.json")
         and not (product_version_change and path in PRODUCT_VERSION_MIRRORS)
+        and not (headver_migration_change and path in HEADVER_MIGRATION_PLATFORM_PATHS)
         and not (
             localization_source_change
             and path in LOCALIZATION_PLATFORM_PATHS
@@ -282,7 +371,10 @@ def validate_paths(
             f"{branch_name} crosses its platform boundary: {changed}"
         )
     if product_version_change:
-        validate_product_version_transition(root, base, revision)
+        if headver_migration_change:
+            validate_headver_migration(root, base, revision)
+        else:
+            validate_product_version_transition(root, base, revision)
     if mac_build_change:
         mirrors = {"release/macos.json", "macos/Config/Version.xcconfig"}
         if not mirrors.issubset(paths):
@@ -303,7 +395,10 @@ def validate_paths(
         if (
             not isinstance(before, dict)
             or not isinstance(after, dict)
-            or set(before) != {"schema", "productVersion", "windowsRevision", "macBuild"}
+            or set(before) not in (
+                {"schema", "productVersion", "windowsRevision", "macBuild"},
+                {"schema", "head", "yearweek", "windowsBuild", "macBuild"},
+            )
             or set(after) != set(before)
             or any(
                 type(after[key]) is not type(before[key])
@@ -317,4 +412,36 @@ def validate_paths(
             raise WorkflowError(
                 "macOS branch may only increase macBuild in release/version.json"
             )
+        if after["schema"] == 2:
+            localization_path = "release/app-store-localizations.json"
+            if localization_path not in paths:
+                raise WorkflowError("HeadVer macOS build must update App Store localization release")
+            localization_before = json.loads(git(root, "show", f"{base}:{localization_path}"))
+            localization_after = json.loads(git(root, "show", f"{revision}:{localization_path}"))
+            expected_before = f"{before['head']}.{before['yearweek']}.{before['macBuild']}"
+            expected_after = f"{after['head']}.{after['yearweek']}.{after['macBuild']}"
+            if (localization_before.get("release") != {
+                    "version": expected_before, "build": before["macBuild"]}
+                    or localization_after.get("release") != {
+                        "version": expected_after, "build": after["macBuild"]}
+                    or {k: v for k, v in localization_before.items() if k != "release"}
+                    != {k: v for k, v in localization_after.items() if k != "release"}):
+                raise WorkflowError("App Store localization release must match HeadVer macOS build")
+            run(root, sys.executable, "scripts/sidey_version.py", "--check", "macos")
+    if windows_build_change:
+        mirrors = {"release/windows.json", "windows/Version.props"}
+        if not mirrors.issubset(paths):
+            raise WorkflowError("Windows build counter change must include both Windows mirrors")
+        if root is None or base is None:
+            raise WorkflowError("Windows build counter requires an explicit root and base")
+        before = json.loads(git(root, "show", f"{base}:release/version.json"))
+        after = json.loads(git(root, "show", f"{revision}:release/version.json"))
+        keys = {"schema", "head", "yearweek", "windowsBuild", "macBuild"}
+        if (set(before) != keys or set(after) != keys
+                or before["schema"] != 2 or after["schema"] != 2
+                or any(after[key] != before[key] for key in keys - {"windowsBuild"})
+                or type(after["windowsBuild"]) is not int
+                or after["windowsBuild"] <= before["windowsBuild"]):
+            raise WorkflowError("Windows branch may only increase windowsBuild")
+        run(root, sys.executable, "scripts/sidey_version.py", "--check", "windows")
     return platform

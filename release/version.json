@@ -1,6 +1,7 @@
 {
-  "schema": 1,
-  "productVersion": "2.1.0",
-  "windowsRevision": 0,
+  "schema": 2,
+  "head": 2,
+  "yearweek": "2640",
+  "windowsBuild": 1,
   "macBuild": 37
 }

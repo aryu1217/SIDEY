@@ -361,6 +361,73 @@ class GateTests(unittest.TestCase):
             )
         self.assertEqual(run.call_count, 2)
 
+    def test_headver_migration_is_atomic_and_preserves_macos_build(self):
+        paths = [
+            "release/version.json",
+            "release/macos.json",
+            "macos/Config/Version.xcconfig",
+            "release/windows.json",
+            "windows/Version.props",
+            "release/app-store-localizations.json",
+            "windows/src/Sidey.Platform.Windows/Deployment/WindowsUpdateService.cs",
+        ]
+        before = {"schema": 1, "productVersion": "2.1.0",
+                  "windowsRevision": 0, "macBuild": 37}
+        after = {"schema": 2, "head": 2, "yearweek": "2640",
+                 "windowsBuild": 1, "macBuild": 37}
+        local_before = {"release": {"version": "2.1.0", "build": 37}}
+        local_after = {"release": {"version": "2.2640.37", "build": 37}}
+        with (patch("sidey_tools.repository.git", side_effect=[
+                json.dumps(before), json.dumps(after), json.dumps(local_before),
+                json.dumps(local_after)]),
+              patch("sidey_tools.repository.run") as run):
+            self.assertEqual(validate_paths("shared/headver-migration", paths,
+                                            root=Path("."), base="base", revision="head"),
+                             "shared")
+        self.assertEqual(run.call_count, 2)
+        with self.assertRaisesRegex(WorkflowError, "platform boundary"):
+            validate_paths("shared/other-task", paths,
+                           root=Path("."), base="base", revision="head")
+
+    def test_windows_headver_build_change_stays_on_windows_branch(self):
+        paths = ["release/version.json", "release/windows.json",
+                 "windows/Version.props"]
+        before = {"schema": 2, "head": 2, "yearweek": "2640",
+                  "windowsBuild": 7, "macBuild": 37}
+        after = {**before, "windowsBuild": 8}
+        with (patch("sidey_tools.repository.git", side_effect=[
+                json.dumps(before), json.dumps(after)]),
+              patch("sidey_tools.repository.run") as run):
+            self.assertEqual(validate_paths("windows/headver-build", paths,
+                                            root=Path("."), base="base", revision="head"),
+                             "windows")
+        run.assert_called_once_with(Path("."), sys.executable,
+                                    "scripts/sidey_version.py", "--check", "windows")
+        with (patch("sidey_tools.repository.git", side_effect=[
+                json.dumps(before), json.dumps({**after, "macBuild": 38})]),
+              self.assertRaisesRegex(WorkflowError, "only increase windowsBuild")):
+            validate_paths("windows/headver-build", paths,
+                           root=Path("."), base="base", revision="head")
+
+    def test_macos_headver_build_change_updates_localization_release(self):
+        paths = ["release/version.json", "release/macos.json",
+                 "macos/Config/Version.xcconfig",
+                 "release/app-store-localizations.json"]
+        before = {"schema": 2, "head": 2, "yearweek": "2640",
+                  "windowsBuild": 8, "macBuild": 37}
+        after = {**before, "macBuild": 38}
+        local_before = {"release": {"version": "2.2640.37", "build": 37}}
+        local_after = {"release": {"version": "2.2640.38", "build": 38}}
+        with (patch("sidey_tools.repository.git", side_effect=[
+                json.dumps(before), json.dumps(after), json.dumps(local_before),
+                json.dumps(local_after)]),
+              patch("sidey_tools.repository.run") as run):
+            self.assertEqual(validate_paths("macos/headver-build", paths,
+                                            root=Path("."), base="base", revision="head"),
+                             "macos")
+        run.assert_called_once_with(Path("."), sys.executable,
+                                    "scripts/sidey_version.py", "--check", "macos")
+
     def test_macos_build_counter_requires_both_mirrors_and_exact_base_diff(self):
         paths = [
             "release/version.json",

@@ -6,7 +6,7 @@ description: Assess whether a target SIDEY macOS or Windows artifact needs a ver
 # Version Audit
 
 Determine the version implied by the shipped artifact, then let repository tooling prove that
-the chosen metadata agrees. Treat macOS and Windows as independent release lines.
+the chosen metadata agrees. Both platforms share head/yearweek and keep independent build lines.
 
 ## Inputs
 
@@ -33,15 +33,12 @@ artifact impact or provenance cannot be established, return `BLOCKED` with the m
 2. Decide whether the distributed platform artifact or a packaging input it consumes changes.
    A shared change counts only for a platform that consumes it. Return `NONE` for web-, server-,
    documentation-, or contributor-only changes that do not alter an app artifact.
-3. Classify the highest impact present:
-   - `PATCH`: fixes and compatible UI, accessibility, performance, stability, security,
-     packaging, or internal improvements;
-   - `MINOR`: backward-compatible user features, content, products, or meaningful behavior or
-     contract changes;
-   - `MAJOR`: account, persisted-data, protocol, installation, or supported-OS incompatibility
-     that requires user intervention.
-4. Propose the exact next version for the selected class. Reject malformed, reused, decreasing,
-   skipped-within-class, or under-classified versions.
+3. Read the current HeadVer `head` and ISO `yearweek` from `release/version.json`. Keep the
+   selected head unless the release owner explicitly changes it. Validate the ISO week-year
+   at the intended build date and keep it identical across macOS and Windows.
+4. Propose each platform's exact `{head}.{yearweek}.{build}`. Reject malformed, reused or
+   decreasing values. Windows official build numbers come from the remote reservation ledger;
+   failed builds may leave gaps.
 5. macOS supports only the App Store target. Before proposing a distributable build, determine
    the greatest build already consumed by App Store Connect and add one. Repository metadata
    cannot prove external upload history: label the build `PROVISIONAL` and block upload
@@ -63,8 +60,8 @@ Return this structure, adapting fields only when a platform does not have them:
 Platform / target commit / artifact
 Baseline: manifest version, build, tag, tag commit
 Comparison: exact range, artifact affected YES/NO, consumed shared changes
-Impact: PATCH, MINOR, and MAJOR evidence
-Decision: required bump, proposed version, proposed build
+Impact: changed artifact and platform evidence
+Decision: shared head/yearweek, platform build, proposed HeadVer
 Build history: VERIFIED / PROVISIONAL / BLOCKED
 Consistency: source, manifest, Windows updater or App Store target, release note, public metadata, tag uniqueness
 Verdict: READY / ACTION REQUIRED / BLOCKED

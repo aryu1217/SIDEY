@@ -4,7 +4,7 @@ set -eu
 SIDEY_REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && /bin/pwd -P)
 python3 "$SIDEY_REPO_ROOT/scripts/macos/verify_content_assets.py"
 python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --check macos
-SIDEY_EXPECTED_PRODUCT_VERSION=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get productVersion)
+SIDEY_EXPECTED_PRODUCT_VERSION=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get macVersion)
 SIDEY_EXPECTED_MAC_BUILD=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get macBuild)
 SIDEY_CREATED_TEST_DIR=false
 

@@ -20,13 +20,16 @@ Private source와 backend의 GitHub Actions는 꺼져 있다. `.github/workflows
 1. Target platform과 실제 shipped diff를 확정한다.
 2. [version audit](../../.agents/skills/version-audit/SKILL.md) 절차로 최소 version/build
    변경을 판단한다.
-3. [`release/version.json`](../../release/version.json)의 Product Version과 해당 platform
-   counter를 변경한 뒤 `scripts/sidey_version.py --write <platform>`으로 release/native
-   mirror를 갱신하고 `--check <platform>`으로 검사한다. Product Version을 바꿀 때 Windows
-   revision은 `0`으로 되돌린다. macOS manifest는 App Store target build 계약이며 공개
-   게시 여부는 App Store Connect에서 별도로 확인한다. Windows manifest는 공개 release를
-   따른다. Windows revision `0`은 Product Version tag로 기존 updater가 이동할 bridge를
-   만들고, 이후 revision은 별도의 update/release version을 사용하면서 그 bridge를 보존한다.
+3. [`release/version.json`](../../release/version.json)의 공통 HeadVer head·ISO yearweek와
+   해당 platform build를 확인한다. 주차가 바뀌면 shared 작업 브랜치에서
+   `python3 scripts/sidey_version.py --advance-yearweek`로 UTC ISO yearweek와 두 플랫폼
+   mirror를 함께 갱신한다. Windows 공식 개발 빌드는 깨끗하고 원격에 게시된
+   Windows 작업 브랜치에서 `python3 scripts/allocate_windows_build.py --apply`로 번호를
+   먼저 예약한다. 예약 후 원본과 생성 mirror를 함께 commit하고 정확한 HEAD를 검증한 뒤
+   실행 파일을 만든다. 실패하거나 취소한 빌드의 번호는 다시 쓰지 않는다. macOS build는
+   현행 App Store Connect 업로드 이력을 확인하여 증가시킨다. `scripts/sidey_version.py
+   --check <platform>`으로 생성 mirror를 검사한다. macOS manifest는 App Store target
+   build 계약이며 공개 게시 여부는 App Store Connect에서 별도로 확인한다.
 
 Commerce 또는 backend contract가 바뀌는 release라면 private source catalog의 검토된 commit과
 backend snapshot provenance를 먼저 확인한다. Backend migration과 배포는 비공개

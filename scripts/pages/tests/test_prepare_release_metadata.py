@@ -11,10 +11,45 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts" / "pages"))
-from prepare_release_metadata import prepare, validate_repository
+from prepare_release_metadata import prepare, read_manifest, validate_repository
 
 
 class PrepareReleaseMetadataTests(unittest.TestCase):
+    def test_headver_manifest_uses_one_windows_version(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-HeadVer-") as temporary:
+            path = Path(temporary) / "windows.json"
+            path.write_text(json.dumps({
+                "schema": 1, "platform": "windows", "channel": "production",
+                "version": "2.2640.8", "windowsBuild": 8,
+                "updateVersion": "2.2640.8", "releaseVersion": "2.2640.8",
+                "msixVersion": "2.2640.8.0",
+            }), encoding="utf-8")
+            self.assertEqual(read_manifest(path, "windows")["windowsBuild"], 8)
+            changed = json.loads(path.read_text(encoding="utf-8"))
+            changed["updateVersion"] = "2.2640.9"
+            path.write_text(json.dumps(changed), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                read_manifest(path, "windows")
+
+    def test_headver_public_manifest_remains_readable_by_installed_clients(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="SIDEY-HeadVer-Pages-") as temporary:
+            root = Path(temporary)
+            manifest = root / "windows.json"
+            version = "2.2640.8"
+            manifest.write_text(json.dumps({
+                "schema": 1, "platform": "windows", "channel": "production",
+                "version": version, "windowsBuild": 8,
+                "updateVersion": version, "releaseVersion": version,
+                "msixVersion": f"{version}.0",
+            }), encoding="utf-8")
+            installer = root / f"SIDEY-Windows-x64-v{version}-Setup.exe"
+            installer.write_bytes(b"verified installer fixture")
+            prepare(ROOT / "website" / "dist", root / "site", manifest, installer)
+            published = json.loads((root / "site/windows-latest.json").read_text(
+                encoding="utf-8"))
+            self.assertEqual(set(published), {
+                "channel", "version", "tag", "installer_url", "sha256"})
+
     @staticmethod
     def write_manifest(
         directory: Path,

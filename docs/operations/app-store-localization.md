@@ -61,7 +61,7 @@ provisional이다. Snapshot은 macOS pre-release version의 전체 build upload 
 `macos-<version>-build-<build>` 형식으로 파생한다.
 
 ```sh
-product_version=$(python3 scripts/sidey_version.py --get productVersion)
+product_version=$(python3 scripts/sidey_version.py --get macVersion)
 mac_build=$(python3 scripts/sidey_version.py --get macBuild)
 approval_id="macos-${product_version}-build-${mac_build}"
 SIDEY_APP_STORE_RELEASE_APPROVAL="$approval_id" \

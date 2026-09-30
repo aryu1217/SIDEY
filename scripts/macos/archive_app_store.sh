@@ -6,7 +6,7 @@ python3 "$SIDEY_REPO_ROOT/scripts/macos/verify_content_assets.py"
 SIDEY_APP_STORE_VERIFIER_URL=${SIDEY_APP_STORE_VERIFIER_URL:-}
 SIDEY_DEVELOPMENT_TEAM=${SIDEY_DEVELOPMENT_TEAM:-}
 python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --check macos
-SIDEY_EXPECTED_MARKETING_VERSION=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get productVersion)
+SIDEY_EXPECTED_MARKETING_VERSION=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get macVersion)
 SIDEY_EXPECTED_BUILD_VERSION=$(python3 "$SIDEY_REPO_ROOT/scripts/sidey_version.py" --get macBuild)
 SIDEY_ARCHIVE_PATH=${1:-$SIDEY_REPO_ROOT/build/app-store/SIDEY.xcarchive}
 SIDEY_DERIVED_DATA=${SIDEY_DERIVED_DATA:-$SIDEY_REPO_ROOT/build/app-store-derived}

@@ -16,11 +16,11 @@ These instructions apply to `docs/**`.
 
 ## Release documentation contract
 
-- `release/version.json` owns the shared Product Version, Windows revision and macOS build
-  number. `release/macos.json` and `release/windows.json` are generated release mirrors;
+- `release/version.json` owns the shared HeadVer head/week and independent platform builds.
+  `release/macos.json` and `release/windows.json` are generated release mirrors;
   native project settings and Windows update metadata are validated mirrors of the same source.
   The macOS mirror records an App Store target, not public review or publication status.
-- Existing `docs/releases/v<version>.md` files are private historical copies of deleted direct-distribution GitHub Release bodies. Do not revise, republish or recreate those releases, and do not rewrite one as an App Store note merely because the marketing version matches. App Store release notes require the exact submitted build and App Store Connect evidence. `docs/releases/windows-v<releaseVersion>.md` remains the canonical Windows release body; revision zero uses the Product Version and later Windows-only revisions use the generated release version.
+- Existing `docs/releases/v<version>.md` files are private historical copies of deleted direct-distribution GitHub Release bodies. Do not revise, republish or recreate those releases, and do not rewrite one as an App Store note merely because the marketing version matches. App Store release notes require the exact submitted build and App Store Connect evidence. `docs/releases/windows-v<releaseVersion>.md` remains the canonical Windows release body; historical revision-based releases keep their published identity and HeadVer releases use the generated Windows version.
 - Release notes lead with a short verified user outcome, use the exact `## 변경사항` section, and attribute every change bullet to its private-source pull request or direct commit and GitHub author without linking private source from the public body. Do not add a public repository comparison URL: the public distribution repository does not contain current source history. Follow the format and evidence rules in the release-notes skill rather than copying a historical note whose layout may be obsolete.
 - Add installation steps, required warnings or limitations only when the user requests a separate section or verified user action or risk makes the information necessary. Keep implementation details only when users must act on them.
 - Use the official website and GitHub Releases URLs. Do not claim signing, testing, compatibility, availability or release completion without evidence from the exact target commit and artifact.

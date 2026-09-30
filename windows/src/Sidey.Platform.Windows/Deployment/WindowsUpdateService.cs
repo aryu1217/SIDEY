@@ -38,11 +38,9 @@ public sealed partial class WindowsUpdateService
         EffectiveCurrentUpdateVersion = currentUpdateVersion;
         _ = ParsedVersion.Parse(EffectiveCurrentProductVersion);
         _ = ParsedVersion.Parse(EffectiveCurrentUpdateVersion);
-        EffectiveCurrentReleaseVersion = EffectiveCurrentProductVersion == EffectiveCurrentUpdateVersion
-            ? EffectiveCurrentProductVersion
-            : ResolveReleaseVersion(
-                EffectiveCurrentProductVersion,
-                EffectiveCurrentUpdateVersion);
+        EffectiveCurrentReleaseVersion = ResolveReleaseVersion(
+            EffectiveCurrentProductVersion,
+            EffectiveCurrentUpdateVersion);
     }
 
     public string EffectiveCurrentProductVersion { get; }
@@ -408,17 +406,23 @@ public sealed partial class WindowsUpdateService
     {
         var product = ParsedVersion.Parse(productVersion);
         var update = ParsedVersion.Parse(updateVersion);
-        int initialUpdateBuild = checked(product.Patch * 1000);
+        if (productVersion == updateVersion)
+        {
+            return productVersion;
+        }
+
+        // Published pre-HeadVer manifests encoded a Windows revision in the
+        // update version. Keep their release identity readable during migration.
         if (product.Prerelease.Count != 0
             || update.Prerelease.Count != 0
+            || product.Minor >= 1000
             || product.Major != update.Major
             || product.Minor != update.Minor
-            || update.Patch < initialUpdateBuild
-            || update.Patch > initialUpdateBuild + 999)
+            || update.Patch / 1000 != product.Patch)
         {
             throw new InvalidDataException("SIDEY Windows Product and update versions are inconsistent.");
         }
-        return update.Patch == initialUpdateBuild ? productVersion : updateVersion;
+        return update.Patch % 1000 == 0 ? productVersion : updateVersion;
     }
 
     private sealed record ManifestDto(

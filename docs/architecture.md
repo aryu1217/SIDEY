@@ -125,19 +125,19 @@ manifest가 계속 소유한다.
 
 ## 배포 산출물
 
-공통 Product Version, Windows revision과 macOS build number는
+공통 HeadVer head·ISO yearweek와 플랫폼별 build number는
 [`release/version.json`](../release/version.json)이 소유한다. macOS의 generated xcconfig와
 App Store target manifest, Windows의 generated MSBuild properties와 공개 release manifest는
 이 원본에서 생성하고 빌드 전에 일치 여부를 검사한다. macOS target의 marketing version은
-공통 Product Version, bundle build는 macOS build number를 사용한다. 이 계약은 App Store
+`{head}.{yearweek}.{macBuild}`, bundle build는 macOS build number를 사용한다. 이 계약은 App Store
 게시 완료를 증명하지 않으며, 웹 다운로드는 App Store 제품 페이지로 연결한다.
 
-Windows 사용자 표시는 공통 Product Version을 사용하고, update 비교에는 MSIX version의
-앞 세 component인 `Major.Minor.(Patch * 1000 + Windows revision)`을 사용한다. Windows
+Windows 사용자 표시와 update 비교는 `{head}.{yearweek}.{windowsBuild}`를 사용한다. Windows
 binary의 FileVersion과 향후 MSIX `Package/Identity/@Version`은 이 값에 마지막 `0`을 붙인다.
 현재 배포는 이 값을 쓰는 unpackaged self-contained app과 NSIS installer이며 MSIX package를
-생성하지 않는다. 공개 update manifest는 기존 client용 Product Version bridge와 새 client용
-Product/update version을 함께 제공하고, 웹 download metadata는 최신 revision artifact를 가리킨다.
+생성하지 않는다. 과거 revision 기반 update manifest는 기존 bridge를 유지하며, 새 HeadVer
+공개 manifest는 기존 설치본도 읽을 수 있는 기본 필드를 사용한다. 웹 download metadata는
+최신 Windows release artifact를 가리킨다.
 검증된 installer, release metadata, website output과 해당 release에 필요한
 historical license material만 공개 `SIDEY` 저장소로 게시한다. 지원이 종료된 macOS Direct
 release, 설치 자산과 태그는 공개 저장소에서 삭제하며 서명된 feed는 private source의

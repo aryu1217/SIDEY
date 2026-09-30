@@ -44,8 +44,12 @@ def validate_repository(repository: str) -> str:
 def read_manifest(path: Path, platform: str) -> dict[str, object]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     version = str(manifest.get("version", ""))
+    is_headver = "windowsBuild" in manifest
+    if is_headver and "windowsRevision" in manifest:
+        raise ValueError("Windows manifest cannot mix HeadVer build and legacy revision")
     extended_fields = {
-        "windowsRevision", "updateVersion", "releaseVersion", "msixVersion"
+        "windowsBuild" if is_headver else "windowsRevision",
+        "updateVersion", "releaseVersion", "msixVersion"
     }
     present_extended_fields = extended_fields.intersection(manifest)
     if present_extended_fields and present_extended_fields != extended_fields:
@@ -56,7 +60,7 @@ def read_manifest(path: Path, platform: str) -> dict[str, object]:
         update_version = str(manifest.get("updateVersion", ""))
         release_version = str(manifest.get("releaseVersion", ""))
         msix_version = str(manifest.get("msixVersion", ""))
-        windows_revision = manifest.get("windowsRevision")
+        windows_revision = manifest.get("windowsBuild" if is_headver else "windowsRevision")
     else:
         update_version = version
         release_version = version
@@ -71,14 +75,20 @@ def read_manifest(path: Path, platform: str) -> dict[str, object]:
         or re.fullmatch(r"\d+\.\d+\.\d+", release_version) is None
         or msix_version != f"{update_version}.0"
         or type(windows_revision) is not int
-        or not 0 <= windows_revision <= 999
-        or release_version != (version if windows_revision == 0 else update_version)
+        or (not 1 <= windows_revision <= 65535 if is_headver
+            else not 0 <= windows_revision <= 999)
+        or release_version != (version if is_headver or windows_revision == 0
+                               else update_version)
+        or (is_headver and update_version != version)
+        or (is_headver and (
+            len(version.split(".")[1]) != 4
+            or int(version.split(".")[2]) != windows_revision))
     ):
         raise ValueError(
             f"release/{platform}.json must describe a stable production {platform} release."
         )
     manifest.update({
-        "windowsRevision": windows_revision,
+        "windowsBuild" if is_headver else "windowsRevision": windows_revision,
         "updateVersion": update_version,
         "releaseVersion": release_version,
         "msixVersion": msix_version,
@@ -190,12 +200,15 @@ def prepare(
         "tag": f"windows-v{product_version}",
         "installer_url": legacy_url,
         "sha256": legacy_hash,
-        "product_version": product_version,
-        "update_version": update_version,
-        "update_tag": f"windows-v{release_version}",
-        "update_installer_url": update_url,
-        "update_sha256": update_hash,
     }
+    if "windowsBuild" not in windows_manifest:
+        published_windows_manifest.update({
+            "product_version": product_version,
+            "update_version": update_version,
+            "update_tag": f"windows-v{release_version}",
+            "update_installer_url": update_url,
+            "update_sha256": update_hash,
+        })
     manifest_text = json.dumps(published_windows_manifest, indent=2) + "\n"
     for relative_path in ("windows-latest.json", "windows/update.json"):
         path = output_dir / relative_path
