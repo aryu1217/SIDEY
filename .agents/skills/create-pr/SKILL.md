@@ -7,10 +7,13 @@ description: Prepare or create a SIDEY pull request from the exact reviewed and 
 
 Read the root `AGENTS.md` and the internal validation and pull request section
 of [CONTRIBUTING.md](../../../CONTRIBUTING.md#validation-and-pull-requests),
-then inspect the complete changed-path set. Start from
-`.github/PULL_REQUEST_TEMPLATE/general.md` when useful and include concrete
-change and validation evidence in any format. External asset contributions
-are not accepted. This applies equally to agent-created and manual pull requests.
+then inspect the complete changed-path set. Use
+`.github/PULL_REQUEST_TEMPLATE/general.md` as the standard starting point;
+`.github/pull_request_template.md` is its identical GitHub default. Follow the
+five-section writing standard below for consistent descriptions. External asset
+contributions are not accepted. This applies equally to agent-created and manual
+pull requests. The body validator checks for a nonempty description; do not add
+format-validation tests or automated enforcement of headings and checkboxes.
 
 Separate local preparation from remote publication. Drafting a title, body or
 preview does not authorize a push or pull request creation. Immediately before
@@ -42,18 +45,32 @@ task, not a new task.
 4. Write a title that passes
    `scripts/skills/commit/validate_commit_message.py --subject`.
    Do not add a pull request number to the title.
-5. Describe the change and validation evidence. The general template is a
-   starting point, not a required layout. Do not mark a failed or inapplicable
-   check as passed.
+5. Draft the body with the template's sections in order: `PR 유형`,
+   `변경 내용`, `검증`, `미검증 항목`, and `확인 사항`. Select one of the
+   three PR types. Explain the concrete problem and final behavior in Korean;
+   code names, commands, and source references may stay in their original
+   language. Under `검증`, record ``- 검토 HEAD: `<40-character commit SHA>` ``
+   for the reviewed and checked task head, plus completed commands or manual
+   checks and their actual results. For reused scope evidence, distinguish the
+   earlier tested HEAD and the workflow's unchanged-input evidence. Put remaining
+   gaps and their reasons under `미검증 항목`, or write `없음` when none remain.
+   Do not claim planned or post-merge checks passed. Leave failed or inapplicable
+   confirmation checkboxes unchecked and explain why.
 6. Validate the body with the repository pull request validator and present
-   the base, head, title, body and exact commit for review.
+   the base, head, title, body and exact commit for review. Write the body to a
+   file with explicit UTF-8 encoding and read it back to confirm the Korean
+   text and intended content before publication.
 
 ## Publish
 
 Use `scripts/skills/workflow.py` for freshness, ownership, push and pull request
-creation. Do not replace it with an ad hoc `git push` or `gh pr create` path.
-After publication, read the pull request back and confirm its number, URL,
-base, head commit, title and body.
+creation or update. Pass the prepared UTF-8 file with
+`publish <task> --body-file <path>` for both a new PR and an existing PR. Do not replace it with
+an ad hoc `git push` or `gh pr create` path. After publication, read the pull
+request back and confirm its number, URL, base, head commit, title and body.
+Compare the remote body with the local file, allowing only line-ending and
+leading-BOM differences; correct content or encoding mismatches before declaring
+publication complete.
 
 Stop after the pull request is created or updated and verified. Do not merge
 it, wait indefinitely for CI, release, upload or deploy. Those operations
@@ -66,8 +83,10 @@ branch, update it by default. Make same-task follow-up fixes, tests, or
 documentation in the existing worktree, commit, review the complete diff, rerun
 required validation for the new exact HEAD, reusing only scopes whose input
 fingerprints remain identical, and push under the applicable
-authorization and workflow checks. Refresh the PR description when needed to
-describe the complete final change. Do not create a replacement docs or test PR.
+authorization and workflow checks. Refresh the existing PR description to
+describe the complete final change, reviewed HEAD, completed checks, and remaining
+gaps, then publish with `--body-file` and verify the remote body again. Do not
+create a replacement docs or test PR.
 
 An existing PR may still show the previous head before the follow-up push;
 that alone is not a task conflict. Verify that the remote head is the expected

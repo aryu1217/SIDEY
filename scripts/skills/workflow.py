@@ -1178,7 +1178,7 @@ def require_pr_body(
 
 
 def require_valid_pr(root, title, body, paths):
-    """Validate a PR title and template without applying commit-body limits."""
+    """Validate a PR title and description without enforcing body formatting."""
 
     require_valid_commit_text('PR title', title, subject_only=True)
     return require_pr_body(root, body, paths)
@@ -1202,6 +1202,12 @@ def require_pr_body_file(root, value, paths):
         label='--body-file',
     )
     return path
+
+
+def normalized_pr_body(body):
+    """Ignore only a UTF-8 BOM and transport line-ending differences."""
+
+    return body.removeprefix('\ufeff').replace('\r\n', '\n')
 
 
 def github_repository_from_remote(root, remote, *, push=True):
@@ -1364,6 +1370,7 @@ def publish(root, args):
             'Task branch must identify at most one pull request'
         )
     number = str(prs[0]['number']) if prs else None
+    body_path = None
     if not prs:
         if not args.title or not args.body_file:
             raise WorkflowError(
@@ -1376,6 +1383,7 @@ def publish(root, args):
             paths,
         )
         title = args.title
+        body = body_path.read_text(encoding='utf-8')
     else:
         details = json.loads(run(
             root,
@@ -1388,9 +1396,13 @@ def publish(root, args):
             '--json',
             'title,body',
         ))
-        title = details['title']
-        body = details.get('body') or ''
-        require_valid_pr(root, title, body, paths)
+        title = details['title'] if args.title is None else args.title
+        if args.body_file is not None:
+            body_path = require_pr_body_file(root, args.body_file, paths)
+            body = body_path.read_text(encoding='utf-8')
+        else:
+            body = details.get('body') or ''
+    require_valid_pr(root, title, body, paths)
     git(root, 'push', '-u', push_remote, branch(root))
     if not prs:
         run(
@@ -1409,6 +1421,13 @@ def publish(root, args):
             '--body-file',
             str(body_path),
         )
+    elif args.title is not None or body_path is not None:
+        edit = ['gh', 'pr', 'edit', number, '--repo', repository]
+        if args.title is not None:
+            edit.extend(('--title', title))
+        if body_path is not None:
+            edit.extend(('--body-file', str(body_path)))
+        run(root, *edit)
     prs = open_task_prs(root, head_ref, repository=repository)
     number = require_exact_task_pr(root, prs)
     details = json.loads(run(
@@ -1423,6 +1442,10 @@ def publish(root, args):
         'title,body',
     ))
     require_valid_pr(root, details['title'], details.get('body') or '', paths)
+    if details['title'] != title:
+        raise WorkflowError('Published PR title differs from the intended title')
+    if normalized_pr_body(details.get('body') or '') != normalized_pr_body(body):
+        raise WorkflowError('Published PR body differs from the intended UTF-8 body')
     task.update(status='published', pr=number, published={
         'head': head(root),
         'base': remote,

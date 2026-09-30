@@ -137,12 +137,30 @@ portable evidence, run `python3 scripts/skills/workflow.py check <task>` on
 its owning host. A shared task with no affected non-shared scope uses the same
 plain command.
 
-Start from the [general pull request template](.github/PULL_REQUEST_TEMPLATE/general.md)
-when useful. A custom description is also accepted. Write the title using the
-commit subject contract without a pull request number, and include concrete
-change and validation evidence. Leave any failed or inapplicable check
-unchecked. Review every changed path and confirm that the pull request
-identifies the checked head.
+Use the [general pull request template](.github/PULL_REQUEST_TEMPLATE/general.md)
+as the standard starting point for manual and agent-authored descriptions. The
+GitHub default at `.github/pull_request_template.md` mirrors that template.
+Keep these five sections in order: `PR 유형`, `변경 내용`, `검증`,
+`미검증 항목`, and `확인 사항`. Write the substantive explanation in Korean;
+code names, commands, and source references may remain in their original language.
+Select one of the three PR types and explain the concrete problem, final change,
+and relevant behavior in `변경 내용`.
+
+In `검증`, record ``- 검토 HEAD: `<40-character commit SHA>` `` for the final
+reviewed and checked task head, followed by commands or manual checks actually
+completed and their results. If the workflow reused evidence from an earlier
+tested HEAD, identify that HEAD and the recorded unchanged-input evidence.
+Do not describe planned checks or post-merge checks as already passed. Put
+remaining gaps, skipped checks, and unavailable verification with their reasons
+under `미검증 항목`; write `없음` only when no gaps remain. Leave failed or
+inapplicable confirmation checkboxes unchecked and explain why. This writing
+standard does not add automated heading, checkbox, or prose-format checks;
+the body validator continues to reject empty descriptions.
+
+Write the title using the commit subject contract without a pull request
+number. Review every changed path and confirm that the pull request identifies
+the checked head. Write the body file with explicit UTF-8 encoding, read it
+back, and inspect the Korean text before publication.
 
 Pushing a branch, creating a pull request, merging, releasing, uploading to a
 store, and deploying to production are separate actions. Perform only the
@@ -153,6 +171,11 @@ creation are authorized, use the checked workflow:
 python3 scripts/skills/workflow.py publish <task> --title "<title>" --body-file <path>
 ```
 
+Use `--body-file` for updates to the same open PR as well. After publication,
+read the remote title, head, and body back and compare the body with the local
+UTF-8 file, allowing only line-ending and leading-BOM differences. Correct
+encoding or content mismatches before reporting publication as complete.
+
 The recorded local checks and exact reviewed head are required before integration.
 GitHub Actions is disabled, so its archived workflows provide no validation.
 Record the required scope results and any additional device checks in the pull
@@ -160,7 +183,9 @@ request. GitHub creates the squash commit
 title and body from the repository's merge message settings. After
 review feedback, make a focused follow-up commit and validate the new exact
 head; an amended or rebuilt equivalent does not inherit the prior review or
-check result. The [$create-pr skill](.agents/skills/create-pr/SKILL.md)
+check result. Refresh the existing PR body to describe the complete final
+change, reviewed HEAD, completed checks, and remaining gaps. The
+[$create-pr skill](.agents/skills/create-pr/SKILL.md)
 describes agent preparation and publication.
 
 After `finish` verifies the exact merged commit and updates primary `main`, it

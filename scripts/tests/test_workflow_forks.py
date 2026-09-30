@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -380,6 +381,10 @@ class ForkPullRequestTests(unittest.TestCase):
         self.assertEqual(number, "42")
 
     def test_publish_pushes_fork_and_targets_canonical_repository(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        body_path = Path(temporary.name) / "pull-request.md"
+        body_path.write_text("validated body", encoding="utf-8")
         task = {
             "checked": {"base": "base", "head": "checked-head"},
             "status": "checked",
@@ -393,7 +398,7 @@ class ForkPullRequestTests(unittest.TestCase):
         arguments = argparse.Namespace(
             task="readability",
             title="refactor(scripts): improve readability",
-            body_file="pull-request.md",
+            body_file=str(body_path),
             push_remote="fork",
         )
         commands = []
@@ -440,7 +445,7 @@ class ForkPullRequestTests(unittest.TestCase):
             patch.object(
                 workflow,
                 "require_pr_body_file",
-                return_value=Path("pull-request.md"),
+                return_value=body_path,
             ),
             patch.object(workflow, "require_valid_commit_text"),
             patch.object(workflow, "require_valid_pr"),

@@ -1270,6 +1270,149 @@ class WorkflowFileTests(unittest.TestCase):
         self.assertFalse(any(command[:3] == ('gh', 'pr', 'edit') for command in commands))
 
 
+    @contextlib.contextmanager
+    def publication_fixture(self, *, existing, remote_title, remote_body):
+        task = {
+            'checked': {'base': 'base', 'head': 'checked-head'},
+            'status': 'checked',
+        }
+        current_pr = {
+            'number': 42,
+            'headRefOid': 'checked-head',
+            'isCrossRepository': False,
+        }
+        views = iter((
+            [{'title': 'fix(auth): previous login change', 'body': 'Previous explanation.'}]
+            if existing else []
+        ) + [{'title': remote_title, 'body': remote_body}])
+        commands = []
+
+        def response(root, *args, **kwargs):
+            commands.append(args)
+            if args[:3] == ('gh', 'pr', 'view'):
+                return json.dumps(next(views))
+            return ''
+
+        with contextlib.ExitStack() as stack:
+            for name, value in {
+                'owned_task': task,
+                'dirty_paths': [],
+                'source_repository': 'sidey-app/SIDEY-source',
+                'fetch_main': 'base',
+                'changed_paths': ['docs/guide.md'],
+                'publish_head': 'sidey-app:shared/task',
+                'branch': 'shared/task',
+                'head': 'checked-head',
+            }.items():
+                stack.enter_context(patch.object(w, name, return_value=value))
+            for name in ('attest', 'validate_paths'):
+                stack.enter_context(patch.object(w, name))
+            stack.enter_context(patch.object(
+                w, 'open_task_prs',
+                side_effect=([current_pr] if existing else [], [current_pr]),
+            ))
+            stack.enter_context(patch.object(w, 'run', side_effect=response))
+            git = stack.enter_context(patch.object(w, 'git'))
+            update_task = stack.enter_context(patch.object(w, 'update_task'))
+            yield commands, git, update_task, task
+
+    def write_publication_body(self, body):
+        body_path = self.primary / 'publication-body.md'
+        body_path.write_bytes(body.encode('utf-8'))
+        return body_path
+
+    def test_publish_updates_supplied_existing_pr_fields(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n'
+        body_path = self.write_publication_body(body)
+        for supplied_title, supplied_body in (
+            (title, str(body_path)), (None, str(body_path)), (title, None),
+        ):
+            with self.subTest(title=supplied_title, body_file=supplied_body):
+                expected_title = supplied_title or 'fix(auth): previous login change'
+                expected_body = body if supplied_body else 'Previous explanation.'
+                with self.publication_fixture(
+                    existing=True, remote_title=expected_title, remote_body=expected_body,
+                ) as (commands, git, update_task, task):
+                    result = w.publish(self.primary, w.argparse.Namespace(
+                        task='task', title=supplied_title, body_file=supplied_body,
+                    ))
+                edit = next(c for c in commands if c[:3] == ('gh', 'pr', 'edit'))
+                self.assertEqual(edit[3], '42')
+                self.assertEqual('--title' in edit, supplied_title is not None)
+                self.assertEqual('--body-file' in edit, supplied_body is not None)
+                if supplied_title:
+                    self.assertEqual(edit[edit.index('--title') + 1], title)
+                if supplied_body:
+                    self.assertEqual(Path(edit[edit.index('--body-file') + 1]), body_path.resolve())
+                git.assert_called_once()
+                update_task.assert_called_once()
+                self.assertEqual(result['status'], 'published')
+
+    def test_publish_rejects_invalid_supplied_fields_before_push(self):
+        body_path = self.write_publication_body('')
+        for title, body_file in (('invalid title', None), (None, str(body_path))):
+            with self.subTest(title=title, body_file=body_file):
+                with self.publication_fixture(
+                    existing=True, remote_title='fix(auth): previous login change',
+                    remote_body='Previous explanation.',
+                ) as (commands, git, update_task, task):
+                    with self.assertRaises(w.WorkflowError):
+                        w.publish(self.primary, w.argparse.Namespace(
+                            task='task', title=title, body_file=body_file,
+                        ))
+                git.assert_not_called()
+                update_task.assert_not_called()
+                self.assertEqual(task['status'], 'checked')
+                self.assertFalse(any(c[:3] == ('gh', 'pr', 'edit') for c in commands))
+
+    def test_publish_rejects_remote_content_changes_without_marking_published(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n'
+        body_path = self.write_publication_body(body)
+        for existing in (False, True):
+            for remote_title, remote_body in (
+                (title, '??? ?? ? ?? ????? ? ????.\n'),
+                (title, '계정 삭제 후 로그인에 실패합니다.\n'),
+                ('fix(auth): a different change', body),
+            ):
+                with self.subTest(existing=existing, title=remote_title, body=remote_body):
+                    with self.publication_fixture(
+                        existing=existing, remote_title=remote_title, remote_body=remote_body,
+                    ) as (commands, git, update_task, task):
+                        with self.assertRaises(w.WorkflowError):
+                            w.publish(self.primary, w.argparse.Namespace(
+                                task='task', title=title, body_file=str(body_path),
+                            ))
+                    git.assert_called_once()
+                    update_task.assert_not_called()
+                    self.assertEqual(task['status'], 'checked')
+
+    def test_publish_readback_allows_only_line_endings_and_leading_bom_differences(self):
+        title = 'fix(auth): restore account login'
+        body = '계정 삭제 후 다시 로그인할 수 있습니다.\n검증을 완료했습니다.\n'
+        for existing in (False, True):
+            for local_body, remote_body, accepted in (
+                ('\ufeff' + body.replace('\n', '\r\n'), body, True),
+                (body, '\ufeff' + body.replace('\n', '\r\n'), True),
+                (body, body.rstrip('\n'), False),
+                (body, body.replace('다시', '\ufeff다시'), False),
+            ):
+                with self.subTest(existing=existing, local=local_body, remote=remote_body):
+                    body_path = self.write_publication_body(local_body)
+                    with self.publication_fixture(
+                        existing=existing, remote_title=title, remote_body=remote_body,
+                    ) as (commands, git, update_task, task):
+                        args = w.argparse.Namespace(task='task', title=title, body_file=str(body_path))
+                        if accepted:
+                            self.assertEqual(w.publish(self.primary, args)['status'], 'published')
+                            update_task.assert_called_once()
+                        else:
+                            with self.assertRaises(w.WorkflowError):
+                                w.publish(self.primary, args)
+                            update_task.assert_not_called()
+                            self.assertEqual(task['status'], 'checked')
+
     def test_general_pr_body_accepts_filled_template_and_extra_sections(self):
         template = self.write_general_pr_template()
         body = template.read_text(encoding='utf-8').replace('[ ]', '[x]')
