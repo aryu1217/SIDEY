@@ -647,6 +647,7 @@ class WorkflowTests(unittest.TestCase):
                 w.check_task(task, 'task')
         self.assertNotIn('checked', w.owned_task(task, 'task'))
 
+    @patch.object(w.sys, 'platform', 'win32')
     def test_native_pass_survives_web_main_advance_and_sync(self):
         task = self.start(platform='windows')
         (task / 'windows').mkdir()
@@ -675,6 +676,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(proof['reused'])
         self.assertEqual(proof['head'], w.head(task))
 
+    @patch.object(w.sys, 'platform', 'win32')
     def test_changed_native_or_shared_input_does_not_reuse(self):
         task = self.start(platform='windows')
         (task / 'windows').mkdir()
