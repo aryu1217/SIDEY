@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Install SIDEY's Codex-only hook once per clone, shared by its worktrees."""
+"""Install SIDEY's attribution and main-push hooks for all worktrees."""
 
 from pathlib import Path
 import subprocess
 
-MARKER = b"# SIDEY Codex attribution hook v1"
+
+HOOKS = (
+    ('prepare_commit_msg.py', 'prepare-commit-msg', b'# SIDEY Codex attribution hook v1'),
+    ('pre_push.py', 'pre-push', b'# SIDEY main push guard hook v1'),
+)
 
 
 def install():
-    source = Path(__file__).resolve().with_name("prepare_commit_msg.py")
+    directory = Path(__file__).resolve().parent
     config = subprocess.run(
-        ["git", "config", "--get", "core.hooksPath"],
+        ['git', 'config', '--get', 'core.hooksPath'],
         capture_output=True,
         text=True,
     )
@@ -18,30 +22,33 @@ def install():
         raise SystemExit(config.stderr)
     if config.returncode == 0:
         raise SystemExit(
-            "기존 core.hooksPath를 보존합니다. 해당 훅 관리자에서 SIDEY 훅을 명시적으로 연결하세요."
+            "Existing core.hooksPath is preserved. Connect SIDEY's "
+            'prepare-commit-msg and pre-push hooks through that hook manager.'
         )
     common = Path(
         subprocess.check_output(
-            ["git", "rev-parse", "--git-common-dir"], text=True
+            ['git', 'rev-parse', '--git-common-dir'], text=True
         ).strip()
     ).resolve()
-    destination = common / "hooks/prepare-commit-msg"
-    if destination.is_symlink() or (
-        destination.exists()
-        and MARKER not in destination.read_bytes().splitlines()[:3]
-    ):
-        raise SystemExit(
-            "기존 prepare-commit-msg 훅을 보존합니다. 먼저 두 훅의 연결 방식을 검토하세요."
-        )
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(source.read_bytes())
-    destination.chmod(0o755)
-    print(
-        f"설치 완료: {destination}\n"
-        "이 clone의 모든 worktree에 적용됩니다. "
-        "Git 작성자·다른 훅·설정은 유지합니다."
-    )
+    targets = [
+        (directory / source_name, common / 'hooks' / target_name, marker)
+        for source_name, target_name, marker in HOOKS
+    ]
+    for _, destination, marker in targets:
+        if destination.is_symlink() or (
+            destination.exists()
+            and marker not in destination.read_bytes().splitlines()[:3]
+        ):
+            raise SystemExit(
+                f'Existing {destination.name} hook is preserved. Connect '
+                "SIDEY's hook through its existing hook manager."
+            )
+    for source, destination, _ in targets:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(source.read_bytes())
+        destination.chmod(0o755)
+    print(f'Installed SIDEY hooks in {common / "hooks"} for all worktrees.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     install()

@@ -53,6 +53,21 @@ python3 scripts/skills/workflow.py start <task> --platform <shared|macos|windows
 checkout by default. Use `--worktree <path>` only when that location is
 unavailable. Publish the new task branch to its owning remote before editing.
 
+Install the repository Git hooks once per clone. They apply to all linked
+worktrees and reject direct pushes, force pushes, and deletions targeting
+`refs/heads/main` while allowing task-branch pushes:
+
+```shell
+python3 scripts/skills/commit/setup_codex_attribution.py
+```
+
+This local guard is a safeguard for configured clones, not server-side branch
+protection. Git can skip local hooks, and other clones must install them too.
+Merge changes into `main` only through a reviewed task pull request. If the
+private repository's GitHub plan cannot enforce a no-bypass PR ruleset, treat
+that limitation as an open repository-control gap; do not describe the local
+hook as remote enforcement.
+
 Use `macos/<topic>` for macOS implementation, `windows/<topic>` for Windows
 implementation, and `shared/<topic>` for shared or repository-wide work.
 Keep platform changes separate. Land a required shared change independently

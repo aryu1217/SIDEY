@@ -23,6 +23,7 @@ class AttributionTests(unittest.TestCase):
         self.git('config', 'user.email', 'human@example.test')
         for relative in (
             'scripts/skills/commit/prepare_commit_msg.py',
+            'scripts/skills/commit/pre_push.py',
             'scripts/skills/commit/setup_codex_attribution.py',
         ):
             target = self.repo / relative
@@ -96,12 +97,58 @@ class AttributionTests(unittest.TestCase):
         sibling = self.repo / '.git/hooks/pre-commit'
         sibling.write_text('existing')
         before = (self.repo / '.git/hooks/prepare-commit-msg').read_bytes()
+        pre_push = (self.repo / '.git/hooks/pre-push').read_bytes()
         self.install()
         self.assertEqual(before, (self.repo / '.git/hooks/prepare-commit-msg').read_bytes())
+        self.assertEqual(pre_push, (self.repo / '.git/hooks/pre-push').read_bytes())
         self.assertEqual(sibling.read_text(), 'existing')
         (self.repo / '.git/hooks/prepare-commit-msg').write_text('foreign hook')
         self.assertNotEqual(self.install(check=False).returncode, 0)
         self.assertEqual((self.repo / '.git/hooks/prepare-commit-msg').read_text(), 'foreign hook')
+
+    def test_setup_preserves_existing_pre_push_hook_without_partial_install(self):
+        destination = self.repo / '.git/hooks/pre-push'
+        destination.write_text('foreign hook')
+        attribution = self.repo / '.git/hooks/prepare-commit-msg'
+        before = attribution.read_bytes()
+        self.assertNotEqual(self.install(check=False).returncode, 0)
+        self.assertEqual(destination.read_text(), 'foreign hook')
+        self.assertEqual(attribution.read_bytes(), before)
+
+    def test_pre_push_blocks_main_but_allows_task_branch(self):
+        self.commit()
+        remote = self.repo / 'remote.git'
+        subprocess.run(['git', 'init', '--bare', '-q', str(remote)],
+                       cwd=self.repo, env=self.env, check=True)
+        self.git('remote', 'add', 'origin', str(remote))
+        self.git('branch', '-M', 'main')
+        blocked = subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/main'],
+                                 cwd=self.repo, env=self.env, capture_output=True, text=True)
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn('direct pushes to main are blocked', blocked.stderr)
+        self.assertEqual(
+            self.git('--git-dir', str(remote), 'for-each-ref', '--format=%(refname)', 'refs/heads'),
+            '',
+        )
+        self.git('push', 'origin', 'HEAD:refs/heads/shared/test')
+        self.assertEqual(
+            self.git('--git-dir', str(remote), 'rev-parse', 'refs/heads/shared/test'),
+            self.git('rev-parse', 'HEAD'),
+        )
+
+    def test_pre_push_rejects_main_deletion_and_mixed_push(self):
+        hook = self.repo / '.git/hooks/pre-push'
+        cases = (
+            'HEAD abc refs/heads/main def\n',
+            '(delete) 000 refs/heads/main def\n',
+            'HEAD abc refs/heads/shared/test def\nHEAD abc refs/heads/main def\n',
+        )
+        for updates in cases:
+            with self.subTest(updates=updates):
+                result = subprocess.run([sys.executable, str(hook), 'origin', 'url'],
+                                        input=updates, cwd=self.repo, env=self.env,
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1)
 
     def test_setup_preserves_custom_hook_settings(self):
         self.git('config', 'core.hooksPath', 'custom-hooks')
