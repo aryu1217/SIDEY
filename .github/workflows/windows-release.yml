@@ -158,7 +158,11 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: windows-release-candidate-${{ steps.versions.outputs.release_version }}
-          path: build/windows/artifacts/${{ steps.versions.outputs.installer_name }}
+          path: |
+            build/windows/artifacts/${{ steps.versions.outputs.installer_name }}
+            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Update.exe
+            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Update.json
+            build/windows/artifacts/SIDEY-Windows-x64-v${{ steps.versions.outputs.release_version }}-Payload.bin
           if-no-files-found: error
           retention-days: 7
 
@@ -217,7 +221,20 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           $tag = '${{ needs.validate.outputs.tag }}'
           $installerName = '${{ needs.validate.outputs.installer_name }}'
-          $candidate = Join-Path ./release-assets $installerName
+          $releaseVersion = '${{ needs.validate.outputs.release_version }}'
+          $expectedAssetNames = @(
+            $installerName,
+            "SIDEY-Windows-x64-v$releaseVersion-Update.exe",
+            "SIDEY-Windows-x64-v$releaseVersion-Update.json",
+            "SIDEY-Windows-x64-v$releaseVersion-Payload.bin"
+          )
+          $candidates = @($expectedAssetNames | ForEach-Object {
+            $assetPath = Join-Path ./release-assets $_
+            if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+              throw "Missing candidate release asset: $_"
+            }
+            $assetPath
+          })
 
           $PSNativeCommandUseErrorActionPreference = $false
           gh release view $tag *> $null
@@ -227,7 +244,7 @@ jobs:
             throw "Release already exists: $tag"
           }
 
-          gh release create $tag $candidate `
+          gh release create $tag @candidates `
             --target main `
             --title "SIDEY Windows v${{ needs.validate.outputs.product_version }}" `
             --notes-file '${{ needs.validate.outputs.release_notes }}' `
@@ -239,21 +256,23 @@ jobs:
             throw "Release verification expected a regular draft: $tag"
           }
           $assetNames = @($release.assets | ForEach-Object { [string]$_.name })
-          if ($assetNames.Count -ne 1 -or $assetNames[0] -cne $installerName) {
-            throw "Draft release must contain only $installerName"
+          if ($assetNames.Count -ne 4 -or @(Compare-Object $expectedAssetNames $assetNames -CaseSensitive).Count -ne 0) {
+            throw 'Draft release must contain exactly the four canonical Windows update assets.'
           }
 
           New-Item -ItemType Directory -Path ./release-verify -Force | Out-Null
-          gh release download $tag `
-            --pattern $installerName `
-            --dir ./release-verify `
-            --clobber
-          $candidateHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash
-          $downloadedHash = (Get-FileHash `
-            -LiteralPath (Join-Path ./release-verify $installerName) `
-            -Algorithm SHA256).Hash
-          if ($candidateHash -cne $downloadedHash) {
-            throw 'Downloaded draft asset does not match the validated candidate.'
+          foreach ($assetName in $expectedAssetNames) {
+            gh release download $tag `
+              --pattern $assetName `
+              --dir ./release-verify `
+              --clobber
+            $candidateHash = (Get-FileHash -LiteralPath (Join-Path ./release-assets $assetName) -Algorithm SHA256).Hash
+            $downloadedHash = (Get-FileHash `
+              -LiteralPath (Join-Path ./release-verify $assetName) `
+              -Algorithm SHA256).Hash
+            if ($candidateHash -cne $downloadedHash) {
+              throw "Downloaded draft asset does not match the validated candidate: $assetName"
+            }
           }
 
           gh release edit $tag --draft=false

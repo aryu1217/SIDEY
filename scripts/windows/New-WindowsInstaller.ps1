@@ -464,14 +464,62 @@ Invoke-SideyNativeCommand `
     ) `
     -Description 'SIDEY Setup EXE build'
 
-$builtSetupFiles = @(Get-ChildItem -LiteralPath $installerBuildDirectory -Filter '*.exe' -File)
-if ($builtSetupFiles.Count -ne 1) {
-    throw 'NSIS must produce exactly one Setup EXE.'
+$builtSetupPath = Join-Path $installerBuildDirectory 'SIDEY-Setup.exe'
+if (-not (Test-Path -LiteralPath $builtSetupPath -PathType Leaf)) {
+    throw 'NSIS did not produce the full Setup EXE.'
 }
 
 $setupName = "SIDEY-Windows-x64-v${ReleaseVersion}-Setup.exe"
 $setupFilePath = Join-Path $outputDirectoryPath $setupName
-Copy-Item -LiteralPath $builtSetupFiles[0].FullName -Destination $setupFilePath -Force
+Copy-Item -LiteralPath $builtSetupPath -Destination $setupFilePath -Force
+$updateName = "SIDEY-Windows-x64-v${ReleaseVersion}-Update.exe"
+$updateFilePath = Join-Path $outputDirectoryPath $updateName
+$payloadFilePath = Join-Path $outputDirectoryPath "SIDEY-Windows-x64-v${ReleaseVersion}-Payload.bin"
+$fileListPath = Join-Path $installerBuildDirectory 'SideyIncrementalFiles.tsv'
+$descriptor = & (Join-Path $PSScriptRoot 'New-WindowsIncrementalPayload.ps1') `
+    -PublishDirectory $publishDirectoryPath -PayloadPath $payloadFilePath `
+    -FileListPath $fileListPath -ReleaseVersion $ReleaseVersion
+$incrementalHelperPath = Join-Path $helperDirectory 'Sidey.IncrementalPayload.exe'
+& $helperBuilderPath `
+    -SourcePath (Join-Path $repositoryRootPath 'windows/installer/Sidey.Setup/IncrementalPayload.cs') `
+    -OutputPath $incrementalHelperPath `
+    -Version $ProductVersion -FileVersion $publishedFileVersion `
+    -Title 'SIDEY Incremental Payload' -Description 'SIDEY verified incremental payload staging' `
+    -IconPath $helperIconPath -ResourcePath $fileListPath -ResourceName 'Sidey.IncrementalFiles'
+& (Join-Path $PSScriptRoot 'tests/Test-IncrementalPayload.ps1') `
+    -HelperPath $incrementalHelperPath -PublishDirectory $publishDirectoryPath `
+    -PayloadPath $payloadFilePath -Descriptor $descriptor
+Invoke-SideyNativeCommand `
+    -FilePath $resolvedMakensisPath `
+    -ArgumentList @(
+        '/INPUTCHARSET', 'UTF8', '/DINCREMENTAL_PAYLOAD',
+        "/DINCREMENTAL_PAYLOAD_EXE=$incrementalHelperPath",
+        "/DAPP_VERSION=$ProductVersion",
+        "/DAPP_UPDATE_VERSION=$expectedUpdateVersion",
+        "/DAPP_FILE_VERSION=$publishedFileVersion",
+        "/DOUTPUT_DIR=$installerBuildDirectory",
+        "/DPUBLISH_DIR=$publishDirectoryPath",
+        "/DPAYLOAD_INSTALL_INCLUDE=$installInclude",
+        "/DPAYLOAD_UNINSTALL_FILES_INCLUDE=$uninstallFilesInclude",
+        "/DPAYLOAD_UNINSTALL_DIRECTORIES_INCLUDE=$uninstallDirectoriesInclude",
+        "/DTERMS_LICENSE_FILE=$termsLicenseFilePath",
+        "/DLANGUAGE_SELECTOR_EXE=$languageSelectorPath",
+        "/DINSTALL_TRANSACTION_EXE=$installTransactionExecutablePath",
+        "/DINSTALLER_ERROR_HELPER_EXE=$installerErrorHelperExecutablePath",
+        $setupScriptPath
+    ) -Description 'SIDEY incremental Update EXE build'
+Copy-Item -LiteralPath (Join-Path $installerBuildDirectory 'SIDEY-Update.exe') -Destination $updateFilePath -Force
+$descriptor['updater'] = [ordered]@{
+    name = $updateName
+    sha256 = (Get-FileHash -LiteralPath $updateFilePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    size = (Get-Item -LiteralPath $updateFilePath).Length
+}
+$descriptorPath = Join-Path $outputDirectoryPath "SIDEY-Windows-x64-v${ReleaseVersion}-Update.json"
+$descriptorJson = $descriptor | ConvertTo-Json -Depth 6
+if ($utf8WithoutBom.GetByteCount($descriptorJson) -gt 4MB) {
+    throw 'Incremental descriptor exceeds the client manifest size limit.'
+}
+[IO.File]::WriteAllText($descriptorPath, $descriptorJson, $utf8WithoutBom)
 $hash = (Get-FileHash -LiteralPath $setupFilePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $publishBytes = ($deployableFiles | Measure-Object -Property Length -Sum).Sum
 

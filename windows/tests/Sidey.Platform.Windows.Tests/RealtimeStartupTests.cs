@@ -122,9 +122,16 @@ public sealed class RealtimeStartupTests
     [Fact]
     public async Task ChannelAuthorizationFailureDisconnectsAndRecoversTheWholeSubscriptionSet()
     {
+        TaskCompletionSource initialPresenceReceived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var server = new LocalServer(async (socket, connection, token) =>
         {
-            JsonElement[] joins = [await ReadAsync(socket, token), await ReadAsync(socket, token)];
+            List<JsonElement> joins = [];
+            while (joins.Count < 2)
+            {
+                JsonElement message = await ReadAsync(socket, token);
+                if (message.GetProperty("event").GetString() == "phx_join")
+                    joins.Add(message);
+            }
             foreach (JsonElement join in joins)
             {
                 await ReplyAsync(socket, join, token);
@@ -136,10 +143,15 @@ public sealed class RealtimeStartupTests
             }
 
             var updatedTopics = new HashSet<string>(StringComparer.Ordinal);
-            while (updatedTopics.Count < joins.Length)
+            while (updatedTopics.Count < joins.Count)
             {
                 JsonElement message = await ReadAsync(socket, token);
-                if (message.GetProperty("event").GetString() == "access_token")
+                if (message.GetProperty("event").GetString() == "presence")
+                {
+                    initialPresenceReceived.TrySetResult();
+                }
+                if (message.GetProperty("event").GetString() == "access_token"
+                    && message.GetProperty("payload").GetProperty("access_token").GetString() == "refreshed-token")
                 {
                     updatedTopics.Add(message.GetProperty("topic").GetString()!);
                 }
@@ -168,6 +180,8 @@ public sealed class RealtimeStartupTests
             PresenceState.Online,
             server.Token);
 
+        await initialPresenceReceived.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
         sessions.SetAccessToken("refreshed-token");
         await WaitForEventAsync(
             transport,

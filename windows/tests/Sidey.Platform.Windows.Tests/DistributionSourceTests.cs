@@ -588,10 +588,6 @@ public sealed class DistributionSourceTests
             "_tray.NotifyUpdateInstalled(_updateService.CurrentVersion)",
             app,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "TryMarkLaunched(_updateService.CurrentUpdateVersion)",
-            app,
-            StringComparison.Ordinal);
     }
 
     [Fact]

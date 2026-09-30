@@ -17,7 +17,9 @@ public sealed record AvailableUpdate(
     string? Sha256 = null,
     Uri? ReleaseNotesUri = null,
     string? UpdateVersion = null,
-    string? UpdateTag = null);
+    string? UpdateTag = null,
+    Uri? IncrementalManifestUri = null,
+    string? IncrementalManifestSha256 = null);
 
 public sealed record UpdatePreferences(
     bool AutoInstall = true,

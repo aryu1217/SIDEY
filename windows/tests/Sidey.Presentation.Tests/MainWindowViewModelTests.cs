@@ -1801,6 +1801,78 @@ public sealed class MainWindowViewModelTests
         await viewModel.InstallUpdateCommand.ExecuteAsync(null);
 
         Assert.Equal(1, updates.InstallerLaunchCount);
+        Assert.True(updates.LastInstallerLaunchWasSilent);
+    }
+
+    public static IEnumerable<object[]> AutomaticUpdatePolicies()
+    {
+        foreach (bool autoInstall in new[] { false, true })
+            foreach (bool connectionAllowed in new[] { false, true })
+                foreach (bool cachedPayload in new[] { false, true })
+                    foreach (bool manualCheck in new[] { false, true })
+                        yield return new object[] { autoInstall, connectionAllowed, cachedPayload, manualCheck };
+    }
+
+    [Theory]
+    [MemberData(nameof(AutomaticUpdatePolicies))]
+    public async Task UpdateChecksHonorAutomaticInstallAndConnectionPolicies(
+        bool autoInstall, bool connectionAllowed, bool cachedPayload, bool manualCheck)
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = cachedPayload,
+            IsAutomaticUpdateConnectionAllowed = connectionAllowed,
+        };
+        var preferences = new UpdatePreferences(autoInstall, false, false);
+        updates.SavePreferences(preferences);
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+        int found = 0;
+        int ready = 0;
+        viewModel.ManualUpdateFound += _ => found++;
+        viewModel.ManualUpdateReady += _ => ready++;
+
+        if (manualCheck)
+            await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        else
+            await viewModel.CheckForUpdatesOnStartupAsync(_ => found++, _ => ready++);
+
+        bool automatic = autoInstall && connectionAllowed;
+        Assert.Equal(automatic ? 1 : 0, updates.InstallerLaunchCount);
+        Assert.Equal(automatic ? (cachedPayload ? 1 : 2) : 0, updates.DownloadCount);
+        Assert.Equal(cachedPayload || automatic, viewModel.IsUpdateReady);
+        Assert.Equal(manualCheck || !cachedPayload ? 1 : 0, found);
+        Assert.Equal(cachedPayload && !automatic ? 1 : 0, ready);
+        Assert.Equal(preferences, updates.Preferences);
+        if (automatic)
+            Assert.True(updates.LastInstallerLaunchWasSilent);
+    }
+
+    [Fact]
+    public async Task CancellingManualSilentInstallationPreservesAutomaticUpdatePreference()
+    {
+        (FakeSideyCoordinator coordinator, _) = CreateRoomState();
+        var updates = new FakeUpdateService
+        {
+            AvailableUpdate = new AvailableUpdate("2.1.0"),
+            InstallerReady = true,
+            IsAutomaticUpdateConnectionAllowed = false,
+            DownloadHandler = (_, _, _) => throw new Win32Exception(1223),
+        };
+        updates.SavePreferences(new UpdatePreferences(AutoInstall: true));
+        var viewModel = new MainWindowViewModel(
+            coordinator, new FakeMainWindowDialogService(), updates);
+
+        await viewModel.CheckForUpdatesOnStartupAsync();
+        await viewModel.InstallUpdateCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, updates.InstallerLaunchCount);
+        Assert.True(updates.LastInstallerLaunchWasSilent);
+        Assert.True(updates.Preferences.AutoInstall);
+        Assert.True(viewModel.IsUpdateReady);
+        Assert.True(viewModel.InstallUpdateCommand.CanExecute(null));
     }
 
     [Fact]

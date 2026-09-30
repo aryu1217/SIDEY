@@ -60,7 +60,11 @@ Unicode true
 !insertmacro VersionCompare
 
 Name "${PRODUCT_NAME} ${APP_VERSION}"
-OutFile "${OUTPUT_DIR}\SIDEY-Setup.exe"
+!ifdef INCREMENTAL_PAYLOAD
+  OutFile "${OUTPUT_DIR}\SIDEY-Update.exe"
+!else
+  OutFile "${OUTPUT_DIR}\SIDEY-Setup.exe"
+!endif
 InstallDir "$PROGRAMFILES64\SIDEY"
 InstallDirRegKey HKLM "${PRODUCT_REGISTRY_KEY}" "InstallLocation"
 RequestExecutionLevel admin
@@ -224,6 +228,9 @@ Var DeleteCredentials
 Var CleanupFailureDetails
 Var CleanupFailureDiagnosticDetails
 Var StagingDirectory
+!ifdef INCREMENTAL_PAYLOAD
+Var UpdateCacheDirectory
+!endif
 Var RollbackDirectory
 Var SetupMutexHandle
 Var InstallerCompletedCleanly
@@ -351,7 +358,8 @@ Function .onInit
   ${If} $InstalledVersion != ""
     ${VersionCompare} $InstalledVersion "${APP_UPDATE_VERSION}" $VersionResult
     ${If} $VersionResult == 1
-      MessageBox MB_OK|MB_ICONSTOP "$(DowngradeBlocked)"
+      MessageBox MB_OK|MB_ICONSTOP "$(DowngradeBlocked)" /SD IDOK
+      SetErrorLevel 1
       Quit
     ${ElseIf} $VersionResult == 0
       StrCpy $InstallState "same"
@@ -359,6 +367,18 @@ Function .onInit
       StrCpy $InstallState "upgrade"
     ${EndIf}
   ${EndIf}
+
+!ifdef INCREMENTAL_PAYLOAD
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/UPDATECACHE=" $UpdateCacheDirectory
+  ${If} ${Errors}
+  ${OrIf} $UpdateCacheDirectory == ""
+  ${OrIf} $InstallState != "upgrade"
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+!endif
 
   ; Only an explicit updater launch may restart SIDEY after silent setup.
   ; Ordinary /S installs and interactive upgrades retain their own behavior.
@@ -606,11 +626,22 @@ Section "SIDEY" MainSection
     Goto transaction_failed
   ${EndIf}
 
+!ifdef INCREMENTAL_PAYLOAD
+  SetOutPath "$PLUGINSDIR"
+  File /oname=Sidey.IncrementalPayload.exe "${INCREMENTAL_PAYLOAD_EXE}"
+  ClearErrors
+  ExecWait '"$PLUGINSDIR\Sidey.IncrementalPayload.exe" --cache "$UpdateCacheDirectory" --staging "$StagingDirectory"' $0
+  IfErrors payload_stage_failed
+  ${If} $0 != 0
+    Goto payload_stage_failed
+  ${EndIf}
+!else
   !include "${PAYLOAD_INSTALL_INCLUDE}"
   SetOutPath "$StagingDirectory\Runtime"
   ClearErrors
   File /oname=SIDEY.UninstallHelper.exe "${PUBLISH_DIR}\Uninstall.exe"
   IfErrors payload_stage_failed
+!endif
   ClearErrors
   WriteUninstaller "$StagingDirectory\Uninstall.exe"
   IfErrors payload_stage_failed

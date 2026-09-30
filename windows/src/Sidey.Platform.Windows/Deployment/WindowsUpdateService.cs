@@ -14,7 +14,10 @@ public sealed record WindowsUpdateManifest(
     string UpdateVersion,
     string UpdateTag,
     Uri InstallerUri,
-    string Sha256);
+    string Sha256,
+    WindowsIncrementalUpdate? Incremental = null);
+
+public sealed record WindowsIncrementalUpdate(Uri ManifestUri, string Sha256);
 
 public sealed partial class WindowsUpdateService
 {
@@ -22,18 +25,21 @@ public sealed partial class WindowsUpdateService
         "https://sidey-app.github.io/SIDEY/windows-latest.json");
     private readonly HttpClient _httpClient;
     private readonly string _updateCacheDirectory;
+    private readonly string? _installationDirectory;
 
     public WindowsUpdateService(
         HttpClient? httpClient = null,
         string? currentProductVersion = null,
         string? currentUpdateVersion = null,
-        string? updateCacheDirectory = null)
+        string? updateCacheDirectory = null,
+        string? installationDirectory = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(currentProductVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentUpdateVersion);
         _httpClient = httpClient ?? new HttpClient();
         _updateCacheDirectory = Path.GetFullPath(updateCacheDirectory
             ?? Path.Combine(Path.GetTempPath(), "SIDEY", "Updates"));
+        _installationDirectory = installationDirectory is null ? null : Path.GetFullPath(installationDirectory);
         EffectiveCurrentProductVersion = currentProductVersion;
         EffectiveCurrentUpdateVersion = currentUpdateVersion;
         _ = ParsedVersion.Parse(EffectiveCurrentProductVersion);
@@ -94,6 +100,8 @@ public sealed partial class WindowsUpdateService
                         catch (IOException) { }
                         catch (UnauthorizedAccessException) { }
                     }
+
+                    deletedFiles += CleanupIncrementalCache(directory, version);
 
                     // Non-recursive deletion succeeds only when the folder is empty.
                     Directory.Delete(directory, recursive: false);
@@ -219,7 +227,8 @@ public sealed partial class WindowsUpdateService
             updateVersion,
             updateTag,
             installerUri,
-            sha256);
+            sha256,
+            ReadIncrementalMetadata(manifest.Incremental, installerUri));
     }
 
     private static Uri ValidateInstallerMetadata(
@@ -261,12 +270,26 @@ public sealed partial class WindowsUpdateService
         IProgress<int>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
+        if (await IsFullInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
+        {
+            progress?.Report(100);
+            return InstallerPath(manifest.UpdateVersion);
+        }
+        if (manifest.Incremental is not null && _installationDirectory is not null)
+        {
+            string? incremental = await TryPrepareIncrementalAsync(manifest, cancellationToken, progress)
+                .ConfigureAwait(false);
+            if (incremental is not null)
+            {
+                return incremental;
+            }
+        }
         string installerPath = InstallerPath(manifest.UpdateVersion);
         string updateDirectory = Path.GetDirectoryName(installerPath)!;
         Directory.CreateDirectory(updateDirectory);
         string partialPath = $"{installerPath}.download";
 
-        if (await IsInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
+        if (await IsFullInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
         {
             progress?.Report(100);
             return installerPath;
@@ -354,6 +377,17 @@ public sealed partial class WindowsUpdateService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(manifest);
+        if (await IsIncrementalReadyAsync(manifest, cancellationToken).ConfigureAwait(false))
+        {
+            return true;
+        }
+        return await IsFullInstallerReadyAsync(manifest, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool> IsFullInstallerReadyAsync(
+        WindowsUpdateManifest manifest,
+        CancellationToken cancellationToken)
+    {
         string installerPath = InstallerPath(manifest.UpdateVersion);
         try
         {
@@ -391,7 +425,7 @@ public sealed partial class WindowsUpdateService
         Process.Start(new ProcessStartInfo(installerPath)
         {
             UseShellExecute = true,
-            Arguments = silent ? "/S /RESTARTSIDEY" : string.Empty,
+            Arguments = InstallerArguments(installerPath, silent),
         });
     }
 
@@ -435,7 +469,8 @@ public sealed partial class WindowsUpdateService
         [property: JsonPropertyName("update_version")] string? UpdateVersion,
         [property: JsonPropertyName("update_tag")] string? UpdateTag,
         [property: JsonPropertyName("update_installer_url")] string? UpdateInstallerUrl,
-        [property: JsonPropertyName("update_sha256")] string? UpdateSha256);
+        [property: JsonPropertyName("update_sha256")] string? UpdateSha256,
+        [property: JsonPropertyName("incremental")] IncrementalMetadataDto? Incremental);
 
     [GeneratedRegex("^[0-9a-fA-F]{64}$", RegexOptions.CultureInvariant)]
     private static partial Regex Sha256Pattern();

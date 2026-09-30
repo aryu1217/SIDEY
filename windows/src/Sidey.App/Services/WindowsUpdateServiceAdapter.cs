@@ -39,7 +39,8 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
         }
         _service = new WindowsUpdateService(
             currentProductVersion: productVersion,
-            currentUpdateVersion: parsedFileVersion.ToString(3));
+            currentUpdateVersion: parsedFileVersion.ToString(3),
+            installationDirectory: Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..")));
         LastCheckedAt = ReadLastCheckedAt();
         Preferences = ReadPreferences();
     }
@@ -127,7 +128,9 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
                     manifest.Sha256,
                     s_releaseNotesUri,
                     manifest.UpdateVersion,
-                    manifest.UpdateTag);
+                    manifest.UpdateTag,
+                    manifest.Incremental?.ManifestUri,
+                    manifest.Incremental?.Sha256);
         }
         catch (Exception exception)
         {
@@ -142,8 +145,7 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
         IProgress<int>? progress = null,
         bool silent = false)
     {
-        await DownloadInstallerAsync(update, cancellationToken, progress);
-        string installerPath = _service.InstallerPath(update.UpdateVersion!);
+        string installerPath = await _service.DownloadInstallerAsync(ToManifest(update), cancellationToken, progress);
         WindowsUpdateService.LaunchInstaller(installerPath, silent);
     }
 
@@ -186,7 +188,10 @@ internal sealed class WindowsUpdateServiceAdapter : IUpdateService
             update.UpdateVersion,
             update.UpdateTag,
             update.InstallerUri,
-            update.Sha256);
+            update.Sha256,
+            update.IncrementalManifestUri is not null && update.IncrementalManifestSha256 is not null
+                ? new WindowsIncrementalUpdate(update.IncrementalManifestUri, update.IncrementalManifestSha256)
+                : null);
     }
 
     private static UpdatePreferences ReadPreferences()

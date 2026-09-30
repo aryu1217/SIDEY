@@ -721,7 +721,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
             if (IsUpdateReady
                 && (!CanAutomaticallyUpdate()
-                    || !await LaunchInstallerAsync(update, silent: true)))
+                    || !await LaunchInstallerAsync(update, automatic: true)))
                 ManualUpdateReady?.Invoke(update);
         }
         catch (Exception)
@@ -762,7 +762,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 }
                 if (IsUpdateReady
                     && (!CanAutomaticallyUpdate()
-                        || !await LaunchInstallerAsync(update, silent: true)))
+                        || !await LaunchInstallerAsync(update, automatic: true)))
                     onUpdateReady?.Invoke(update);
             }
             return update;
@@ -834,22 +834,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_lastAvailableUpdate is not { } update)
             return;
-        await LaunchInstallerAsync(update, silent: false);
+        await LaunchInstallerAsync(update);
     }
 
-    private async Task<bool> LaunchInstallerAsync(AvailableUpdate update, bool silent)
+    private async Task<bool> LaunchInstallerAsync(AvailableUpdate update, bool automatic = false)
     {
         IsUpdateTransferInProgress = true;
         try
         {
-            await _updates.DownloadAndLaunchInstallerAsync(update, silent: silent);
+            await _updates.DownloadAndLaunchInstallerAsync(update, silent: true);
             RaiseNotice(I18n.Get("update.install.launched"), NoticeKind.Success);
             return true;
         }
         catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
         {
             RaiseNotice(I18n.Get("update.install.cancelled"), NoticeKind.Informational);
-            if (silent)
+            if (automatic)
                 AutoInstallUpdates = false;
         }
         catch (Win32Exception)

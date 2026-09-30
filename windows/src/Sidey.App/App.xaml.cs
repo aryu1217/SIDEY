@@ -226,12 +226,13 @@ public partial class App : Application
             || _tray is not null
             || _updateService.Preferences.ShowReleaseNotesAfterUpdate)
         {
-            bool markedLaunched = _updateCompletionTracker.TryMarkLaunched(_updateService.CurrentUpdateVersion);
+            bool markedLaunched = _updateCompletionTracker.TryConsumeCompletedUpdate(
+                _updateService.CurrentUpdateVersion,
+                _updateService.Preferences.ShowReleaseNotesAfterUpdate,
+                out bool shouldOpenReleaseNotes);
             StartupDiagnostics.Stage(
                 $"update-completion-state-saved result={markedLaunched.ToString().ToLowerInvariant()}");
-            if (completedUpdateVersion is not null
-                && markedLaunched
-                && _updateService.Preferences.ShowReleaseNotesAfterUpdate)
+            if (shouldOpenReleaseNotes)
             {
                 _ = OpenReleaseNotesAfterUpdateAsync();
             }
@@ -389,6 +390,12 @@ public partial class App : Application
 
     private void PostUpdateNotification(string version)
     {
+        if (!_updateService.Preferences.NotifyWhenAvailable)
+        {
+            _pendingUpdateNotificationVersion = null;
+            return;
+        }
+
         if (_shuttingDown)
         {
             return;
