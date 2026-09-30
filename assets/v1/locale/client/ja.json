@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "友だちの画面で自分を表すピクセルキャラクターを選べます。",
           "selection": {
             "accessibility": "キャラクター選択"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "持っている吹き出しを選ぶと、すべてのグループにすぐ適用されます。",
             "selection": {
               "accessibility": "吹き出し選択"
             }
           },
           "character": {
-            "description": "持っているキャラクターを選ぶと、すべてのグループにすぐ適用されます。",
             "selection": {
               "accessibility": "キャラクター選択"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "デフォルトの吹き出し",
           "default_throwable": "デフォルトのやわらかボール",
           "hint": {
-            "current": "現在使用中",
-            "select": "選択すると、すべてのグループにすぐ適用されます"
+            "current": "現在使用中"
           },
           "throwable": {
-            "description": "持っている投げて遊ぶおもちゃを選ぶと、すべてのグループにすぐ適用されます。",
             "selection": {
               "accessibility": "投げて遊ぶおもちゃの選択"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "自分"
         },
-        "duplicates_allowed": "同じグループ内でキャラクターやニックネームが重複してもかまいません。",
+        "equip": {
+          "action": "使用する"
+        },
         "error": {
           "character_not_owned": "プロフィールには所有しているキャラクターのみ選択できます。"
         },

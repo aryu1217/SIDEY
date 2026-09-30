@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "選擇在朋友螢幕上代表你的像素角色。",
           "selection": {
             "accessibility": "角色選擇"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "選擇已擁有的訊息泡泡後，會立即套用到所有群組。",
             "selection": {
               "accessibility": "訊息泡泡選擇"
             }
           },
           "character": {
-            "description": "選擇已擁有的角色後，會立即套用到所有群組。",
             "selection": {
               "accessibility": "角色選擇"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "預設訊息泡泡",
           "default_throwable": "預設軟球",
           "hint": {
-            "current": "目前使用中",
-            "select": "選取後會立即套用到所有群組"
+            "current": "目前使用中"
           },
           "throwable": {
-            "description": "選擇已擁有的投擲玩具後，會立即套用到所有群組。",
             "selection": {
               "accessibility": "投擲玩具選擇"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "我"
         },
-        "duplicates_allowed": "同一群組內可以使用相同的角色和暱稱。",
+        "equip": {
+          "action": "使用"
+        },
         "error": {
           "character_not_owned": "個人檔案只能選擇你已擁有的角色。"
         },

@@ -557,7 +557,6 @@
         },
         "profile": {
             "character": {
-                "description": "Arkadaşlarınızın ekranında sizi temsil edecek piksel karakteri seçin.",
                 "selection": {
                     "accessibility": "Karakter seçimi"
                 },
@@ -567,13 +566,11 @@
             },
             "cosmetics": {
                 "bubble": {
-                    "description": "Sahip olduğunuz bir konuşma balonunu seçin. Tüm gruplarınıza hemen uygulanır.",
                     "selection": {
                         "accessibility": "Konuşma balonu seçimi"
                     }
                 },
                 "character": {
-                    "description": "Sahip olduğunuz bir karakteri seçin. Tüm gruplarınıza hemen uygulanır.",
                     "selection": {
                         "accessibility": "Karakter seçimi"
                     }
@@ -581,11 +578,9 @@
                 "default_bubble": "Varsayılan balon",
                 "default_throwable": "Varsayılan yumuşak top",
                 "hint": {
-                    "current": "Şu anda kullanımda",
-                    "select": "Tüm gruplarınıza hemen uygulanır"
+                    "current": "Şu anda kullanımda"
                 },
                 "throwable": {
-                    "description": "Sahip olduğunuz fırlatılabilir bir oyuncağı seçin. Tüm gruplarınızda hemen kullanılır.",
                     "selection": {
                         "accessibility": "Fırlatılabilir oyuncak seçimi"
                     }
@@ -594,7 +589,9 @@
             "current_user": {
                 "badge": "Siz"
             },
-            "duplicates_allowed": "Başka bir grup üyesiyle aynı karakteri veya takma adı kullanabilirsiniz.",
+            "equip": {
+                "action": "Kullan"
+            },
             "error": {
                 "character_not_owned": "Profiliniz için sahip olduğunuz bir karakter seçin."
             },

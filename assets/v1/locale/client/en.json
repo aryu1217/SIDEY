@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "Choose the pixel character that represents you on your friends’ screens.",
           "selection": {
             "accessibility": "Character selection"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Choose a speech bubble you own. It applies to all your groups immediately.",
             "selection": {
               "accessibility": "Speech bubble selection"
             }
           },
           "character": {
-            "description": "Choose a character you own. It applies to all your groups immediately.",
             "selection": {
               "accessibility": "Character selection"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "Default bubble",
           "default_throwable": "Default soft ball",
           "hint": {
-            "current": "Currently in use",
-            "select": "Applies to all your groups immediately"
+            "current": "Currently in use"
           },
           "throwable": {
-            "description": "Choose a tossable toy you own. It applies to all your groups immediately.",
             "selection": {
               "accessibility": "Tossable toy selection"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "You"
         },
-        "duplicates_allowed": "You can use the same character or nickname as another member of the group.",
+        "equip": {
+          "action": "Use"
+        },
         "error": {
           "character_not_owned": "Select a character you own for your profile."
         },

@@ -610,7 +610,6 @@
       },
       "profile": {
         "character": {
-          "description": "Escolha a personagem em píxeis que o representa nos ecrãs dos seus amigos.",
           "selection": {
             "accessibility": "Seleção de personagem"
           },
@@ -620,13 +619,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Escolha um dos seus balões de conversa. Será utilizado imediatamente em todos os seus grupos.",
             "selection": {
               "accessibility": "Seleção de balão de conversa"
             }
           },
           "character": {
-            "description": "Escolha uma das suas personagens. Será utilizada imediatamente em todos os seus grupos.",
             "selection": {
               "accessibility": "Seleção de personagem"
             }
@@ -634,11 +631,9 @@
           "default_bubble": "Balão predefinido",
           "default_throwable": "Bola macia predefinida",
           "hint": {
-            "current": "Em uso",
-            "select": "Aplicado imediatamente a todos os seus grupos"
+            "current": "Em uso"
           },
           "throwable": {
-            "description": "Escolha um dos seus brinquedos para atirar. Será utilizado imediatamente em todos os seus grupos.",
             "selection": {
               "accessibility": "Seleção de brinquedo para atirar"
             }
@@ -647,7 +642,9 @@
         "current_user": {
           "badge": "Eu"
         },
-        "duplicates_allowed": "Pode usar a mesma personagem ou alcunha que outro membro do grupo.",
+        "equip": {
+          "action": "Usar"
+        },
         "error": {
           "character_not_owned": "Selecione para o seu perfil uma personagem que possui."
         },

@@ -1288,7 +1288,6 @@
       },
       "profile": {
         "character": {
-          "description": "Wybierz pikselową postać, która będzie cię reprezentować na ekranach znajomych.",
           "selection": {
             "accessibility": "Wybór postaci"
           },
@@ -1298,13 +1297,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Wybierz dymek, który masz. Zostanie od razu zastosowany we wszystkich grupach.",
             "selection": {
               "accessibility": "Wybór dymku"
             }
           },
           "character": {
-            "description": "Wybierz postać, którą masz. Zostanie od razu zastosowana we wszystkich grupach.",
             "selection": {
               "accessibility": "Wybór postaci"
             }
@@ -1312,11 +1309,9 @@
           "default_bubble": "Domyślny dymek",
           "default_throwable": "Domyślna miękka piłeczka",
           "hint": {
-            "current": "Obecnie używane",
-            "select": "Od razu stosowane we wszystkich grupach"
+            "current": "Obecnie używane"
           },
           "throwable": {
-            "description": "Wybierz zabawkę do rzucania, którą masz. Zostanie od razu zastosowana we wszystkich grupach.",
             "selection": {
               "accessibility": "Wybór zabawki do rzucania"
             }
@@ -1325,7 +1320,9 @@
         "current_user": {
           "badge": "ty"
         },
-        "duplicates_allowed": "Możesz używać tej samej postaci lub tego samego pseudonimu co inny członek grupy.",
+        "equip": {
+          "action": "Użyj"
+        },
         "error": {
           "character_not_owned": "Wybierz do profilu postać, którą masz."
         },

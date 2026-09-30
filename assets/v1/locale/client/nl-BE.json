@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "Kies een pixelpersonage dat jou op de schermen van vrienden voorstelt.",
           "selection": {
             "accessibility": "Personage kiezen"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Kies een tekstballon die je hebt. Deze wordt meteen in al je groepen gebruikt.",
             "selection": {
               "accessibility": "Tekstballon kiezen"
             }
           },
           "character": {
-            "description": "Kies een personage dat je hebt. Dit wordt meteen in al je groepen gebruikt.",
             "selection": {
               "accessibility": "Personage kiezen"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "Standaardballon",
           "default_throwable": "Standaard zachte bal",
           "hint": {
-            "current": "Momenteel in gebruik",
-            "select": "Wordt meteen in al je groepen gebruikt"
+            "current": "Momenteel in gebruik"
           },
           "throwable": {
-            "description": "Kies werpspeelgoed dat je hebt. Dit wordt meteen in al je groepen gebruikt.",
             "selection": {
               "accessibility": "Werpspeelgoed kiezen"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "Jij"
         },
-        "duplicates_allowed": "Je kunt hetzelfde personage of dezelfde bijnaam gebruiken als een ander groepslid.",
+        "equip": {
+          "action": "Gebruiken"
+        },
         "error": {
           "character_not_owned": "Kies voor je profiel een personage dat je hebt."
         },
