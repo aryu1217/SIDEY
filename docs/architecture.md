@@ -136,7 +136,8 @@ Windows 사용자 표시와 update 비교는 `{head}.{yearweek}.{windowsBuild}`�
 binary의 FileVersion과 향후 MSIX `Package/Identity/@Version`은 이 값에 마지막 `0`을 붙인다.
 현재 배포는 이 값을 쓰는 unpackaged self-contained app과 NSIS installer이며 MSIX package를
 생성하지 않는다. 과거 revision 기반 update manifest는 기존 bridge를 유지하며, 새 HeadVer
-공개 manifest는 기존 설치본도 읽을 수 있는 기본 필드를 사용한다. 웹 download metadata는
+공개 manifest는 기존 설치본도 읽을 수 있는 기본 필드를 유지하고 증분 배포 metadata는
+선택 필드로 추가한다. 웹 download metadata는
 최신 Windows release artifact를 가리킨다.
 검증된 installer, release metadata, website output과 해당 release에 필요한
 historical license material만 공개 `SIDEY` 저장소로 게시한다. 지원이 종료된 macOS Direct

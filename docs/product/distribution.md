@@ -20,7 +20,8 @@ Windows의 공개 version과 channel은 generated mirror인
 binary FileVersion은 마지막 `0`을 붙인 MSIX-compatible version을 사용한다. 현재
 배포는 계속 self-contained NSIS Setup EXE이며 MSIX package를 만들지 않는다. 과거
 revision 기반 release의 tag와 업데이트 계약은 유지한다. 새 HeadVer release의 공개
-update manifest는 구버전 client가 읽을 수 있는 기본 필드만 사용한다. Windows target framework, minimum OS contract와
+update manifest는 구버전 client가 읽을 수 있는 기본 필드를 유지하며 증분 배포 metadata는
+선택 필드로 추가한다. Windows target framework, minimum OS contract와
 binary version은 [`windows/src/Sidey.App/Sidey.App.csproj`](../../windows/src/Sidey.App/Sidey.App.csproj)
 및 관련 project files에 있다.
 
