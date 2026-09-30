@@ -201,6 +201,9 @@ struct OverlayHistoryView: View {
 struct HistoryMessageCard: View {
     let entry: MessageLedgerEntry
     let participant: MessageHistoryParticipant
+    var showsAvatar = true
+    var showsTimestamp = true
+    var timeLabel: String? = nil
 
     private var bubbleTheme: PixelBubbleTheme { PixelBubbleTheme.resolve(entry.bubbleStyleID) }
     private var bubbleBorder: Color {
@@ -214,38 +217,43 @@ struct HistoryMessageCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 4) {
             if participant.isCurrentUser { Spacer(minLength: 24) }
-            if !participant.isCurrentUser { avatar }
-            VStack(alignment: participant.isCurrentUser ? .trailing : .leading, spacing: 4) {
+            if !participant.isCurrentUser { avatarColumn }
+            HStack(alignment: .bottom, spacing: 6) {
+                if participant.isCurrentUser { timestamp }
                 messageBubble
-                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if !participant.isCurrentUser { timestamp }
             }
-            .padding(.top, 16)
+            .padding(.top, showsAvatar ? 16 : 0)
             .frame(maxWidth: 440, alignment: participant.isCurrentUser ? .trailing : .leading)
-            if participant.isCurrentUser { avatar }
+            if participant.isCurrentUser { avatarColumn }
             if !participant.isCurrentUser { Spacer(minLength: 24) }
         }
         .frame(maxWidth: .infinity, alignment: participant.isCurrentUser ? .trailing : .leading)
         .accessibilityElement(children: .combine)
     }
 
-    private var avatar: some View {
-        VStack(spacing: 3) {
-            Text(participant.nickname)
-                .font(.system(.caption2, design: .rounded, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .help(participant.nickname)
-            Image(nsImage: PixelCharacterPreviewImage.image(
-                for: PixelCharacterCatalog.definition(for: participant.characterID)
-            ))
-            .interpolation(.none)
-            .resizable()
-            .frame(width: 48, height: 48)
-            .accessibilityHidden(true)
-        }
-        .frame(width: 72)
+    private var timestamp: some View {
+        Text(timeLabel ?? entry.createdAt.formatted(date: .omitted, time: .shortened))
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .fixedSize()
+            .padding(.bottom, 2)
+            // Keep the same wrapping width when a later message takes over the time.
+            .opacity(showsTimestamp ? 1 : 0)
+            .accessibilityHidden(!showsTimestamp)
+    }
+
+    private var avatarColumn: some View {
+        // Reserve the column width only. The avatar can extend below this row
+        // without making the gap between consecutive message bubbles larger.
+        Color.clear.frame(width: 72, height: 1)
+            .overlay(alignment: .top) {
+                if showsAvatar {
+                    HistoryMessageAvatar(participant: participant)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityHidden(!showsAvatar)
     }
 
     private var messageBubble: some View {
@@ -263,11 +271,11 @@ struct HistoryMessageCard: View {
         .frame(minWidth: bubbleTheme.decorationAssetName == nil ? 0 : 40,
                minHeight: 34, alignment: .leading)
         .background {
-            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
+            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser, showsTail: showsAvatar)
                 .fill(Color(nsColor: bubbleTheme.backgroundColor.withAlphaComponent(1)))
         }
         .overlay {
-            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser)
+            HistoryMessageBubbleShape(tailOnRight: participant.isCurrentUser, showsTail: showsAvatar)
                 .stroke(bubbleBorder, lineWidth: 1)
                 .allowsHitTesting(false)
         }
@@ -304,6 +312,28 @@ struct HistoryMessageCard: View {
     }
 }
 
+private struct HistoryMessageAvatar: View {
+    let participant: MessageHistoryParticipant
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(participant.nickname)
+                .font(.system(.caption2, design: .rounded, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(participant.nickname)
+            Image(nsImage: PixelCharacterPreviewImage.image(
+                for: PixelCharacterCatalog.definition(for: participant.characterID)
+            ))
+            .interpolation(.none)
+            .resizable()
+            .frame(width: 42, height: 42)
+            .accessibilityHidden(true)
+        }
+        .frame(width: 72)
+    }
+}
+
 @MainActor
 private enum HistoryBubbleDecoration {
     private static var images: [String: NSImage] = [:]
@@ -321,6 +351,7 @@ private enum HistoryBubbleDecoration {
 
 private struct HistoryMessageBubbleShape: Shape {
     let tailOnRight: Bool
+    let showsTail: Bool
 
     func path(in rect: CGRect) -> Path {
         let tailWidth: CGFloat = 8
@@ -341,9 +372,11 @@ private struct HistoryMessageBubbleShape: Shape {
         path.addLine(to: CGPoint(x: left + radius, y: bottom))
         path.addQuadCurve(to: CGPoint(x: left, y: bottom - radius),
                           control: CGPoint(x: left, y: bottom))
-        path.addLine(to: CGPoint(x: left, y: tailCenter + 5))
-        path.addLine(to: CGPoint(x: rect.minX, y: tailCenter))
-        path.addLine(to: CGPoint(x: left, y: tailCenter - 5))
+        if showsTail {
+            path.addLine(to: CGPoint(x: left, y: tailCenter + 5))
+            path.addLine(to: CGPoint(x: rect.minX, y: tailCenter))
+            path.addLine(to: CGPoint(x: left, y: tailCenter - 5))
+        }
         path.addLine(to: CGPoint(x: left, y: top + radius))
         path.addQuadCurve(to: CGPoint(x: left + radius, y: top),
                           control: CGPoint(x: left, y: top))
@@ -360,6 +393,33 @@ private struct HistoryMessageBubbleShape: Shape {
 struct HistoryTimelineItem: Equatable {
     let entry: MessageLedgerEntry
     let participant: MessageHistoryParticipant
+}
+
+private struct HistoryDaySeparator: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            accentLine
+            Text(title)
+                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            accentLine
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private var accentLine: some View {
+        Capsule()
+            .fill(Color.primary.opacity(0.14))
+            .frame(width: 20, height: 1)
+            .accessibilityHidden(true)
+    }
 }
 
 private struct HistoryTimeline: NSViewRepresentable {
@@ -387,13 +447,21 @@ private final class HistoryTimelineDocumentView: NSView {
 final class HistoryTimelineScrollView: NSScrollView {
     private let document = HistoryTimelineDocumentView()
     private let headerView = NSHostingView(rootView: AnyView(EmptyView()))
+    private let avatarMeasurementView = NSHostingView(rootView: AnyView(EmptyView()))
     private struct RowMeasurement {
         let item: HistoryTimelineItem
+        let showsAvatar: Bool
+        let showsTimestamp: Bool
         let width: CGFloat
         let height: CGFloat
+        let avatarHeight: CGFloat
     }
     private var rowViews: [UUID: NSHostingView<AnyView>] = [:]
+    private var dayViews: [Date: NSHostingView<AnyView>] = [:]
     private var rowMeasurements: [UUID: RowMeasurement] = [:]
+    private var calendar = Calendar.autoupdatingCurrent
+    private var timeFormatter = DateFormatter()
+    private var dayFormatter = DateFormatter()
     private var items: [HistoryTimelineItem] = []
     private var olderState: MessageHistoryOlderState = .exhausted
     private var header = AnyView(EmptyView())
@@ -415,6 +483,11 @@ final class HistoryTimelineScrollView: NSScrollView {
         contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(viewportChanged),
             name: NSView.boundsDidChangeNotification, object: contentView)
+        NotificationCenter.default.addObserver(self, selector: #selector(datePreferencesChanged),
+            name: NSLocale.currentLocaleDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(datePreferencesChanged),
+            name: .NSSystemTimeZoneDidChange, object: nil)
+        configureDateFormatters()
     }
 
     convenience init() { self.init(frame: .zero) }
@@ -450,6 +523,7 @@ final class HistoryTimelineScrollView: NSScrollView {
         }
         for item in items where rowViews[item.entry.id] == nil {
             let view = NSHostingView(rootView: AnyView(EmptyView()))
+            view.clipsToBounds = false
             rowViews[item.entry.id] = view
             document.addSubview(view)
         }
@@ -474,7 +548,8 @@ final class HistoryTimelineScrollView: NSScrollView {
         let top = contentView.bounds.minY
         for item in items {
             if let row = rowViews[item.entry.id], row.frame.maxY > top {
-                return (item.entry.id, top - row.frame.minY)
+                let messageInset: CGFloat = rowMeasurements[item.entry.id]?.showsAvatar == true ? 16 : 0
+                return (item.entry.id, top - row.frame.minY - messageInset)
             }
         }
         return nil
@@ -491,30 +566,90 @@ final class HistoryTimelineScrollView: NSScrollView {
         let headerHeight = max(2, headerView.fittingSize.height)
         headerView.frame = CGRect(x: 0, y: 0, width: width, height: headerHeight)
         var y = headerHeight + 10
-        for item in items {
+        var previous: HistoryTimelineItem?
+        var groupBottom: CGFloat?
+        var retainedDays: Set<Date> = []
+        for (index, item) in items.enumerated() {
             guard let view = rowViews[item.entry.id] else { continue }
+            let startsDay = previous.map {
+                !calendar.isDate($0.entry.createdAt, inSameDayAs: item.entry.createdAt)
+            } ?? true
+            let showsAvatar = startsDay || previous?.entry.senderID != item.entry.senderID
+            let next = index + 1 < items.count ? items[index + 1] : nil
+            let showsTimestamp = !(next.map {
+                $0.entry.senderID == item.entry.senderID
+                    && calendar.isDate($0.entry.createdAt, equalTo: item.entry.createdAt,
+                                       toGranularity: .minute)
+            } ?? false)
+            if showsAvatar, let previousGroupBottom = groupBottom {
+                // Only a new sender/day must clear the preceding avatar. Messages
+                // within the same run keep their compact six-point spacing.
+                y = max(y, previousGroupBottom + 12)
+            }
+            if startsDay {
+                let day = calendar.startOfDay(for: item.entry.createdAt)
+                retainedDays.insert(day)
+                let dayView = dayViews[day] ?? NSHostingView(rootView: AnyView(EmptyView()))
+                if dayViews[day] == nil {
+                    dayViews[day] = dayView
+                    document.addSubview(dayView)
+                }
+                dayView.rootView = AnyView(HistoryDaySeparator(title: dayFormatter.string(from: day))
+                    .frame(width: width).fixedSize(horizontal: false, vertical: true))
+                dayView.layoutSubtreeIfNeeded()
+                let dayHeight = max(1, dayView.fittingSize.height)
+                dayView.frame = CGRect(x: 0, y: y, width: width, height: dayHeight)
+                y += dayHeight + 6
+            }
             let height: CGFloat
+            let avatarHeight: CGFloat
             if let measured = rowMeasurements[item.entry.id],
-               measured.item == item, abs(measured.width - width) <= 0.5 {
+               measured.item == item, measured.showsAvatar == showsAvatar,
+               measured.showsTimestamp == showsTimestamp,
+               abs(measured.width - width) <= 0.5 {
                 height = measured.height
+                avatarHeight = measured.avatarHeight
             } else {
-                view.rootView = AnyView(HistoryMessageCard(entry: item.entry, participant: item.participant)
+                view.rootView = AnyView(HistoryMessageCard(
+                    entry: item.entry, participant: item.participant, showsAvatar: showsAvatar,
+                    showsTimestamp: showsTimestamp,
+                    timeLabel: timeFormatter.string(from: item.entry.createdAt))
                     .frame(width: width).fixedSize(horizontal: false, vertical: true))
                 view.layoutSubtreeIfNeeded()
                 height = max(1, view.fittingSize.height)
-                rowMeasurements[item.entry.id] = RowMeasurement(item: item, width: width, height: height)
+                if showsAvatar {
+                    avatarMeasurementView.rootView = AnyView(
+                        HistoryMessageAvatar(participant: item.participant)
+                            .fixedSize(horizontal: false, vertical: true))
+                    avatarMeasurementView.layoutSubtreeIfNeeded()
+                    avatarHeight = avatarMeasurementView.fittingSize.height
+                } else {
+                    avatarHeight = 0
+                }
+                rowMeasurements[item.entry.id] = RowMeasurement(
+                    item: item, showsAvatar: showsAvatar, showsTimestamp: showsTimestamp, width: width,
+                    height: height, avatarHeight: avatarHeight)
             }
             let frame = CGRect(x: 0, y: y, width: width, height: height)
             if view.frame != frame { view.frame = frame }
-            y += height + 10
+            if showsAvatar { groupBottom = frame.minY + avatarHeight }
+            groupBottom = max(groupBottom ?? frame.maxY, frame.maxY)
+            y += height + 6
+            previous = item
         }
+        for day in Array(dayViews.keys) where !retainedDays.contains(day) {
+            dayViews.removeValue(forKey: day)?.removeFromSuperview()
+        }
+        // The last avatar also needs document space even when its bubble is short.
+        if let groupBottom { y = max(y, groupBottom + 6) }
         document.frame = CGRect(x: 0, y: 0, width: width, height: max(contentSize.height, y))
         let maximum = max(0, document.bounds.height - contentView.bounds.height)
         let targetY: CGFloat
         if followBottom {
             targetY = maximum
         } else if let anchor, let row = rowViews[anchor.id] {
-            targetY = row.frame.minY + anchor.offset
+            let messageInset: CGFloat = rowMeasurements[anchor.id]?.showsAvatar == true ? 16 : 0
+            targetY = row.frame.minY + messageInset + anchor.offset
         } else {
             targetY = contentView.bounds.minY
         }
@@ -527,6 +662,35 @@ final class HistoryTimelineScrollView: NSScrollView {
     @objc private func viewportChanged() {
         guard !isUpdating else { return }
         schedulePaginationIfNeeded()
+    }
+
+    private func configureDateFormatters() {
+        calendar = .autoupdatingCurrent
+        // Localized styles honor the user's clock preference; fixed HH:mm/a h:mm do not.
+        timeFormatter = DateFormatter()
+        timeFormatter.locale = .autoupdatingCurrent
+        timeFormatter.calendar = calendar
+        timeFormatter.timeZone = .autoupdatingCurrent
+        timeFormatter.dateStyle = .none
+        timeFormatter.timeStyle = .short
+        dayFormatter = DateFormatter()
+        dayFormatter.locale = .autoupdatingCurrent
+        dayFormatter.calendar = calendar
+        dayFormatter.timeZone = .autoupdatingCurrent
+        dayFormatter.dateStyle = .full
+        dayFormatter.timeStyle = .none
+    }
+
+    @objc private func datePreferencesChanged() {
+        // Notification delivery need not originate on the UI thread.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let anchor = self.readingAnchor()
+            let followBottom = self.isAtBottom
+            self.configureDateFormatters()
+            self.rowMeasurements.removeAll()
+            self.layoutRows(anchor: anchor, followBottom: followBottom)
+        }
     }
 
     private func schedulePaginationIfNeeded() {
