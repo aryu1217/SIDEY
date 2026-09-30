@@ -25,6 +25,10 @@ struct SettingsActions {
     var onRemoveRoomMember: (UUID, UUID) -> Void
     var onLeaveRoom: (UUID) -> Void
     var onDeleteRoom: (UUID) -> Void
+    var onCreateDraw: (DrawKind, [UUID], [String]?) -> Void = { _, _, _ in }
+    var onReplayDraw: (UUID) -> Void = { _ in }
+    var onCloseDraw: (UUID) -> Void = { _ in }
+    var onRefreshDraws: () -> Void = {}
 
     var onCharacterSoundEffectsChanged: (Bool) -> Void = { _ in }
     var onCharacterImpact: (String, TimeInterval) -> Void = { _, _ in }
@@ -119,6 +123,8 @@ struct SettingsRootView: View {
                         )
                     case .groups:
                         GroupsSettingsView(model: model, actions: actions)
+                    case .draws:
+                        DrawSettingsView(model: model, actions: actions)
                     case .store:
                         StoreView(
                             model: model,
@@ -171,6 +177,7 @@ private extension SettingsPage {
         switch self {
         case .profile: "profile.title"
         case .groups: "groups.management.navigation_label"
+        case .draws: "draw.navigation_label"
         case .store: "store.navigation_label"
         case .app: "app.settings.navigation_label"
         }

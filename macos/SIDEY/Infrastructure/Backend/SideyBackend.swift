@@ -137,6 +137,52 @@ actor SideyBackend {
         try await authenticatedSession().accessToken
     }
 
+    func createDrawEvent(
+        roomID: UUID,
+        kind: DrawKind,
+        participantIDs: [UUID],
+        ladderLabels: [String]?
+    ) async throws -> DrawEvent {
+        _ = try await authenticatedSession()
+        do {
+            return try await client.rpc(
+                "create_draw_event",
+                params: CreateDrawEventParameters(
+                    roomID: roomID,
+                    kind: kind.rawValue,
+                    participantIDs: participantIDs,
+                    ladderLabels: ladderLabels
+                )
+            ).execute().value
+        } catch {
+            throw SideyBackendError.normalized(error)
+        }
+    }
+
+    func listDrawEvents(roomID: UUID) async throws -> [DrawEvent] {
+        _ = try await authenticatedSession()
+        return try await client.rpc(
+            "list_draw_events",
+            params: DrawRoomParameters(roomID: roomID)
+        ).execute().value
+    }
+
+    func openDrawEvent(id: UUID) async throws -> DrawEvent {
+        _ = try await authenticatedSession()
+        return try await client.rpc(
+            "open_draw_event",
+            params: DrawEventParameters(eventID: id)
+        ).execute().value
+    }
+
+    func closeDrawEvent(id: UUID) async throws -> DrawEvent {
+        _ = try await authenticatedSession()
+        return try await client.rpc(
+            "close_draw_event",
+            params: DrawEventParameters(eventID: id)
+        ).execute().value
+    }
+
     func currentFirebaseV2BootstrapSession() async throws -> FirebaseV2SupabaseSession {
         let session = try await authenticatedSession()
         return try FirebaseV2SupabaseSessionDecoder.decode(
@@ -862,6 +908,7 @@ actor SideyBackend {
         let messageChanges = databaseChannel.broadcastStream(event: "message_changed")
         let structureChanges = databaseChannel.broadcastStream(event: "structure_changed")
         let messagesPruned = databaseChannel.broadcastStream(event: "messages_pruned")
+        let drawChanges = databaseChannel.broadcastStream(event: "draw_events_changed")
         let databaseStatuses = databaseChannel.statusChange
         let typingStart = ephemeralChannel.broadcastStream(event: "typing_start")
         let typingStop = ephemeralChannel.broadcastStream(event: "typing_stop")
@@ -871,6 +918,15 @@ actor SideyBackend {
         let ephemeralStatuses = ephemeralChannel.statusChange
 
         let tasks = [
+            Task { [weak self] in
+                for await payload in drawChanges {
+                    await self?.handleDrawBroadcast(
+                        roomID: roomID,
+                        generation: generation,
+                        payload: payload
+                    )
+                }
+            },
             Task { [weak self] in
                 for await payload in messageChanges {
                     await self?.handleDatabaseBroadcast(
@@ -1481,6 +1537,16 @@ actor SideyBackend {
         default:
             return
         }
+    }
+
+    private func handleDrawBroadcast(roomID: UUID, generation: Int, payload: JSONObject) {
+        guard isCurrentChannel(roomID: roomID, generation: generation) else { return }
+        let inner = payload["payload"]?.objectValue ?? payload
+        guard let change = try? inner.decode(as: DrawChangePayload.self),
+              change.roomID == roomID,
+              ["created", "closed"].contains(change.operation)
+        else { return }
+        emit(.drawEventsChanged(roomID: roomID))
     }
 
     private func scheduleStructuralSnapshot() {

@@ -39,6 +39,15 @@ final class AppModel {
     var accountOperationInProgress = false
     var activeRoomTransportConnected: Bool { realtime.activeRoomTransportConnected }
     var rooms: [Room] = []
+    var drawEvents: [DrawEvent] = []
+    var drawEventsRoomID: UUID?
+    var drawOperationInProgress = false
+    var visibleDrawEvents: [DrawEvent] {
+        guard let roomID = activeRoom?.id, drawEventsRoomID == roomID else { return [] }
+        return drawEvents.filter {
+            $0.iconVisible && $0.closedAt == nil && ($0.iconExpiryDate ?? .distantPast) > .now
+        }
+    }
     var hasProfile = false
     let treeMovement = TreeMovementState()
     var currentUserID: UUID? {
@@ -457,7 +466,8 @@ final class AppModel {
         OverlayMemberProjection.members(room: activeRoom, currentUserID: currentUserID,
                                         localPresence: effectiveLocalPresence,
                                         showsOffline: preferences.showOfflineMembers, state: realtime,
-                                        quietModeEnabled: preferences.quietModeEnabled)
+                                        quietModeEnabled: preferences.quietModeEnabled,
+                                        forcedVisibleUserIDs: Set(visibleDrawEvents.map(\.creatorID)))
     }
 
     var activeBubbles: [ActiveBubble] { preferences.quietModeEnabled ? [] : bubbleLedger.bubbles }

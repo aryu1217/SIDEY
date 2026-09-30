@@ -76,6 +76,7 @@ enum BackendEvent: Sendable {
     case messageDeleted(roomID: UUID, messageID: UUID)
     case messagesInvalidated(roomID: UUID)
     case messagesReplaced(roomID: UUID, messages: [ChatMessage])
+    case drawEventsChanged(roomID: UUID)
     case presence(roomID: UUID, userID: UUID, state: PresenceState)
     case typing(roomID: UUID, userID: UUID, active: Bool)
     case characterPulse(CharacterPulseEvent)
@@ -550,6 +551,30 @@ struct SendMessageParameters: Encodable, Sendable {
     }
 }
 
+struct CreateDrawEventParameters: Encodable, Sendable {
+    let roomID: UUID
+    let kind: String
+    let participantIDs: [UUID]
+    let ladderLabels: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case roomID = "p_room_id"
+        case kind = "p_kind"
+        case participantIDs = "p_participants"
+        case ladderLabels = "p_ladder_labels"
+    }
+}
+
+struct DrawRoomParameters: Encodable, Sendable {
+    let roomID: UUID
+    enum CodingKeys: String, CodingKey { case roomID = "p_room_id" }
+}
+
+struct DrawEventParameters: Encodable, Sendable {
+    let eventID: UUID
+    enum CodingKeys: String, CodingKey { case eventID = "p_event_id" }
+}
+
 struct PresencePayload: Codable, Sendable {
     let userID: UUID
     let state: PresenceState
@@ -620,6 +645,20 @@ struct DatabaseChangePayload: Codable, Sendable {
         case roomID = "room_id"
         case messageID = "message_id"
         case realtimeEpoch = "realtime_epoch"
+    }
+}
+
+struct DrawChangePayload: Codable, Sendable {
+    let roomID: UUID
+    let eventID: UUID
+    let creatorID: UUID
+    let operation: String
+
+    enum CodingKeys: String, CodingKey {
+        case roomID = "room_id"
+        case eventID = "event_id"
+        case creatorID = "creator_id"
+        case operation
     }
 }
 
@@ -696,6 +735,8 @@ enum SideyBackendError: LocalizedError, Equatable {
     case realtimeUnavailable
     case staleRealtimeEpoch
     case authenticationRequired
+    case drawActiveLimitReached
+    case drawRateLimitReached
     case remote(diagnostic: String)
 
     var errorDescription: String? {
@@ -724,6 +765,8 @@ enum SideyBackendError: LocalizedError, Equatable {
         case .realtimeUnavailable: L10n.text("backend.error.realtime_unavailable")
         case .staleRealtimeEpoch: L10n.text("backend.error.stale_realtime_epoch")
         case .authenticationRequired: L10n.text("backend.error.authentication_required")
+        case .drawActiveLimitReached: L10n.text("draw.limit_reached")
+        case .drawRateLimitReached: L10n.text("draw.rate_limit_reached")
         case .remote: L10n.text("backend.error.generic")
         }
     }
@@ -751,6 +794,8 @@ enum SideyBackendError: LocalizedError, Equatable {
         case "invalid_profile": .invalidProfile
         case "invalid_message": .invalidMessage
         case "authentication_required": .authenticationRequired
+        case "draw_active_limit_reached": .drawActiveLimitReached
+        case "draw_rate_limit_reached": .drawRateLimitReached
         default: .remote(diagnostic: code)
         }
     }
@@ -774,7 +819,9 @@ enum SideyBackendError: LocalizedError, Equatable {
             "stale_realtime_epoch",
             "invalid_profile",
             "invalid_message",
-            "authentication_required"
+            "authentication_required",
+            "draw_active_limit_reached",
+            "draw_rate_limit_reached"
         ]
         if let code = knownCodes.first(where: { diagnostic.contains($0) }) {
             return business(code: code)

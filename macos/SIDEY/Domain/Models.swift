@@ -109,6 +109,7 @@ enum OverlayRevealPolicy {
 enum SettingsPage: String, CaseIterable, Identifiable, Sendable {
     case profile
     case groups
+    case draws
     case store
     case app
 
@@ -118,6 +119,7 @@ enum SettingsPage: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .profile: "person.crop.circle"
         case .groups: "person.2"
+        case .draws: "dice"
         case .store: "sparkles"
         case .app: "gearshape"
         }

@@ -40,6 +40,7 @@ final class AppCoordinator {
         onTypingChanged: { [weak self] active in self?.typingChanged(active) },
         onCharacterDoubleClick: { [weak self] in self?.characterDoubleClicked() },
         onTargetCharacterClick: { [weak self] userID in self?.characterThrowRequested(targetUserID: userID) },
+        onDrawIconClick: { [weak self] eventID in self?.openDrawEvent(eventID) },
         onRegionChanged: { [weak self] in self?.persistPreferences() },
         onTreeMovementToggle: { [weak self] in self?.toggleTreeMovement() }
     )
@@ -84,6 +85,12 @@ final class AppCoordinator {
             onRemoveRoomMember: { [weak self] roomID, userID in self?.removeRoomMember(roomID, userID: userID) },
             onLeaveRoom: { [weak self] roomID in self?.leaveRoom(roomID) },
             onDeleteRoom: { [weak self] roomID in self?.deleteRoom(roomID) },
+            onCreateDraw: { [weak self] kind, participants, labels in
+                self?.createDrawEvent(kind: kind, participants: participants, ladderLabels: labels)
+            },
+            onReplayDraw: { [weak self] id in self?.replayDrawEvent(id) },
+            onCloseDraw: { [weak self] id in self?.closeDrawEvent(id) },
+            onRefreshDraws: { [weak self] in self?.refreshDrawEvents() },
             onCharacterSoundEffectsChanged: { [weak self] enabled in
                 guard let self else { return }
                 self.model.preferences.characterSoundEffectsEnabled = enabled
@@ -131,6 +138,16 @@ final class AppCoordinator {
     )
     let commerceSession = CommerceSession()
     let roomSession = RoomSessionLifetime()
+    var drawRefreshTask: Task<Void, Never>?
+    var drawRefreshGeneration = 0
+    var drawOpenGeneration = 0
+    var drawResultWindowStorage: DrawResultWindowController?
+    var drawResultWindow: DrawResultWindowController {
+        if let drawResultWindowStorage { return drawResultWindowStorage }
+        let controller = DrawResultWindowController()
+        drawResultWindowStorage = controller
+        return controller
+    }
     var treeMovementTask: Task<Void, Never>?
     private var landingTask: Task<Void, Never>?
     private var landingDidComplete = false
@@ -276,6 +293,9 @@ final class AppCoordinator {
         landingTask?.cancel()
         stopAllTyping()
         roomSession.cancel()
+        drawRefreshTask?.cancel()
+        drawRefreshTask = nil
+        drawResultWindowStorage?.close()
         commerceSession.cancel(model: model)
         activityMonitor.stop()
         mainThreadProbe.stop()
@@ -430,6 +450,7 @@ final class AppCoordinator {
 
     private func setOverlayRegion(_ preference: OverlayRegionPreference) {
         overlayWindows.setRegionPreference(preference)
+        drawResultWindowStorage?.updateScreen(overlayWindows.currentScreenIdentifier)
         persistPreferences()
     }
 

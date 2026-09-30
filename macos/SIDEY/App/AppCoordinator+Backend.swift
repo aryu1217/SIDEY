@@ -95,6 +95,7 @@ extension AppCoordinator {
                 startRealtimeRolloutMonitoring()
                 applyRequestedOverlayVisibility()
                 overlayWindows.refreshThrowHotspots()
+                startDrawRefresh()
                 refreshStatusItem()
                 persistPreferences()
                 advanceFirstRunTransition()
@@ -483,6 +484,7 @@ extension AppCoordinator {
         if model.activeRoom?.id == roomID, model.groupOperation == .idle { return }
         overlayWindows.dismissComposer()
         overlayWindows.invalidateThrowInteraction()
+        drawResultWindowStorage?.closeIfRoomChanged(to: roomID)
         stopAllTyping()
         model.errorMessage = nil
         model.historySendError = nil
@@ -504,6 +506,10 @@ extension AppCoordinator {
         model.preferences.activeRoomID = roomID
         model.markRoomRead(roomID)
         model.clearBubbles()
+        model.drawEvents = []
+        model.drawEventsRoomID = nil
+        overlayWindows.refreshDrawIcons()
+        refreshDrawEvents()
         model.connectionState = .online
         model.errorMessage = nil
         overlayWindows.invalidateThrowInteraction()
@@ -722,6 +728,13 @@ extension AppCoordinator {
             model.clearBubbles()
         }
         model.apply(snapshot: snapshot, currentUserID: currentUserID)
+        drawResultWindowStorage?.closeIfRoomChanged(to: model.activeRoom?.id)
+        if model.drawEventsRoomID != model.activeRoom?.id {
+            model.drawEvents = []
+            model.drawEventsRoomID = nil
+            overlayWindows.refreshDrawIcons()
+            refreshDrawEvents()
+        }
         migrateTreeMovementIfNeeded()
     }
 
@@ -768,6 +781,8 @@ extension AppCoordinator {
         case .messagesReplaced(let roomID, let messages):
             model.replaceMessages(roomID: roomID, with: messages)
             reloadHistory(roomID: roomID)
+        case .drawEventsChanged(let roomID):
+            if roomID == model.activeRoom?.id { refreshDrawEvents() }
         case .presence(let roomID, let userID, let state):
             model.updatePresence(roomID: roomID, userID: userID, state: state)
             overlayWindows.refreshThrowHotspots()
@@ -815,6 +830,7 @@ extension AppCoordinator {
             model.preferences.activeRoomID = activeRoomID
             model.replaceMessages(roomID: activeRoomID, with: reconciliation.activeMessages)
         }
+        refreshDrawEvents()
     }
 
     func scheduleBubbleExpiry() {

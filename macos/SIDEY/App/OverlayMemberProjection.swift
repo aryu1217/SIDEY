@@ -3,7 +3,8 @@ import Foundation
 @MainActor
 enum OverlayMemberProjection {
     static func members(room: Room?, currentUserID: UUID?, localPresence: PresenceState,
-                        showsOffline: Bool, state: RoomPresenceState, quietModeEnabled: Bool = false) -> [PixelWorldMember] {
+                        showsOffline: Bool, state: RoomPresenceState, quietModeEnabled: Bool = false,
+                        forcedVisibleUserIDs: Set<UUID> = []) -> [PixelWorldMember] {
         guard let activeRoom = room else { return [] }
         return activeRoom.members.compactMap { member in
             let isCurrentUser = member.userID == currentUserID
@@ -11,7 +12,8 @@ enum OverlayMemberProjection {
             let baseState = isCurrentUser
                 ? localPresence
                 : (state.baseState(roomID: activeRoom.id, userID: member.userID) ?? (member.presence == .typing ? .online : member.presence))
-            guard isCurrentUser || showsOffline || baseState != .offline else { return nil }
+            guard isCurrentUser || showsOffline || baseState != .offline
+                    || forcedVisibleUserIDs.contains(member.userID) else { return nil }
             return PixelWorldMember(
                 id: member.userID,
                 nickname: ProfileValidator.displayNickname(member.nickname),

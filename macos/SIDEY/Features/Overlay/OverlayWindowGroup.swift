@@ -162,6 +162,7 @@ final class OverlayWindowGroup {
     private let onTypingChanged: (Bool) -> Void
     private let onCharacterDoubleClick: () -> Void
     private let onTargetCharacterClick: (UUID) -> Void
+    private let onDrawIconClick: (UUID) -> Void
     private let onRegionChanged: () -> Void
     private let onTreeMovementToggle: () -> Void
     private lazy var worldWindow = PixelWorldWindowController(
@@ -186,6 +187,7 @@ final class OverlayWindowGroup {
         onDoubleRightClick: { [weak self] in self?.activateThrowTargeting() }
     )
     private var targetHotspotWindows: [UUID: CharacterHotspotWindowController] = [:]
+    private var drawIconWindows: [UUID: DrawIconBubbleController] = [:]
     private var screenObserver: ScreenObserverToken?
     private(set) var activityFrame: CGRect = .zero
     private(set) var renderFrame: CGRect = .zero
@@ -207,6 +209,7 @@ final class OverlayWindowGroup {
         onTypingChanged: @escaping (Bool) -> Void = { _ in },
         onCharacterDoubleClick: @escaping () -> Void = {},
         onTargetCharacterClick: @escaping (UUID) -> Void = { _ in },
+        onDrawIconClick: @escaping (UUID) -> Void = { _ in },
         onRegionChanged: @escaping () -> Void = {},
         onTreeMovementToggle: @escaping () -> Void = {},
         composerAutoDismissDelay: Duration = OverlayWindowGroup.defaultComposerAutoDismissDelay,
@@ -217,6 +220,7 @@ final class OverlayWindowGroup {
         self.onTypingChanged = onTypingChanged
         self.onCharacterDoubleClick = onCharacterDoubleClick
         self.onTargetCharacterClick = onTargetCharacterClick
+        self.onDrawIconClick = onDrawIconClick
         self.onRegionChanged = onRegionChanged
         self.onTreeMovementToggle = onTreeMovementToggle
         self.composerAutoDismissDelay = composerAutoDismissDelay
@@ -251,11 +255,13 @@ final class OverlayWindowGroup {
             worldWindow.orderFront()
             hotspotWindow.setVisible(true)
             refreshThrowHotspots()
+            refreshDrawIcons()
         } else {
             dismissComposer()
             hotspotWindow.setVisible(false)
             resetThrowTargeting()
             worldWindow.orderOut()
+            drawIconWindows.values.forEach { $0.hide() }
         }
     }
 
@@ -350,6 +356,29 @@ final class OverlayWindowGroup {
         }
     }
 
+    func refreshDrawIcons() {
+        let grouped = Dictionary(grouping: model.visibleDrawEvents, by: \.creatorID)
+        for id in drawIconWindows.keys where grouped[id] == nil {
+            drawIconWindows.removeValue(forKey: id)?.hide()
+        }
+        let visibleScreen = screenGeometries.first(where: {
+            $0.identifier == currentScreenIdentifier
+        })?.visibleFrame
+        for (creatorID, events) in grouped {
+            let controller = drawIconWindows[creatorID] ?? DrawIconBubbleController(
+                events: events,
+                onOpen: onDrawIconClick
+            )
+            drawIconWindows[creatorID] = controller
+            controller.update(
+                events: events,
+                characterFrame: screenFrame(for: characterLocalFrames[creatorID]),
+                visibleFrame: visibleScreen,
+                visible: overlayVisible
+            )
+        }
+    }
+
     func submitComposerMessage(_ body: String) {
         guard composerVisible else { return }
         scheduleComposerAutoDismiss()
@@ -406,6 +435,7 @@ final class OverlayWindowGroup {
             preference: model.preferences.composerPosition, screens: screens, fallback: screen
         ))
         positionHotspot()
+        refreshDrawIcons()
 
         if persistFallback,
            (!requestedScreenExists || model.preferences.overlayRegion != resolved) {
@@ -462,10 +492,12 @@ final class OverlayWindowGroup {
             hotspotWindow.setFrame(nil)
             dismissComposer()
             resetThrowTargeting()
+            refreshDrawIcons()
             return
         }
         positionHotspot()
         refreshThrowHotspots()
+        refreshDrawIcons()
     }
 
     private func positionHotspot() {
@@ -515,7 +547,7 @@ final class OverlayWindowGroup {
     }
 }
 
-private extension NSScreen {
+extension NSScreen {
     var sideyOverlayGeometry: OverlayScreenGeometry {
         let screenNumber = (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
             .map { $0.uint32Value }

@@ -1845,7 +1845,7 @@ final class TypingIndicatorNode: PixelBubbleNode {
     }
 }
 
-private struct PixelCharacterTextures {
+struct PixelCharacterTextures {
     let idle: [SKTexture]
     let walk: [SKTexture]
     let doze: [SKTexture]
@@ -1853,7 +1853,7 @@ private struct PixelCharacterTextures {
 }
 
 @MainActor
-private final class PixelCharacterTextureStore {
+final class PixelCharacterTextureStore {
     static let shared = PixelCharacterTextureStore()
     private var cache: [String: PixelCharacterTextures] = [:]
 
