@@ -15,7 +15,8 @@ final class DrawLotScene: SKScene {
     private var startingPositions: [CGPoint] = []
 
     init(event: DrawEvent, room: Room, size: CGSize) {
-        entries = event.gameEntries(in: room)
+        let entries = event.gameEntries(in: room)
+        self.entries = entries
         winnerIndex = event.isFreeEntryMode
             ? event.result.winnerEntryIndex.flatMap { entries.indices.contains($0) ? $0 : nil }
             : entries.firstIndex { $0.member?.userID == event.result.winnerUserID }
