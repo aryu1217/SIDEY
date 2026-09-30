@@ -36,14 +36,22 @@ struct DrawLadderLayout {
             return
         }
 
-        // A neutral pair supplies a real route even when the server permutation
-        // is the identity. The event ID chooses the lane reproducibly.
+        // Scramble first, then route to the server's assigned slots. The extra
+        // crossings make even identity assignments travel through the ladder.
         var random = DrawGameRandom(eventID: event.id)
-        let neutralLane = random.index(count - 1)
-        var generated = [DrawLadderRung(row: 0, leftLane: neutralLane),
-                         DrawLadderRung(row: 1, leftLane: neutralLane)]
+        var generated: [DrawLadderRung] = []
         var order = Array(0..<count)
-        var row = 2
+        let scrambleRows = 4 + random.index(3)
+        for row in 0..<scrambleRows {
+            let firstLane = count == 2 ? 0 : row % 2
+            let eligible = stride(from: firstLane, to: count - 1, by: 2).map { $0 }
+            let selected = eligible.filter { _ in random.index(3) != 0 }
+            let lanes = selected.isEmpty ? [eligible[random.index(eligible.count)]] : selected
+            for lane in lanes {
+                generated.append(DrawLadderRung(row: row, leftLane: lane))
+                order.swapAt(lane, lane + 1)
+            }
+        }
         // Odd-even transposition sorts by assigned bottom slot. Each row's
         // exchanges are disjoint, so every crossing has a visible rung.
         for phase in 0..<count {
@@ -52,14 +60,13 @@ struct DrawLadderLayout {
             while lane + 1 < count {
                 if destinations[order[lane]] > destinations[order[lane + 1]] {
                     order.swapAt(lane, lane + 1)
-                    generated.append(DrawLadderRung(row: row, leftLane: lane))
+                    generated.append(DrawLadderRung(row: scrambleRows + phase, leftLane: lane))
                 }
                 lane += 2
             }
-            row += 1
         }
         rungs = generated
-        rowCount = row
+        rowCount = scrambleRows + count
     }
 }
 
@@ -76,6 +83,8 @@ final class DrawLadderScene: SKScene {
     private let layout: DrawLadderLayout
     private var characters: [DrawCharacterNode] = []
     private var routes: [[Segment]] = []
+    private let rungOutline = SKShapeNode()
+    private let rungInner = SKShapeNode()
     private let highlight = SKShapeNode()
     private var progress: CGFloat = 0
 
@@ -99,6 +108,8 @@ final class DrawLadderScene: SKScene {
     func setProgress(_ value: CGFloat) {
         let previous = progress
         progress = min(max(value, 0), 1)
+        rungOutline.isHidden = progress == 0
+        rungInner.isHidden = progress == 0
         let count = characters.count
         guard count > 0 else { return }
         let total = CGFloat(count) * 2.2 + CGFloat(max(0, count - 1)) * 0.2
@@ -146,28 +157,44 @@ final class DrawLadderScene: SKScene {
             top - usable * CGFloat(row + 1) / CGFloat(layout.rowCount + 1)
         }
 
-        let ladderPath = CGMutablePath()
+        let railPath = CGMutablePath()
         for x in lanes {
-            ladderPath.move(to: CGPoint(x: x, y: top))
-            ladderPath.addLine(to: CGPoint(x: x, y: bottom))
+            railPath.move(to: CGPoint(x: x, y: top))
+            railPath.addLine(to: CGPoint(x: x, y: bottom))
         }
+        let rungPath = CGMutablePath()
         for rung in layout.rungs {
             let y = rowY(rung.row)
-            ladderPath.move(to: CGPoint(x: lanes[rung.leftLane], y: y))
-            ladderPath.addLine(to: CGPoint(x: lanes[rung.leftLane + 1], y: y))
+            rungPath.move(to: CGPoint(x: lanes[rung.leftLane], y: y))
+            rungPath.addLine(to: CGPoint(x: lanes[rung.leftLane + 1], y: y))
         }
-        let outline = SKShapeNode(path: ladderPath)
-        outline.strokeColor = DrawGamePalette.outline
-        outline.lineWidth = 7
-        outline.lineCap = .round
-        outline.zPosition = 0
-        addChild(outline)
-        let inner = SKShapeNode(path: ladderPath)
-        inner.strokeColor = DrawGamePalette.cream
-        inner.lineWidth = 3
-        inner.lineCap = .round
-        inner.zPosition = 1
-        addChild(inner)
+        let railOutline = SKShapeNode(path: railPath)
+        railOutline.strokeColor = DrawGamePalette.outline
+        railOutline.lineWidth = 7
+        railOutline.lineCap = .round
+        railOutline.zPosition = 0
+        addChild(railOutline)
+        let railInner = SKShapeNode(path: railPath)
+        railInner.strokeColor = DrawGamePalette.cream
+        railInner.lineWidth = 3
+        railInner.lineCap = .round
+        railInner.zPosition = 1
+        addChild(railInner)
+        rungOutline.path = rungPath
+        rungOutline.name = "ladder-rungs"
+        rungOutline.isHidden = progress == 0
+        rungOutline.strokeColor = DrawGamePalette.outline
+        rungOutline.lineWidth = 7
+        rungOutline.lineCap = .round
+        rungOutline.zPosition = 0
+        addChild(rungOutline)
+        rungInner.path = rungPath
+        rungInner.isHidden = progress == 0
+        rungInner.strokeColor = DrawGamePalette.cream
+        rungInner.lineWidth = 3
+        rungInner.lineCap = .round
+        rungInner.zPosition = 1
+        addChild(rungInner)
         highlight.strokeColor = DrawGamePalette.accent
         highlight.lineWidth = 5
         highlight.lineCap = .round

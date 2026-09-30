@@ -23,6 +23,11 @@ final class DrawGameSceneTests: XCTestCase {
                 closedAt: nil, openedAt: nil, iconVisible: true
             )
             let layout = DrawLadderLayout(event: event, participantIDs: ids)
+            let replayLayout = DrawLadderLayout(event: event, participantIDs: ids)
+
+            XCTAssertEqual(layout.rungs, replayLayout.rungs)
+            XCTAssertGreaterThanOrEqual(layout.rungs.count, 4,
+                                        "\(count)명 게임도 시작부터 충분한 교차선이 있어야 함")
 
             var lanes = Array(0..<count)
             for rung in layout.rungs.sorted(by: { $0.row < $1.row }) {
@@ -34,6 +39,60 @@ final class DrawGameSceneTests: XCTestCase {
             }
             XCTAssertEqual(Set(layout.destinationForParticipant).count, count)
         }
+    }
+
+    func testGameCharacterNameplateStaysBelowSprite() throws {
+        let member = RoomMember(userID: UUID(), nickname: "긴닉네임친구",
+                                characterID: "pixel_hamster", presence: .online)
+        let character = DrawCharacterNode(member: member)
+        let sprite = try XCTUnwrap(character.children.compactMap { $0 as? SKSpriteNode }.first)
+        let nickname = try XCTUnwrap(character.children.compactMap { $0 as? SKLabelNode }.first)
+        XCTAssertLessThan(nickname.frame.maxY, sprite.frame.minY)
+    }
+
+    func testLadderExtraCrossingsPreserveDistinctServerAssignments() {
+        for count in [2, 5, 12] {
+            let ids = (1...count).map {
+                UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", $0))!
+            }
+            let labels = (0..<count).map { "항목 \($0)" }
+            let event = DrawEvent(
+                id: UUID(uuidString: "12345678-0000-0000-0000-000000000001")!,
+                roomID: UUID(), creatorID: ids[0], kind: .ladder,
+                participantIDs: ids, ladderLabels: labels,
+                result: DrawResult(winnerUserID: nil, assignments: ids.enumerated().map { index, id in
+                    DrawAssignment(userID: id, label: labels[count - index - 1])
+                }),
+                createdAt: "2026-09-29T00:00:00Z", iconExpiresAt: "2026-09-29T00:30:00Z",
+                closedAt: nil, openedAt: nil, iconVisible: true
+            )
+            let layout = DrawLadderLayout(event: event, participantIDs: ids)
+            var order = Array(0..<count)
+            for rung in layout.rungs.sorted(by: { $0.row < $1.row }) {
+                order.swapAt(rung.leftLane, rung.leftLane + 1)
+            }
+            XCTAssertEqual(order, Array((0..<count).reversed()))
+        }
+    }
+
+    func testLadderHidesConnectionsUntilPlaybackStarts() throws {
+        let ids = (1...3).map { UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", $0))! }
+        let members = ids.map { RoomMember(userID: $0, nickname: "친구", characterID: "pixel_hamster", presence: .online) }
+        let room = Room(id: UUID(), name: "테스트", ownerID: ids[0], members: members, inviteCodeHint: "AB••••")
+        let event = DrawEvent(id: UUID(), roomID: room.id, creatorID: ids[0], kind: .ladder,
+                              participantIDs: ids, ladderLabels: ["가", "나", "다"],
+                              result: DrawResult(winnerUserID: nil, assignments: ids.enumerated().map { index, id in
+                                  DrawAssignment(userID: id, label: ["가", "나", "다"][index])
+                              }),
+                              createdAt: "2026-09-29T00:00:00Z", iconExpiresAt: "2026-09-29T00:30:00Z",
+                              closedAt: nil, openedAt: nil, iconVisible: true)
+        let scene = DrawLadderScene(event: event, room: room, size: CGSize(width: 480, height: 320))
+        let connections = try XCTUnwrap(scene.childNode(withName: "ladder-rungs"))
+        XCTAssertTrue(connections.isHidden)
+        scene.setProgress(0.01)
+        XCTAssertFalse(connections.isHidden)
+        scene.setProgress(0)
+        XCTAssertTrue(connections.isHidden)
     }
 
     func testPreparedMiddleAndCompletedScenesRenderWithTransparentCorners() throws {

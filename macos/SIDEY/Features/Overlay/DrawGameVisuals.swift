@@ -58,7 +58,9 @@ final class DrawCharacterNode: SKNode {
         nickname.fontColor = .white
         nickname.verticalAlignmentMode = .center
         nickname.horizontalAlignmentMode = .center
-        nickname.position.y = PixelNameplateLayout.verticalPosition
+        // Draw characters stand on their node origin. Keep the nameplate below
+        // the 48-point sprite instead of using the edge-overlay label position.
+        nickname.position.y = -12
         nickname.zPosition = 2
         addChild(nickname)
         let frame = PixelNameplateLayout.backgroundFrame(nicknameFrame: nickname.frame)

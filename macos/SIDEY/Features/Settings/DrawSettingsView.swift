@@ -118,11 +118,6 @@ struct DrawSettingsView: View {
                             }
                             Spacer()
                             Button("draw.replay") { actions.onReplayDraw(event.id) }
-                            if event.creatorID == model.currentUserID,
-                               (event.iconExpiryDate ?? .distantPast) > .now,
-                               event.closedAt == nil {
-                                Button("draw.end") { actions.onCloseDraw(event.id) }
-                            }
                         }
                         if event.id != model.drawEvents.last?.id { Divider() }
                     }
