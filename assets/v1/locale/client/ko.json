@@ -192,12 +192,59 @@
         }
       },
       "connection": {
+        "retry": {
+          "action": "다시 연결"
+        },
         "state": {
           "connecting": "연결 중…",
           "failed": "연결 오류",
           "idle": "대기 중",
           "online": "연결됨"
         }
+      },
+      "draw": {
+        "animating": "뽑는 중…",
+        "close_failed": "뽑기를 종료하지 못했어요. (%@)",
+        "close_result": "결과 닫기",
+        "create": {
+          "ladder": "사다리 만들기",
+          "lot": "제비뽑기 만들기",
+          "roulette": "룰렛 만들기",
+          "subtitle": "멤버를 고르면 서버가 모두에게 같은 결과를 확정해요."
+        },
+        "create_failed": "뽑기를 만들지 못했어요. (%@)",
+        "created": "뽑기를 만들었어요.",
+        "end": "일찍 종료",
+        "history": {
+          "empty": "이 그룹에는 아직 뽑기 기록이 없어요.",
+          "subtitle": "결과는 24시간 동안 볼 수 있어요. 다시 재생해도 아이콘은 돌아오지 않아요.",
+          "title": "뽑기 기록"
+        },
+        "kind": {
+          "label": "종류",
+          "ladder": "사다리타기",
+          "lot": "제비뽑기",
+          "roulette": "룰렛"
+        },
+        "ladder": {
+          "hint": "입력한 항목은 사다리 결과에 따라 참가자에게 배정돼요.",
+          "labels": "사다리 도착 항목",
+          "placeholder": "도착 항목 (최대 80자)"
+        },
+        "limit_reached": "활성 뽑기는 만든 사람당 최대 2개예요. 하나를 종료하거나 30분 뒤 다시 시도해 주세요.",
+        "navigation_label": "뽑기",
+        "no_room": "뽑기를 만들려면 그룹에 참여해 주세요.",
+        "open_failed": "결과를 열지 못했어요. (%@)",
+        "participants": {
+          "title": "참여자 (2~12명)"
+        },
+        "refresh": "새로고침",
+        "replay": "다시 보기",
+        "start": "시작",
+        "result": {
+          "title": "결과"
+        },
+        "rate_limit_reached": "뽑기는 최근 1시간에 최대 20개까지 만들 수 있어요. 잠시 후 다시 시도해 주세요."
       },
       "firebase": {
         "auth": {

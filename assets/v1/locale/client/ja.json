@@ -192,12 +192,59 @@
         }
       },
       "connection": {
+        "retry": {
+          "action": "再接続"
+        },
         "state": {
           "connecting": "接続中…",
           "failed": "接続エラー",
           "idle": "待機中",
           "online": "接続済み"
         }
+      },
+      "draw": {
+        "animating": "抽選中…",
+        "close_failed": "抽選を終了できませんでした。（%@）",
+        "close_result": "結果を閉じる",
+        "create": {
+          "ladder": "あみだくじを作成",
+          "lot": "くじ引きを作成",
+          "roulette": "ルーレットを作成",
+          "subtitle": "メンバーを選ぶと、サーバーが全員共通の結果を確定します。"
+        },
+        "create_failed": "抽選を作成できませんでした。（%@）",
+        "created": "抽選を作成しました。",
+        "end": "早期終了",
+        "history": {
+          "empty": "このグループにはまだ抽選履歴がありません。",
+          "subtitle": "結果は24時間確認できます。再生してもアイコンは戻りません。",
+          "title": "抽選履歴"
+        },
+        "kind": {
+          "label": "種類",
+          "ladder": "あみだくじ",
+          "lot": "くじ引き",
+          "roulette": "ルーレット"
+        },
+        "ladder": {
+          "hint": "ゴールはあみだくじの結果に応じて参加者に割り当てられます。",
+          "labels": "あみだくじのゴール",
+          "placeholder": "ゴール（80文字以内）"
+        },
+        "limit_reached": "進行中の抽選は作成者ごとに2件までです。終了するか30分後にお試しください。",
+        "navigation_label": "抽選",
+        "no_room": "抽選を作成するにはグループに参加してください。",
+        "open_failed": "結果を開けませんでした。（%@）",
+        "participants": {
+          "title": "参加者（2〜12人）"
+        },
+        "refresh": "更新",
+        "replay": "再生",
+        "start": "スタート",
+        "result": {
+          "title": "結果"
+        },
+        "rate_limit_reached": "抽選は直近1時間に20件まで作成できます。しばらくしてからもう一度お試しください。"
       },
       "firebase": {
         "auth": {

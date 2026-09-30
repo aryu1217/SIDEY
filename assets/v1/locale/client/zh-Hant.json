@@ -192,12 +192,59 @@
         }
       },
       "connection": {
+        "retry": {
+          "action": "重新連線"
+        },
         "state": {
           "connecting": "連線中…",
           "failed": "連線錯誤",
           "idle": "待機中",
           "online": "已連線"
         }
+      },
+      "draw": {
+        "animating": "抽籤中…",
+        "close_failed": "無法結束抽籤。（%@）",
+        "close_result": "關閉結果",
+        "create": {
+          "ladder": "建立爬梯子",
+          "lot": "建立抽籤遊戲",
+          "roulette": "建立輪盤",
+          "subtitle": "選擇成員後，伺服器會確定所有人相同的結果。"
+        },
+        "create_failed": "無法建立抽籤。（%@）",
+        "created": "已建立抽籤。",
+        "end": "提前結束",
+        "history": {
+          "empty": "這個群組尚無抽籤紀錄。",
+          "subtitle": "結果可查看 24 小時。重播不會讓圖示重新出現。",
+          "title": "抽籤紀錄"
+        },
+        "kind": {
+          "label": "類型",
+          "ladder": "爬梯子",
+          "lot": "抽籤",
+          "roulette": "輪盤"
+        },
+        "ladder": {
+          "hint": "系統會依爬梯子的結果，將終點項目分配給參與者。",
+          "labels": "梯子終點項目",
+          "placeholder": "終點項目（最多 80 字）"
+        },
+        "limit_reached": "每位建立者最多可有 2 個進行中的抽籤。請結束一個或 30 分鐘後再試。",
+        "navigation_label": "抽籤",
+        "no_room": "請先加入群組再建立抽籤。",
+        "open_failed": "無法開啟結果。（%@）",
+        "participants": {
+          "title": "參與者（2–12 人）"
+        },
+        "refresh": "重新整理",
+        "replay": "重播",
+        "start": "開始",
+        "result": {
+          "title": "結果"
+        },
+        "rate_limit_reached": "最近 1 小時內最多可建立 20 個抽籤。請稍後再試。"
       },
       "firebase": {
         "auth": {

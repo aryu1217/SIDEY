@@ -192,12 +192,59 @@
         }
       },
       "connection": {
+        "retry": {
+          "action": "Opnieuw verbinden"
+        },
         "state": {
           "connecting": "Wisselen van groep…",
           "failed": "Verbindingsfout",
           "idle": "Inactief",
           "online": "Verbonden"
         }
+      },
+      "draw": {
+        "animating": "Drawing…",
+        "close_failed": "Couldn’t end the draw. (%@)",
+        "close_result": "Close result",
+        "create": {
+          "ladder": "Create a ladder game",
+          "lot": "Create a draw of lots",
+          "roulette": "Create a roulette game",
+          "subtitle": "Choose members. The server fixes one result for everyone."
+        },
+        "create_failed": "Couldn’t create the draw. (%@)",
+        "created": "Draw created.",
+        "end": "End early",
+        "history": {
+          "empty": "No draws in this group yet.",
+          "subtitle": "Results remain here for 24 hours. Replay does not restore an icon.",
+          "title": "Draw history"
+        },
+        "kind": {
+          "label": "Type",
+          "ladder": "Ladder game",
+          "lot": "Draw lots",
+          "roulette": "Roulette"
+        },
+        "ladder": {
+          "hint": "Destinations are assigned to participants when the ladder is drawn.",
+          "labels": "Ladder destinations",
+          "placeholder": "Destination (up to 80 characters)"
+        },
+        "limit_reached": "You can have up to two active draws. End one or wait 30 minutes.",
+        "navigation_label": "Draws",
+        "no_room": "Join a group to create a draw.",
+        "open_failed": "Couldn’t open the result. (%@)",
+        "participants": {
+          "title": "Participants (2–12)"
+        },
+        "refresh": "Refresh",
+        "replay": "Replay",
+        "start": "Start",
+        "result": {
+          "title": "Result"
+        },
+        "rate_limit_reached": "You can create up to 20 draws in one hour. Try again later."
       },
       "firebase": {
         "auth": {
