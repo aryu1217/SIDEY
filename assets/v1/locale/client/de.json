@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "Wähle die Pixelfigur aus, die dich auf den Bildschirmen deiner Freunde darstellt.",
           "selection": {
             "accessibility": "Figurenauswahl"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Wähle eine Sprechblase aus, die du hast. Die Auswahl gilt sofort in allen deinen Gruppen.",
             "selection": {
               "accessibility": "Sprechblasenauswahl"
             }
           },
           "character": {
-            "description": "Wähle eine Figur aus, die du hast. Die Auswahl gilt sofort in allen deinen Gruppen.",
             "selection": {
               "accessibility": "Figurenauswahl"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "Standardblase",
           "default_throwable": "Weicher Standardball",
           "hint": {
-            "current": "Derzeit verwendet",
-            "select": "Gilt sofort in allen deinen Gruppen"
+            "current": "Derzeit verwendet"
           },
           "throwable": {
-            "description": "Wähle ein Wurfspielzeug aus, das du hast. Es gilt sofort in allen deinen Gruppen.",
             "selection": {
               "accessibility": "Wurfspielzeugauswahl"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "Du"
         },
-        "duplicates_allowed": "Du kannst dieselbe Figur oder denselben Spitznamen wie ein anderes Gruppenmitglied verwenden.",
+        "equip": {
+          "action": "Verwenden"
+        },
         "error": {
           "character_not_owned": "Wähle für dein Profil eine Figur aus, die du hast."
         },

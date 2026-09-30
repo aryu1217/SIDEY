@@ -1288,7 +1288,6 @@
       },
       "profile": {
         "character": {
-          "description": "יש לבחור דמות פיקסלים שתופיע במסכים של חברים.",
           "selection": {
             "accessibility": "בחירת דמות"
           },
@@ -1298,13 +1297,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "יש לבחור בועת דיבור שכבר קיימת ברשותך. היא תחול מיד בכל הקבוצות.",
             "selection": {
               "accessibility": "בחירת בועת דיבור"
             }
           },
           "character": {
-            "description": "יש לבחור דמות שכבר קיימת ברשותך. היא תחול מיד בכל הקבוצות.",
             "selection": {
               "accessibility": "בחירת דמות"
             }
@@ -1312,11 +1309,9 @@
           "default_bubble": "בועת ברירת המחדל",
           "default_throwable": "כדור רך המוגדר כברירת מחדל",
           "hint": {
-            "current": "בשימוש כעת",
-            "select": "חל מיד בכל הקבוצות"
+            "current": "בשימוש כעת"
           },
           "throwable": {
-            "description": "יש לבחור צעצוע לזריקה שכבר קיים ברשותך. הוא יחול מיד בכל הקבוצות.",
             "selection": {
               "accessibility": "בחירת צעצוע לזריקה"
             }
@@ -1325,7 +1320,9 @@
         "current_user": {
           "badge": "אני"
         },
-        "duplicates_allowed": "אפשר להשתמש באותה דמות או באותו כינוי כמו חבר אחר בקבוצה.",
+        "equip": {
+          "action": "השתמש"
+        },
         "error": {
           "character_not_owned": "יש לבחור לפרופיל דמות שכבר קיימת ברשותך."
         },

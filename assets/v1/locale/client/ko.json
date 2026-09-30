@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "친구의 화면에서 나를 나타낼 픽셀 캐릭터를 선택할 수 있습니다.",
           "selection": {
             "accessibility": "캐릭터 선택"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "보유한 말풍선을 고르면 모든 그룹에 바로 적용됩니다.",
             "selection": {
               "accessibility": "말풍선 선택"
             }
           },
           "character": {
-            "description": "보유한 캐릭터를 고르면 모든 그룹에 바로 적용됩니다.",
             "selection": {
               "accessibility": "캐릭터 선택"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "기본 말풍선",
           "default_throwable": "기본 말랑공",
           "hint": {
-            "current": "현재 사용 중",
-            "select": "선택하면 모든 그룹에 바로 적용됩니다"
+            "current": "현재 사용 중"
           },
           "throwable": {
-            "description": "보유한 던지기 장난감을 고르면 모든 그룹에 바로 적용됩니다.",
             "selection": {
               "accessibility": "던지기 장난감 선택"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "나"
         },
-        "duplicates_allowed": "그룹 안에서 다른 멤버와 같은 캐릭터나 닉네임을 사용할 수 있습니다.",
+        "equip": {
+          "action": "사용하기"
+        },
         "error": {
           "character_not_owned": "보유한 캐릭터만 프로필에 선택할 수 있습니다."
         },

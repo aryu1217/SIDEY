@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "Vyberte pixelovou postavičku, která vás bude představovat na obrazovkách přátel.",
           "selection": {
             "accessibility": "Výběr postavičky"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Vyberte bublinu zprávy, kterou máte. Okamžitě se použije ve všech vašich skupinách.",
             "selection": {
               "accessibility": "Výběr bubliny zprávy"
             }
           },
           "character": {
-            "description": "Vyberte postavičku, kterou máte. Okamžitě se použije ve všech vašich skupinách.",
             "selection": {
               "accessibility": "Výběr postavičky"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "Výchozí bublina",
           "default_throwable": "Výchozí měkký míček",
           "hint": {
-            "current": "Právě se používá",
-            "select": "Okamžitě se použije ve všech vašich skupinách"
+            "current": "Právě se používá"
           },
           "throwable": {
-            "description": "Vyberte házecí hračku, kterou máte. Okamžitě se použije ve všech vašich skupinách.",
             "selection": {
               "accessibility": "Výběr házecí hračky"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "Vy"
         },
-        "duplicates_allowed": "Můžete používat stejnou postavičku nebo přezdívku jako jiný člen skupiny.",
+        "equip": {
+          "action": "Použít"
+        },
         "error": {
           "character_not_owned": "Vyberte do profilu postavičku, kterou máte."
         },

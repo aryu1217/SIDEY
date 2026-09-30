@@ -1288,7 +1288,6 @@
       },
       "profile": {
         "character": {
-          "description": "Elige el personaje de píxeles que te representará en las pantallas de tus amigos.",
           "selection": {
             "accessibility": "Selección de personaje"
           },
@@ -1298,13 +1297,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Elige un bocadillo que tengas. Se aplicará de inmediato a todos tus grupos.",
             "selection": {
               "accessibility": "Selección de bocadillo"
             }
           },
           "character": {
-            "description": "Elige un personaje que tengas. Se aplicará de inmediato a todos tus grupos.",
             "selection": {
               "accessibility": "Selección de personaje"
             }
@@ -1312,11 +1309,9 @@
           "default_bubble": "Bocadillo predeterminado",
           "default_throwable": "Pelota blanda predeterminada",
           "hint": {
-            "current": "En uso",
-            "select": "Se aplica de inmediato a todos tus grupos"
+            "current": "En uso"
           },
           "throwable": {
-            "description": "Elige un juguete para lanzar que tengas. Se aplicará de inmediato a todos tus grupos.",
             "selection": {
               "accessibility": "Selección de juguete para lanzar"
             }
@@ -1325,7 +1320,9 @@
         "current_user": {
           "badge": "Tú"
         },
-        "duplicates_allowed": "Puedes usar el mismo personaje o apodo que otro miembro del grupo.",
+        "equip": {
+          "action": "Usar"
+        },
         "error": {
           "character_not_owned": "Selecciona para tu perfil un personaje que tengas."
         },

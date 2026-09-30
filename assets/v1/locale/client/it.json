@@ -1288,7 +1288,6 @@
       },
       "profile": {
         "character": {
-          "description": "Scegli il personaggio pixel che ti rappresenta sugli schermi dei tuoi amici.",
           "selection": {
             "accessibility": "Selezione del personaggio"
           },
@@ -1298,13 +1297,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Scegli un fumetto che possiedi. Verrà applicato subito a tutti i gruppi.",
             "selection": {
               "accessibility": "Selezione del fumetto"
             }
           },
           "character": {
-            "description": "Scegli un personaggio che possiedi. Verrà applicato subito a tutti i gruppi.",
             "selection": {
               "accessibility": "Selezione del personaggio"
             }
@@ -1312,11 +1309,9 @@
           "default_bubble": "Fumetto predefinito",
           "default_throwable": "Pallina morbida predefinita",
           "hint": {
-            "current": "Attualmente in uso",
-            "select": "Si applica subito a tutti i gruppi"
+            "current": "Attualmente in uso"
           },
           "throwable": {
-            "description": "Scegli un giocattolo da lancio che possiedi. Verrà applicato subito a tutti i gruppi.",
             "selection": {
               "accessibility": "Selezione del giocattolo da lancio"
             }
@@ -1325,7 +1320,9 @@
         "current_user": {
           "badge": "Tu"
         },
-        "duplicates_allowed": "Puoi usare lo stesso personaggio o soprannome di un altro membro del gruppo.",
+        "equip": {
+          "action": "Usa"
+        },
         "error": {
           "character_not_owned": "Seleziona per il profilo un personaggio che possiedi."
         },

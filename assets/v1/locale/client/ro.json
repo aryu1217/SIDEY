@@ -557,7 +557,6 @@
         },
         "profile": {
             "character": {
-                "description": "Alegeți personajul pixelat care vă reprezintă pe ecranele prietenilor.",
                 "selection": {
                     "accessibility": "Selectarea personajului"
                 },
@@ -567,13 +566,11 @@
             },
             "cosmetics": {
                 "bubble": {
-                    "description": "Alegeți o bulă de dialog pe care o dețineți. Va fi aplicată imediat în toate grupurile.",
                     "selection": {
                         "accessibility": "Selectarea bulei de dialog"
                     }
                 },
                 "character": {
-                    "description": "Alegeți un personaj pe care îl dețineți. Va fi aplicat imediat în toate grupurile.",
                     "selection": {
                         "accessibility": "Selectarea personajului"
                     }
@@ -581,11 +578,9 @@
                 "default_bubble": "Bulă implicită",
                 "default_throwable": "Minge moale implicită",
                 "hint": {
-                    "current": "Folosit în prezent",
-                    "select": "Se aplică imediat în toate grupurile"
+                    "current": "Folosit în prezent"
                 },
                 "throwable": {
-                    "description": "Alegeți o jucărie de aruncat pe care o dețineți. Va fi folosită imediat în toate grupurile.",
                     "selection": {
                         "accessibility": "Selectarea jucăriei de aruncat"
                     }
@@ -594,7 +589,9 @@
             "current_user": {
                 "badge": "Dvs."
             },
-            "duplicates_allowed": "Puteți folosi același personaj sau aceeași poreclă ca alt membru al grupului.",
+            "equip": {
+                "action": "Folosește"
+            },
             "error": {
                 "character_not_owned": "Alegeți pentru profil un personaj pe care îl dețineți."
             },

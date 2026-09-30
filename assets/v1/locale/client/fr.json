@@ -1288,7 +1288,6 @@
       },
       "profile": {
         "character": {
-          "description": "Choisissez le personnage pixel qui vous représente sur l’écran de vos amis.",
           "selection": {
             "accessibility": "Sélection du personnage"
           },
@@ -1298,13 +1297,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Choisissez une bulle de dialogue que vous avez. Elle s’applique immédiatement à tous vos groupes.",
             "selection": {
               "accessibility": "Sélection de la bulle de dialogue"
             }
           },
           "character": {
-            "description": "Choisissez un personnage que vous avez. Il s’applique immédiatement à tous vos groupes.",
             "selection": {
               "accessibility": "Sélection du personnage"
             }
@@ -1312,11 +1309,9 @@
           "default_bubble": "Bulle par défaut",
           "default_throwable": "Balle souple par défaut",
           "hint": {
-            "current": "Actuellement utilisé",
-            "select": "S’applique immédiatement à tous vos groupes"
+            "current": "Actuellement utilisé"
           },
           "throwable": {
-            "description": "Choisissez un jouet à lancer que vous avez. Il s’applique immédiatement à tous vos groupes.",
             "selection": {
               "accessibility": "Sélection du jouet à lancer"
             }
@@ -1325,7 +1320,9 @@
         "current_user": {
           "badge": "Vous"
         },
-        "duplicates_allowed": "Vous pouvez utiliser le même personnage ou le même pseudo qu’un autre membre du groupe.",
+        "equip": {
+          "action": "Utiliser"
+        },
         "error": {
           "character_not_owned": "Sélectionnez pour votre profil un personnage que vous avez."
         },

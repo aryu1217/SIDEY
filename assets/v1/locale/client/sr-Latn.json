@@ -557,7 +557,6 @@
       },
       "profile": {
         "character": {
-          "description": "Izaberite pikselizovanog lika koji će vas predstavljati na ekranima prijatelja.",
           "selection": {
             "accessibility": "Izbor lika"
           },
@@ -567,13 +566,11 @@
         },
         "cosmetics": {
           "bubble": {
-            "description": "Izaberite oblačić za ćaskanje koji imate. Odmah će se primeniti na sve vaše grupe.",
             "selection": {
               "accessibility": "Izbor oblačića za ćaskanje"
             }
           },
           "character": {
-            "description": "Izaberite lik koji imate. Odmah će se primeniti na sve vaše grupe.",
             "selection": {
               "accessibility": "Izbor lika"
             }
@@ -581,11 +578,9 @@
           "default_bubble": "Podrazumevani oblačić",
           "default_throwable": "Podrazumevana mekana loptica",
           "hint": {
-            "current": "Trenutno se koristi",
-            "select": "Odmah se primenjuje na sve vaše grupe"
+            "current": "Trenutno se koristi"
           },
           "throwable": {
-            "description": "Izaberite igračku za bacanje koju imate. Odmah će se primeniti na sve vaše grupe.",
             "selection": {
               "accessibility": "Izbor igračke za bacanje"
             }
@@ -594,7 +589,9 @@
         "current_user": {
           "badge": "Vi"
         },
-        "duplicates_allowed": "Možete da koristite isti lik ili nadimak kao drugi član grupe.",
+        "equip": {
+          "action": "Koristi"
+        },
         "error": {
           "character_not_owned": "Izaberite za profil lik koji imate."
         },
