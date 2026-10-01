@@ -189,7 +189,7 @@ enum RealtimeRolloutPolicyEvaluator {
     ) throws -> RealtimeRolloutPolicyDecision {
         guard response.protocolVersion == protocolVersion,
               response.failureMode == failureMode,
-              (1...3_600).contains(response.cacheTTLSeconds),
+              (1...1_800).contains(response.cacheTTLSeconds),
               isSHA256(response.contractHash),
               [firebaseTransport, legacyTransport].contains(response.transport)
         else {

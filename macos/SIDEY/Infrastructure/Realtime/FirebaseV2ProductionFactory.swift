@@ -50,7 +50,7 @@ actor RealtimeRolloutMonitor {
             contractHash: FirebaseV2ProductionContract.hash,
             cache: cache,
             fetch: {
-                try await self.backend.registerRealtimeCapabilityV2(
+                try await self.backend.registerRealtimeCapabilityV3(
                     platform: RealtimeRolloutPolicyEvaluator.platform,
                     appVersion: self.appVersion,
                     protocolVersion: RealtimeRolloutPolicyEvaluator.protocolVersion,
@@ -91,7 +91,7 @@ enum FirebaseV2ProductionFactory {
             contractHash: FirebaseV2ProductionContract.hash,
             cache: cache,
             fetch: {
-                try await backend.registerRealtimeCapabilityV2(
+                try await backend.registerRealtimeCapabilityV3(
                     platform: RealtimeRolloutPolicyEvaluator.platform,
                     appVersion: appVersion,
                     protocolVersion: RealtimeRolloutPolicyEvaluator.protocolVersion,

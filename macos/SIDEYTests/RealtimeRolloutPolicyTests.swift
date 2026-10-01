@@ -30,6 +30,32 @@ final class RealtimeRolloutPolicyTests: XCTestCase {
         )
     }
 
+    func testThirtyMinuteSelectorPersistsServerExpiry() async throws {
+        let cache = RealtimeRolloutCacheStub()
+        let fetchedResponse = response(enabled: true, transport: "firebase_v2", cacheTTLSeconds: 1_800)
+        let decision = try await RealtimeRolloutPolicyResolver.resolve(
+            identity: identity,
+            contractHash: contractHash,
+            cache: cache,
+            fetch: { fetchedResponse },
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+        XCTAssertEqual(decision.state, .firebaseV2)
+        XCTAssertEqual(decision.cacheTTLSeconds, 1_800)
+        XCTAssertEqual(cache.record?.expiresAt, Date(timeIntervalSince1970: 2_800))
+    }
+
+    func testSelectorRejectsCacheLifetimeOutsideThirtyMinuteBound() {
+        for lifetime in [0, 1_801] {
+            XCTAssertThrowsError(try RealtimeRolloutPolicyEvaluator.evaluate(
+                response(enabled: true, transport: "firebase_v2", cacheTTLSeconds: lifetime),
+                expectedContractHash: contractHash
+            )) { error in
+                XCTAssertEqual(error as? RealtimeRolloutPolicyError, .malformedResponse)
+            }
+        }
+    }
+
     func testKillSwitchExplicitlySelectsLegacyAndReplacesEnabledCache() async throws {
         let cache = RealtimeRolloutCacheStub(record: record(state: .firebaseV2))
         let fetchedResponse = response(
@@ -295,7 +321,8 @@ final class RealtimeRolloutPolicyTests: XCTestCase {
         enabled: Bool,
         transport: String,
         killSwitch: Bool = false,
-        contractHash: String? = nil
+        contractHash: String? = nil,
+        cacheTTLSeconds: Int = 300
     ) -> RealtimeRolloutPolicyResponse {
         RealtimeRolloutPolicyResponse(
             enabled: enabled,
@@ -303,7 +330,7 @@ final class RealtimeRolloutPolicyTests: XCTestCase {
             transport: transport,
             contractHash: contractHash ?? self.contractHash,
             killSwitch: killSwitch,
-            cacheTTLSeconds: 300,
+            cacheTTLSeconds: cacheTTLSeconds,
             failureMode: "fail_closed_if_last_enabled"
         )
     }

@@ -1045,6 +1045,39 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertTrue(diagnostics.grantOpen)
     }
 
+    func testThirtyMinuteLeaseRefreshReauthorizesWithoutReplacingLiveListener() async throws {
+        let fixture = try Fixture(leaseRefreshExpiresAt: 1_800_001_800_000)
+        _ = try await fixture.transport.synchronize(
+            rooms: [fixture.room],
+            activeRoomID: fixture.room.id
+        )
+        let previousPresenceUpdates = await fixture.supabase.activeRoomRequests.count
+
+        try await fixture.transport.refreshRolloutLease()
+
+        let requests = await fixture.credentials.establishRequests
+        XCTAssertEqual(requests.last, CompositeCredentialRequest(
+            trigger: .rolloutLeaseRefresh,
+            minimumAccessRevision: try XCTUnwrap(
+                RealtimeRevision(rawValue: "00000000000000000001")
+            )
+        ))
+        XCTAssertEqual(fixture.values.paths.filter {
+            $0 == FirebaseV2Path.inbox(userID: fixture.ownID)
+        }.count, 2)
+        XCTAssertEqual(fixture.values.paths.filter {
+            $0 == FirebaseV2Path.liveRoom(fixture.room.id)
+        }.count, 1)
+        let presenceUpdates = await fixture.supabase.activeRoomRequests.count
+        XCTAssertEqual(presenceUpdates, previousPresenceUpdates)
+        let leaseStatus = await fixture.transport.rolloutLeaseStatus()
+        let lease = try XCTUnwrap(leaseStatus)
+        XCTAssertGreaterThan(lease.expiresIn, .seconds(1_799))
+        XCTAssertLessThanOrEqual(lease.expiresIn, .seconds(1_800))
+        let diagnostics = await fixture.transport.diagnostics()
+        XCTAssertTrue(diagnostics.grantOpen)
+    }
+
     func testTransientRolloutLeaseRefreshFailureKeepsCurrentGrantUntilHardDeadline() async throws {
         let fixture = try Fixture(leaseRefreshExpiresAt: 1_800_000_600_000)
         _ = try await fixture.transport.synchronize(

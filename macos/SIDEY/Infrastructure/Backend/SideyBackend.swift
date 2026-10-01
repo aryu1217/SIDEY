@@ -234,7 +234,7 @@ actor SideyBackend {
         )
     }
 
-    func registerRealtimeCapabilityV2(
+    func registerRealtimeCapabilityV3(
         platform: String,
         appVersion: String,
         protocolVersion: Int,
@@ -242,7 +242,7 @@ actor SideyBackend {
     ) async throws -> RealtimeRolloutPolicyResponse {
         _ = try await authenticatedSession()
         return try await client.rpc(
-            "register_realtime_capability_v2",
+            "register_realtime_capability_v3",
             params: RealtimeCapabilityRegistrationParameters(
                 platform: platform,
                 appVersion: appVersion,

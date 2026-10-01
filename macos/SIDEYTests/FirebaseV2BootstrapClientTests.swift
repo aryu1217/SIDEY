@@ -212,6 +212,39 @@ final class FirebaseV2BootstrapClientTests: XCTestCase {
         XCTAssertEqual(result.rolloutLeaseExpiresAt, serverNowMilliseconds + 300_000)
     }
 
+    func testBootstrapAcceptsLegacyAndThirtyMinuteLeaseWithServerDatePrecision() async throws {
+        for lifetime in [300_000, 1_800_000, 1_801_000] as [Int64] {
+            let transport = FirebaseV2HTTPTransportStub(response: try response(
+                status: 200,
+                body: leaseBody(lifetimeMilliseconds: lifetime)
+            ))
+            let result = try await makeClient(transport: transport).bootstrap(accessToken: "token")
+            XCTAssertEqual(result.rolloutLeaseExpiresAt, nowMilliseconds + lifetime)
+            XCTAssertEqual(result.rolloutLeaseSchedule.expiresAtMilliseconds, nowMilliseconds + lifetime)
+        }
+    }
+
+    func testBootstrapRejectsExpiredAndOverThirtyMinuteLeases() async throws {
+        for lifetime in [0, -1, 1_801_001] as [Int64] {
+            let transport = FirebaseV2HTTPTransportStub(response: try response(
+                status: 200,
+                body: leaseBody(lifetimeMilliseconds: lifetime)
+            ))
+            do {
+                _ = try await makeClient(transport: transport).bootstrap(accessToken: "token")
+                XCTFail("Expired or overlong lease must fail closed: \(lifetime)")
+            } catch let error as FirebaseV2BootstrapClientError {
+                XCTAssertEqual(error, .unexpectedContract)
+            }
+        }
+    }
+
+    private func leaseBody(lifetimeMilliseconds: Int64) -> String {
+        successBody
+            .replacingOccurrences(of: "1800000270000", with: String(nowMilliseconds + lifetimeMilliseconds - 30_000))
+            .replacingOccurrences(of: "1800000300000", with: String(nowMilliseconds + lifetimeMilliseconds))
+    }
+
     private func successResponse() throws -> FirebaseV2HTTPResponse {
         try response(status: 200, body: successBody)
     }

@@ -77,6 +77,17 @@ final class FirebaseV2BootstrapRetryTests: XCTestCase {
         ))
     }
 
+    func testThirtyMinuteLeaseRenewsWithSameSixtyToNinetySecondMargin() {
+        for lead in [60_000, 75_000, 90_000] as [Int64] {
+            XCTAssertEqual(RealtimeRolloutTiming.earlyRefreshDelayMilliseconds(
+                serverDelay: 1_770_000, expiresIn: 1_800_000, lead: lead
+            ), 1_800_000 - lead)
+        }
+        XCTAssertEqual(RealtimeRolloutTiming.earlyRefreshDelayMilliseconds(
+            serverDelay: 20_000, expiresIn: 1_800_000, lead: 75_000
+        ), 20_000)
+    }
+
     func testEarlyRenewalUsesServerDeadlineOrSixtyToNinetySecondMargin() {
         XCTAssertEqual(RealtimeRolloutTiming.earlyRefreshDelayMilliseconds(
             serverDelay: 270_000, expiresIn: 300_000, lead: 75_000

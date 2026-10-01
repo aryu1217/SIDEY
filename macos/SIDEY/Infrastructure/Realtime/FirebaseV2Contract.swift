@@ -98,7 +98,7 @@ enum FirebaseV2ContractError: Error, Equatable {
 }
 
 struct FirebaseV2RolloutLeaseSchedule: Equatable, Sendable {
-    static let maximumLifetimeMilliseconds: Int64 = 300_000
+    static let maximumLifetimeMilliseconds: Int64 = 1_800_000
     static let refreshLeadMilliseconds: Int64 = 30_000
     static let maximumSafeInteger: Int64 = 9_007_199_254_740_991
 
@@ -230,7 +230,7 @@ struct FirebaseV2BootstrapSuccess: Codable, Equatable, Sendable {
     ) throws {
         let remainingLifetime = rolloutLeaseExpiresAt - serverNowMilliseconds
         // HTTP Date has one-second precision. Permit only that rounding window;
-        // the server still owns the exact five-minute maximum.
+        // the server still owns the exact thirty-minute maximum.
         guard remainingLifetime > 0,
               remainingLifetime <= FirebaseV2RolloutLeaseSchedule.maximumLifetimeMilliseconds
                 + 1_000 else {
