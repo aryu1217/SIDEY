@@ -15,6 +15,7 @@ extension AppCoordinator {
     }
 
     func startBackend() {
+        overlayVisibilityPublisher.reset()
         // Static configuration failures cannot recover in-process. A previous
         // transport factory failure can: Keychain access, rollout selection,
         // and Firebase bootstrap are all retried after authentication or an
@@ -48,7 +49,8 @@ extension AppCoordinator {
         roomSession.bootstrapTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let snapshot = try await backend.boot(requireExistingSession: requireExistingSession)
+                let snapshot = try await backend.boot(requireExistingSession: requireExistingSession,
+                                                       overlaySuppressed: model.localOverlaySuppressed)
                 let userID = await backend.currentUserID()
                 guard !Task.isCancelled else { return }
                 let messagingTransport: RoomMessagingTransportRouter
@@ -869,6 +871,8 @@ extension AppCoordinator {
         case .presence(let roomID, let userID, let state):
             model.updatePresence(roomID: roomID, userID: userID, state: state)
             overlayWindows.refreshThrowHotspots()
+        case .overlaySuppression(let roomID, let userID, let suppressed):
+            model.updateOverlaySuppression(roomID: roomID, userID: userID, suppressed: suppressed)
         case .typing(let roomID, let userID, let active):
             model.updateTyping(roomID: roomID, userID: userID, active: active)
         case .characterPulse(let event):
@@ -894,6 +898,9 @@ extension AppCoordinator {
             overlayWindows.playCharacterThrow(event)
         case .connection(let status):
             let previousStatus = backendConnectionStatus
+            if status.isReady && previousStatus?.isReady != true {
+                overlayVisibilityPublisher.reconnect(suppressed: model.localOverlaySuppressed)
+            }
             backendConnectionStatus = status
             model.connectionState = status.isReady ? .online : .connecting
             model.setActiveRoomRealtimeConnected(status.activeRoomTransportConnected)

@@ -6,7 +6,19 @@ import Observation
 final class RoomPresenceState {
     private var basePresence: [MemberPresenceKey: PresenceState] = [:]
     private var typingMembers: Set<MemberPresenceKey> = []
+    private var suppressedMembers: Set<MemberPresenceKey> = []
     private(set) var activeRoomTransportConnected = false
+
+    func isOverlaySuppressed(roomID: UUID, userID: UUID) -> Bool {
+        suppressedMembers.contains(MemberPresenceKey(roomID: roomID, userID: userID))
+    }
+
+    func updateOverlaySuppression(roomID: UUID, userID: UUID, suppressed: Bool) {
+        let key = MemberPresenceKey(roomID: roomID, userID: userID)
+        if suppressed { suppressedMembers.insert(key) } else { suppressedMembers.remove(key) }
+    }
+
+    func clearOverlaySuppression() { suppressedMembers.removeAll() }
 
     func isTyping(roomID: UUID, userID: UUID) -> Bool {
         typingMembers.contains(MemberPresenceKey(roomID: roomID, userID: userID))
@@ -43,6 +55,7 @@ final class RoomPresenceState {
             }
         })
         typingMembers = previousTypingMembers.intersection(validKeys)
+        suppressedMembers.formIntersection(validKeys)
         return updatedRooms
     }
 
@@ -51,6 +64,7 @@ final class RoomPresenceState {
         basePresence[key] = state
         if state == .offline {
             typingMembers.remove(key)
+            suppressedMembers.remove(key)
         }
         guard let roomIndex = rooms.firstIndex(where: { $0.id == roomID }),
               let memberIndex = rooms[roomIndex].members.firstIndex(where: { $0.userID == userID })
@@ -84,6 +98,7 @@ final class RoomPresenceState {
         else { return }
         if !connected {
             typingMembers = typingMembers.filter { $0.roomID != activeRoomID }
+            suppressedMembers = suppressedMembers.filter { $0.roomID != activeRoomID }
         }
         for memberIndex in rooms[roomIndex].members.indices {
             let member = rooms[roomIndex].members[memberIndex]

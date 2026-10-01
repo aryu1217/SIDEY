@@ -559,10 +559,12 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         XCTAssertEqual(requests, [message.id, message.id])
     }
 
-    func testOverflowPublishesOneAtomicMessageAndPresenceBaselineWithoutRepairLoop() async throws {
+    func testOverflowPublishesOneAtomicMessagePresenceAndVisibilityBaselineWithoutRepairLoop() async throws {
         let fixture = try Fixture(eventBufferLimit: 1)
         defer { Task { await fixture.transport.shutdown() } }
         _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        await fixture.supabase.storeOverlaySuppression(roomID: fixture.room.id,
+            userID: fixture.friendID, suppressed: true)
         await fixture.supabase.emit(.presence(roomID: fixture.room.id, userID: fixture.friendID, state: .away))
         await fixture.supabase.emit(.presence(roomID: fixture.room.id, userID: fixture.friendID, state: .online))
         try await eventually {
@@ -573,7 +575,11 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
         var iterator = fixture.transport.events.makeAsyncIterator()
         guard case .eventGapRepaired(let repair) = await iterator.next() else { return XCTFail("Expected atomic repair") }
         XCTAssertEqual(repair.reconciliation.snapshot.rooms.map(\.id), [fixture.room.id])
-        XCTAssertEqual(repair.presence.count, fixture.room.members.count)
+        XCTAssertEqual(repair.presence.count, fixture.room.members.count + 1)
+        XCTAssertTrue(repair.presence.contains { event in
+            guard case .overlaySuppression(let roomID, let userID, let suppressed) = event else { return false }
+            return roomID == fixture.room.id && userID == fixture.friendID && suppressed
+        })
         let count = await fixture.supabase.repairCount
         XCTAssertEqual(count, 1)
     }
@@ -622,6 +628,51 @@ final class FirebaseV2CompositeTransportTests: XCTestCase {
             return count == 2 && !pending
         }
         guard case .eventGapRepaired = await iterator.next() else { return XCTFail("Expected repaired baseline") }
+    }
+
+    func testLiveOverlaySuppressionDuringSlowOverflowRepairRequiresExactlyOneFollowup() async throws {
+        let barrier = CompositeRepairBarrier()
+        let fixture = try Fixture(eventBufferLimit: 1,
+            deliverySleep: { _ in try await Task.sleep(for: .milliseconds(1)) })
+        defer { Task { await fixture.transport.shutdown() } }
+        _ = try await fixture.transport.synchronize(rooms: [fixture.room], activeRoomID: fixture.room.id)
+        await fixture.supabase.storeOverlaySuppression(roomID: fixture.room.id,
+            userID: fixture.friendID, suppressed: false)
+        await fixture.supabase.beforeNextRepair { await barrier.suspend() }
+        await fixture.supabase.emit(.messagesInvalidated(roomID: fixture.room.id))
+        await fixture.supabase.emit(.messagesInvalidated(roomID: fixture.room.id))
+        try await eventually { await barrier.isSuspended }
+
+        let forwarded = expectation(description: "Live suppression is forwarded while repair is suspended")
+        let repaired = expectation(description: "Repair retains the latest suppression baseline")
+        let consumer = Task {
+            var observedRepair = false
+            for await event in fixture.transport.events {
+                if case .overlaySuppression(let roomID, let userID, let suppressed) = event {
+                    XCTAssertEqual(roomID, fixture.room.id)
+                    XCTAssertEqual(userID, fixture.friendID)
+                    XCTAssertTrue(suppressed)
+                    forwarded.fulfill()
+                } else if case .eventGapRepaired(let baseline) = event {
+                    XCTAssertTrue(baseline.presence.contains { event in
+                        guard case .overlaySuppression(let roomID, let userID, let suppressed) = event else { return false }
+                        return roomID == fixture.room.id && userID == fixture.friendID && suppressed
+                    })
+                    if !observedRepair { observedRepair = true; repaired.fulfill() }
+                }
+            }
+        }
+        defer { consumer.cancel() }
+        await fixture.supabase.emit(.overlaySuppression(roomID: fixture.room.id,
+            userID: fixture.friendID, suppressed: true))
+        await fulfillment(of: [forwarded], timeout: 2)
+        await barrier.release()
+        await fulfillment(of: [repaired], timeout: 2)
+        try await eventually {
+            let count = await fixture.supabase.repairCount
+            let pending = await fixture.transport.diagnostics().eventRepairPending
+            return count == 2 && !pending
+        }
     }
 
     func testInternalIDReadCancellationRetriesWithoutAnotherFirebaseNotification() async throws {
@@ -1519,6 +1570,7 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     nonisolated let events: AsyncStream<BackendEvent>
     private let continuation: AsyncStream<BackendEvent>.Continuation
     private var reconciliation: BackendReconciliation
+    private var selectedRoomID: UUID?
     private var blockedActiveRooms: Set<UUID> = []
     private var activeRoomContinuations: [UUID: CheckedContinuation<Void, Never>] = [:]
     private(set) var synchronizeCount = 0
@@ -1526,6 +1578,7 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     private(set) var recentRequests: [UUID] = []
     private(set) var repairCount = 0
     private var messages: [UUID: ChatMessage] = [:]
+    private var overlaySuppression: [UUID: [UUID: Bool]] = [:]
     private var messageFailures = 0
     private var messageCancellations = 0
     private var beforeMessage: (@Sendable () async -> Void)?
@@ -1537,6 +1590,7 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
 
     init(reconciliation: BackendReconciliation) {
         self.reconciliation = reconciliation
+        self.selectedRoomID = reconciliation.activeRoomID
         let pair = AsyncStream<BackendEvent>.makeStream(bufferingPolicy: .bufferingNewest(32))
         events = pair.stream
         continuation = pair.continuation
@@ -1546,10 +1600,15 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
         rooms: [Room],
         activeRoomID: UUID?
     ) async throws -> BackendReconciliation {
+        selectedRoomID = activeRoomID
+        return try await reconcilePreservingActiveRoom()
+    }
+
+    func reconcilePreservingActiveRoom() async throws -> BackendReconciliation {
         synchronizeCount += 1
         return BackendReconciliation(
             snapshot: reconciliation.snapshot,
-            activeRoomID: activeRoomID,
+            activeRoomID: selectedRoomID,
             activeMessages: reconciliation.activeMessages
         )
     }
@@ -1567,18 +1626,27 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
         return messages.values.filter { $0.roomID == roomID }.sorted { $0.createdAt < $1.createdAt }
     }
 
-    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+    func repairDroppedEventsPreservingActiveRoom() async throws -> BackendEventGapRepair {
         repairCount += 1
         if let beforeRepair { self.beforeRepair = nil; await beforeRepair() }
-        let result = try await synchronize(rooms: rooms, activeRoomID: activeRoomID)
+        let result = try await reconcilePreservingActiveRoom()
+        let visibility: [BackendEvent] = result.snapshot.rooms.flatMap { room in
+            room.members.compactMap { member -> BackendEvent? in
+                guard let suppressed = overlaySuppression[room.id]?[member.userID] else { return nil }
+                return .overlaySuppression(roomID: room.id, userID: member.userID, suppressed: suppressed)
+            }
+        }
         return BackendEventGapRepair(reconciliation: result,
             messagesByRoom: Dictionary(grouping: messages.values, by: \.roomID),
             presence: result.snapshot.rooms.flatMap { room in room.members.map {
                 .presence(roomID: room.id, userID: $0.userID, state: $0.presence)
-            } }, connection: BackendConnectionStatus(transportConnected: true, recoveryReconciled: true))
+            } } + visibility, connection: BackendConnectionStatus(transportConnected: true, recoveryReconciled: true))
     }
 
     func store(_ message: ChatMessage) { messages[message.id] = message }
+    func storeOverlaySuppression(roomID: UUID, userID: UUID, suppressed: Bool) {
+        overlaySuppression[roomID, default: [:]][userID] = suppressed
+    }
     func failNextMessage() { messageFailures += 1 }
     func cancelNextMessage() { messageCancellations += 1 }
     func beforeNextMessage(_ operation: @escaping @Sendable () async -> Void) { beforeMessage = operation }
@@ -1588,6 +1656,7 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     func setActiveRoom(_ roomID: UUID?) async throws {
         activeRoomRequests.append(roomID)
         if activeRoomUpdatesRejected { throw URLError(.timedOut) }
+        selectedRoomID = roomID
         guard let roomID, blockedActiveRooms.contains(roomID) else { return }
         await withCheckedContinuation { continuation in
             activeRoomContinuations[roomID] = continuation
@@ -1622,6 +1691,9 @@ private actor CompositeSupabasePlaneStub: FirebaseV2SupabasePlane {
     }
 
     func emit(_ event: BackendEvent) {
+        if case .overlaySuppression(let roomID, let userID, let suppressed) = event {
+            storeOverlaySuppression(roomID: roomID, userID: userID, suppressed: suppressed)
+        }
         continuation.yield(event)
     }
 

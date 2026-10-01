@@ -164,7 +164,7 @@ private struct ActiveCharacterProjectile {
     let node: SKSpriteNode
     let startedAt: TimeInterval
     let flightDuration: TimeInterval
-    let startPoint: CGPoint
+    var startPoint: CGPoint
     let inwardArcHeight: CGFloat
     var hasReleased = false
     var playsSound = true
@@ -201,6 +201,65 @@ final class PixelWorldScene: SKScene {
     private let renderingConfiguration: PixelWorldRenderingConfiguration
     private var characterNodes: [UUID: PixelCharacterNode] = [:]
     private var agents: [UUID: PixelMovementAgent] = [:]
+    private var characterDrags: [UUID: CharacterDragPhysics] = [:]
+    private let dragRope = SKShapeNode()
+    private let dragPin = SKShapeNode(circleOfRadius: 3)
+    weak var dragBridge: CharacterDragBridge?
+
+    func beginCharacterDrag(memberID: UUID, pointer: CGPoint) {
+        guard let agent = agents[memberID], suspendedReasons.isEmpty,
+              pointer.x.isFinite, pointer.y.isFinite else { return }
+        let wasEmpty = characterDrags.isEmpty
+        if dragRope.parent == nil {
+            dragRope.strokeColor = NSColor.white.withAlphaComponent(0.85)
+            dragRope.lineWidth = 1.5
+            dragRope.zPosition = 100
+            dragPin.fillColor = .white
+            dragPin.strokeColor = NSColor.black.withAlphaComponent(0.5)
+            dragPin.zPosition = 101
+            dragRope.isHidden = true
+            dragPin.isHidden = true
+            addChild(dragRope)
+            addChild(dragPin)
+        }
+        characterDrags[memberID] = CharacterDragPhysics(
+            position: characterDrags[memberID]?.position ?? CGPoint(x: agent.trackPosition, y: 0), pointer: pointer)
+        if wasEmpty { dragBridge?.onActivityChanged?(true) }
+    }
+
+    func moveCharacterDrag(memberID: UUID, pointer: CGPoint) {
+        guard pointer.x.isFinite, pointer.y.isFinite, characterDrags[memberID]?.pointer != nil else { return }
+        characterDrags[memberID]?.pointer = pointer
+    }
+
+    func endCharacterDrag(memberID: UUID) {
+        characterDrags[memberID]?.release(tangentRange: trackGeometry.trackRange,
+            depth: edge.isHorizontal ? size.height : size.width,
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        dragRope.isHidden = true
+        dragPin.isHidden = true
+    }
+
+    func cancelCharacterDrags() {
+        guard !characterDrags.isEmpty else { return }
+        for (id, drag) in characterDrags {
+            agents[id]?.trackPosition = trackGeometry.clamped(drag.position.x)
+            agents[id]?.target = trackGeometry.clamped(drag.position.x)
+            agents[id]?.velocity = 0
+            characterNodes[id]?.position = trackGeometry.point(for: drag.position.x)
+            characterNodes[id]?.setDragRotation(0)
+        }
+        characterDrags.removeAll()
+        dragRope.isHidden = true
+        dragPin.isHidden = true
+        dragBridge?.onActivityChanged?(false)
+    }
+
+    var draggingMemberIDs: Set<UUID> { Set(characterDrags.keys) }
+    func renderedOverlaySuppressed(for memberID: UUID) -> Bool {
+        characterNodes[memberID]?.showsOverlaySuppressed ?? false
+    }
+
     private var members: [UUID: PixelWorldMember] = [:]
     private var stationaryTreeIDs: Set<UUID> = []
     private var activeBubbles: [UUID: [ActiveBubble]] = [:]
@@ -213,6 +272,7 @@ final class PixelWorldScene: SKScene {
     private var installationSeed: UInt64 = 0
     private var edge: OverlayEdge = .bottom
     private var activityFrame: CGRect?
+    private var isUpdatingViewport = false
     private var composerVisible = false
     private var composerFrame: CGRect?
     private final class Resources {
@@ -223,6 +283,7 @@ final class PixelWorldScene: SKScene {
         for (center, token) in resources.lifecycleObservers { center.removeObserver(token) }
     }
     private var suspendedReasons: Set<String> = []
+    var isRenderingSuspended: Bool { !suspendedReasons.isEmpty }
     private var lastUpdateTime: TimeInterval?
     private var lastHotspotReportTime: TimeInterval = 0
     private var lastHotspotFrames: [UUID: CGRect] = [:]
@@ -271,6 +332,7 @@ final class PixelWorldScene: SKScene {
     nonisolated deinit {}
 
     func setSuspended(_ suspended: Bool, reason: String) {
+        if suspended { cancelCharacterDrags() }
         if suspended { suspendedReasons.insert(reason) } else { suspendedReasons.remove(reason) }
         resetStunState()
         projectiles.forEach { $0.node.removeFromParent() }
@@ -284,11 +346,64 @@ final class PixelWorldScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
+    func setComposerFrame(_ frame: CGRect) {
+        composerFrame = frame
+    }
+
+    /// A viewport resize changes render coordinates, not the local simulation.
+    /// Publish frames only after both inputs and every scene-space anchor agree.
+    func setViewport(size requestedSize: CGSize, activityFrame requestedFrame: CGRect,
+                     reportFrames: Bool = true) {
+        guard requestedSize.width.isFinite, requestedSize.height.isFinite,
+              requestedSize.width > 0, requestedSize.height > 0,
+              requestedFrame.origin.x.isFinite, requestedFrame.origin.y.isFinite,
+              requestedFrame.width.isFinite, requestedFrame.height.isFinite,
+              requestedFrame.width > 0, requestedFrame.height > 0 else { return }
+        guard size != requestedSize || activityFrame != requestedFrame else { return }
+        let previousFrame = effectiveActivityFrame
+        let trackChanged = previousFrame.size != requestedFrame.size
+        if trackChanged { cancelCharacterDrags() }
+        isUpdatingViewport = true
+        activityFrame = requestedFrame
+        size = requestedSize
+        if !trackChanged {
+            rebaseScene(by: CGVector(dx: requestedFrame.minX - previousFrame.minX,
+                                    dy: requestedFrame.minY - previousFrame.minY))
+        } else {
+            layoutCharacters(needsInitialLayout: false)
+        }
+        isUpdatingViewport = false
+        if reportFrames { reportCharacterFrames(force: true) }
+    }
+
+    private func rebaseScene(by offset: CGVector) {
+        guard offset.dx != 0 || offset.dy != 0 else { return }
+        // Character children carry their labels/effects with them. Scene children
+        // also include projectiles, impact effects and the cursor pin.
+        for node in children where node !== dragRope {
+            node.position = CGPoint(x: node.position.x + offset.dx, y: node.position.y + offset.dy)
+        }
+        if let path = dragRope.path {
+            var transform = CGAffineTransform(translationX: offset.dx, y: offset.dy)
+            dragRope.path = path.copy(using: &transform)
+        }
+        for index in projectiles.indices {
+            projectiles[index].startPoint.x += offset.dx
+            projectiles[index].startPoint.y += offset.dy
+        }
+    }
+
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
-        let geometry = trackGeometry
+        guard !isUpdatingViewport else { return }
         let needsInitialLayout = (oldSize.width <= 1 || oldSize.height <= 1)
             && size.width > 1 && size.height > 1
+        layoutCharacters(needsInitialLayout: needsInitialLayout)
+        reportCharacterFrames(force: true)
+    }
+
+    private func layoutCharacters(needsInitialLayout: Bool) {
+        let geometry = trackGeometry
         for id in Array(agents.keys) {
             guard var agent = agents[id] else { continue }
             if needsInitialLayout {
@@ -299,9 +414,9 @@ final class PixelWorldScene: SKScene {
                 agent.target = configuredTrackPosition(agent.target, userID: id)
             }
             agents[id] = agent
-            characterNodes[id]?.position = geometry.point(for: agent.trackPosition)
+            characterNodes[id]?.position = characterDrags[id].map { geometry.worldPoint(forDrag: $0.position) }
+                ?? geometry.point(for: agent.trackPosition)
         }
-        reportCharacterFrames(force: true)
     }
 
     func apply(
@@ -324,11 +439,19 @@ final class PixelWorldScene: SKScene {
         self.onCharacterFramesChanged = onCharacterFramesChanged
         self.onChatBubbleFramesChanged = onChatBubbleFramesChanged
         let roomChanged = roomID != currentRoomID
+        let edgeChanged = self.edge != edge
+        if roomChanged || edgeChanged || (self.activityFrame?.size != activityFrame?.size) {
+            cancelCharacterDrags()
+        }
         currentRoomID = roomID
         self.installationSeed = installationSeed
         self.edge = edge
         let activityFrameChanged = self.activityFrame != activityFrame
-        self.activityFrame = activityFrame
+        if let activityFrame, size.width > 0, size.height > 0 {
+            setViewport(size: size, activityFrame: activityFrame, reportFrames: false)
+        } else {
+            self.activityFrame = activityFrame
+        }
         self.composerVisible = composerVisible
         self.composerFrame = composerFrame
         if roomChanged {
@@ -352,6 +475,13 @@ final class PixelWorldScene: SKScene {
         for id in removedIDs {
             characterNodes.removeValue(forKey: id)?.removeFromParent()
             agents.removeValue(forKey: id)
+            if let removedDrag = characterDrags.removeValue(forKey: id) {
+                if removedDrag.pointer != nil {
+                    dragRope.isHidden = true
+                    dragPin.isHidden = true
+                }
+                if characterDrags.isEmpty { dragBridge?.onActivityChanged?(false) }
+            }
             hitUntil.removeValue(forKey: id)
             stunState.remove(id)
         }
@@ -394,15 +524,8 @@ final class PixelWorldScene: SKScene {
                 inwardNormalLength: bubbleInwardNormalLength
             )
         }
-        if activityFrameChanged {
-            let geometry = trackGeometry
-            for id in Array(agents.keys) {
-                guard var agent = agents[id] else { continue }
-                agent.trackPosition = configuredTrackPosition(agent.trackPosition, userID: id)
-                agent.target = configuredTrackPosition(agent.target, userID: id)
-                agents[id] = agent
-                characterNodes[id]?.position = geometry.point(for: agent.trackPosition)
-            }
+        if edgeChanged || (activityFrameChanged && activityFrame == nil) {
+            layoutCharacters(needsInitialLayout: false)
         }
         if let characterPulse,
            characterPulse.roomID == roomID,
@@ -421,6 +544,7 @@ final class PixelWorldScene: SKScene {
     }
 
     override func update(_ rendererTime: TimeInterval) {
+        guard suspendedReasons.isEmpty else { return }
         let currentTime = usesPlaybackClock ? clock() : rendererTime
         let deltaTime = lastUpdateTime.map { currentTime - $0 } ?? (1.0 / 30.0)
         lastUpdateTime = currentTime
@@ -434,6 +558,7 @@ final class PixelWorldScene: SKScene {
             .union(hitUntil.keys)
             .union(stationaryTreeIDs)
         stoppedIDs.formUnion(stunState.startedAt.keys)
+        stoppedIDs.formUnion(characterDrags.keys)
         let geometry = trackGeometry
         var orderedAgents = agents.values.sorted { $0.id.uuidString < $1.id.uuidString }
         PixelMovementSimulation.step(
@@ -460,8 +585,41 @@ final class PixelWorldScene: SKScene {
                 ) * 2.2
                 agent.target = randomTarget(for: agent.id, time: currentTime)
             }
+            if var drag = characterDrags[agent.id] {
+                let depth = edge.isHorizontal ? size.height : size.width
+                drag.step(deltaTime: deltaTime, tangentRange: geometry.trackRange, depth: depth,
+                          reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+                agent.trackPosition = geometry.clamped(drag.position.x)
+                agent.target = agent.trackPosition
+                agent.idleRemaining = 1
+                agent.velocity = 0
+                node.position = geometry.worldPoint(forDrag: drag.position)
+                let rotationSign: CGFloat = (edge == .top || edge == .left) ? -1 : 1
+                node.setDragRotation(drag.rotation * rotationSign)
+                if let pinPoint = drag.pin(tangentRange: geometry.trackRange, depth: depth) {
+                    let pinWorld = geometry.worldPoint(forDrag: pinPoint)
+                    let bodyWorld = node.position
+                    let dx = pinWorld.x - bodyWorld.x
+                    let dy = pinWorld.y - bodyWorld.y
+                    let distance = max(1, hypot(dx, dy))
+                    let path = CGMutablePath()
+                    path.move(to: pinWorld)
+                    path.addLine(to: CGPoint(x: bodyWorld.x + dx / distance * min(16, distance),
+                                             y: bodyWorld.y + dy / distance * min(16, distance)))
+                    dragRope.path = path
+                    dragRope.isHidden = false
+                    dragPin.position = pinWorld
+                    dragPin.isHidden = false
+                }
+                if drag.landed {
+                    characterDrags.removeValue(forKey: agent.id)
+                    if characterDrags.isEmpty { dragBridge?.onActivityChanged?(false) }
+                } else { characterDrags[agent.id] = drag }
+            } else {
+                node.position = geometry.point(for: agent.trackPosition)
+                node.setDragRotation(0)
+            }
             agents[agent.id] = agent
-            node.position = geometry.point(for: agent.trackPosition)
             let moving = abs(agent.velocity) > 2 && agent.idleRemaining <= 0 && !stoppedIDs.contains(agent.id)
             node.updateMotion(member: member, moving: moving, velocity: agent.velocity, edge: edge)
             node.updatePresentationLayout(
@@ -581,6 +739,10 @@ final class PixelWorldScene: SKScene {
     }
 
     var activeProjectileCount: Int { projectiles.count }
+    var renderedProjectilePositions: [CGPoint] { projectiles.map { $0.node.position } }
+    var renderedDragPinPosition: CGPoint? { dragPin.isHidden ? nil : dragPin.position }
+    var renderedDragRopeBounds: CGRect? { dragRope.isHidden ? nil : dragRope.path?.boundingBoxOfPath }
+    func renderedCharacterPosition(for memberID: UUID) -> CGPoint? { characterNodes[memberID]?.position }
 
     func renderedThrowCount(for memberID: UUID) -> Int {
         characterNodes[memberID]?.throwPlayCount ?? 0
@@ -749,6 +911,9 @@ final class PixelWorldScene: SKScene {
     }
 
     private func reportCharacterFrames(force: Bool) {
+        // SwiftUI can also apply model updates between native layout passes.
+        // Do not publish old local anchors under the new panel's screen origin.
+        guard dragBridge?.renderView?.isViewportReady != false else { return }
         if let onChatBubbleFramesChanged {
             let chatBubbleFrames = characterNodes.reduce(into: [UUID: CGRect]()) { result, entry in
                 result[entry.key] = entry.value.chatBubbleFrame(in: self)
@@ -988,6 +1153,10 @@ private final class PixelCharacterNode: SKNode {
     private let nameplateBackground = SKShapeNode()
     private let nickname = SKLabelNode(fontNamed: "AppleSDGothicNeo-SemiBold")
     private let statusDot = SKShapeNode(circleOfRadius: PixelNameplateLayout.statusDotRadius)
+    private let suppressedEye = SKShapeNode()
+    var showsOverlaySuppressed: Bool { !suppressedEye.isHidden }
+    func setDragRotation(_ rotation: CGFloat) { sprite.zRotation = rotation }
+
     private let dozeEffect = SKNode()
     private let dozeLabel = SKLabelNode(fontNamed: "AppleSDGothicNeo-Bold")
     private let foregroundEffectLayer = SKNode()
@@ -1150,6 +1319,20 @@ private final class PixelCharacterNode: SKNode {
         statusDot.position = PixelNameplateLayout.statusDotPosition(nicknameFrame: nickname.frame)
         statusDot.zPosition = 12
         nameplateLayer.addChild(statusDot)
+        let eyePath = CGMutablePath()
+        eyePath.move(to: CGPoint(x: -6, y: 0))
+        eyePath.addQuadCurve(to: CGPoint(x: 6, y: 0), control: CGPoint(x: 0, y: 7))
+        eyePath.addQuadCurve(to: CGPoint(x: -6, y: 0), control: CGPoint(x: 0, y: -7))
+        eyePath.addEllipse(in: CGRect(x: -1.5, y: -1.5, width: 3, height: 3))
+        eyePath.move(to: CGPoint(x: -6, y: 5))
+        eyePath.addLine(to: CGPoint(x: 6, y: -5))
+        suppressedEye.path = eyePath
+        suppressedEye.lineWidth = 1.5
+        suppressedEye.strokeColor = .white
+        suppressedEye.fillColor = .clear
+        suppressedEye.zPosition = 12
+        suppressedEye.isHidden = true
+        nameplateLayer.addChild(suppressedEye)
 
         dozeEffect.position = CGPoint(x: 26, y: 20)
         dozeEffect.zPosition = 14
@@ -1198,7 +1381,10 @@ private final class PixelCharacterNode: SKNode {
         nickname.text = member.isCurrentUser
             ? L10n.format("pixel_world.nickname.current_user", member.nickname)
             : member.nickname
-        let backgroundFrame = PixelNameplateLayout.backgroundFrame(nicknameFrame: nickname.frame)
+        suppressedEye.isHidden = !member.overlaySuppressed
+        suppressedEye.position = CGPoint(x: nickname.frame.maxX + 10, y: nickname.frame.midY)
+        var backgroundFrame = PixelNameplateLayout.backgroundFrame(nicknameFrame: nickname.frame)
+        if member.overlaySuppressed { backgroundFrame.size.width += 18 }
         let backgroundPath = CGMutablePath()
         backgroundPath.addRoundedRect(
             in: backgroundFrame,

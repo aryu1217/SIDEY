@@ -4,7 +4,7 @@ import Foundation
 enum OverlayMemberProjection {
     static func members(room: Room?, currentUserID: UUID?, localPresence: PresenceState,
                         showsOffline: Bool, state: RoomPresenceState, quietModeEnabled: Bool = false,
-                        forcedVisibleUserIDs: Set<UUID> = []) -> [PixelWorldMember] {
+                        forcedVisibleUserIDs: Set<UUID> = [], localOverlaySuppressed: Bool = false) -> [PixelWorldMember] {
         guard let activeRoom = room else { return [] }
         return activeRoom.members.compactMap { member in
             let isCurrentUser = member.userID == currentUserID
@@ -22,7 +22,10 @@ enum OverlayMemberProjection {
                 isTyping: isTyping,
                 isCurrentUser: isCurrentUser,
                 equippedBubbleStyleID: member.equippedBubbleStyleID,
-                treeMovementPaused: member.treeMovementPaused
+                treeMovementPaused: member.treeMovementPaused,
+                overlaySuppressed: isCurrentUser ? localOverlaySuppressed
+                    : (baseState != .offline && baseState != .reconnecting
+                       && state.isOverlaySuppressed(roomID: activeRoom.id, userID: member.userID))
             )
         }
     }

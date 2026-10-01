@@ -138,6 +138,7 @@ enum BackendEvent: Sendable {
     case messagesReplaced(roomID: UUID, messages: [ChatMessage])
     case drawEventsChanged(roomID: UUID, deletedEventID: UUID? = nil)
     case presence(roomID: UUID, userID: UUID, state: PresenceState)
+    case overlaySuppression(roomID: UUID, userID: UUID, suppressed: Bool)
     case typing(roomID: UUID, userID: UUID, active: Bool)
     case characterPulse(CharacterPulseEvent)
     case characterThrow(CharacterThrowEvent)
@@ -684,11 +685,13 @@ struct PresencePayload: Codable, Sendable {
     let userID: UUID
     let state: PresenceState
     let onlineAt: String
+    var visibilityID: UUID? = nil
 
     enum CodingKeys: String, CodingKey {
         case state
         case userID = "user_id"
         case onlineAt = "online_at"
+        case visibilityID = "visibility_id"
     }
 }
 

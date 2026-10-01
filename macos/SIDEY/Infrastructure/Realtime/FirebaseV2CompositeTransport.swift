@@ -136,7 +136,8 @@ protocol FirebaseV2SupabasePlane: Actor {
     ) async throws -> BackendReconciliation
     func message(id: UUID, roomID: UUID) async throws -> ChatMessage?
     func recentMessages(roomID: UUID) async throws -> [ChatMessage]
-    func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair
+    func reconcilePreservingActiveRoom() async throws -> BackendReconciliation
+    func repairDroppedEventsPreservingActiveRoom() async throws -> BackendEventGapRepair
     func setActiveRoom(_ roomID: UUID?) async throws
     func setLocalPresence(_ state: PresenceState) async throws
     func publishTyping(roomID: UUID, event: String) async throws
@@ -1260,9 +1261,7 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
     func repairDroppedEvents(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
         try requireRunning()
         let generation = listenerGeneration
-        let reconciliation = try await supabasePlane.repairDroppedEvents(
-            rooms: rooms, activeRoomID: activeRoomID
-        )
+        let reconciliation = try await supabasePlane.repairDroppedEventsPreservingActiveRoom()
         guard !isShutDown, generation == listenerGeneration else { throw CancellationError() }
         currentRooms = reconciliation.reconciliation.snapshot.rooms
         currentReconciliation = reconciliation.reconciliation
@@ -1355,10 +1354,10 @@ actor FirebaseV2CompositeTransport: RoomMessagingTransport {
                         minimumAccessRevision: requestedAccessRevision
                     )
                 }
-                let reconciliation = try await supabasePlane.synchronize(
-                    rooms: currentRooms,
-                    activeRoomID: activeRoomState.committedRealtimeActiveRoomID
-                )
+                // Inbox hints can arrive before the first live listener is
+                // ready, or during a room switch. The committed Firebase room
+                // is then nil/old and must never overwrite Supabase Presence.
+                let reconciliation = try await supabasePlane.reconcilePreservingActiveRoom()
                 currentRooms = reconciliation.snapshot.rooms
                 currentReconciliation = reconciliation
                 failClosedIfActiveRoomWasRevoked()

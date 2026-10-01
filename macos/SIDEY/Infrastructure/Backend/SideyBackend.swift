@@ -39,6 +39,10 @@ actor SideyBackend {
     private let eventContinuation: AsyncStream<BackendEvent>.Continuation
     private var eventSubscribers: [UUID: AsyncStream<BackendEvent>.Continuation] = [:]
     private var presenceReplay = BackendPresenceReplay()
+    private var overlayVisibility = OverlayVisibilityState()
+    private var localVisibilityID: UUID?
+    private var visibilitySessionID: UUID?
+    private var visibilityRooms: [Room] = []
     private let networkPathMonitor: any NetworkPathMonitoring
     private let recoveryLogger = Logger(
         subsystem: "app.sidey.desktop",
@@ -126,9 +130,58 @@ actor SideyBackend {
         self.realtime = makeRealtime()
     }
 
-    func boot(requireExistingSession: Bool = false) async throws -> BackendSnapshot {
+    func boot(requireExistingSession: Bool = false, overlaySuppressed: Bool? = nil) async throws -> BackendSnapshot {
         _ = try await restoreOrCreateSession(requireExistingSession: requireExistingSession)
+        if let overlaySuppressed { try? await setOverlaySuppressed(overlaySuppressed) }
         return try await loadSnapshot()
+    }
+
+    func setOverlaySuppressed(_ suppressed: Bool) async throws {
+        let session = try await authenticatedSession()
+        let identity = try FirebaseV2SupabaseSessionDecoder.decode(
+            accessToken: session.accessToken, expectedAccountID: session.user.id).identity
+        if visibilitySessionID != identity.sessionID {
+            visibilitySessionID = identity.sessionID
+            localVisibilityID = nil
+            overlayVisibility = OverlayVisibilityState()
+        }
+        let record: OverlayVisibilityRecord
+        do {
+            record = try await client.rpc("set_overlay_visibility",
+                params: OverlayVisibilityParameters(suppressed: suppressed)).execute().value
+        } catch {
+            if let error = error as? PostgrestError, error.message == "overlay_visibility_rate_limited" {
+                throw OverlayVisibilityRateLimitError()
+            }
+            throw error
+        }
+        guard !Task.isCancelled, record.userID == session.user.id,
+              visibilitySessionID == identity.sessionID,
+              client.auth.currentUser?.id == record.userID else { throw CancellationError() }
+        overlayVisibility.merge([record])
+        let needsIdentityPublication = localVisibilityID != record.visibilityID
+        localVisibilityID = record.visibilityID
+        if needsIdentityPublication, let activeRoomID, channels[activeRoomID] != nil {
+            presencePublicationLedger.invalidate(roomID: activeRoomID)
+            try? await publishPresence()
+        }
+        emitOverlayVisibility()
+    }
+
+    private func loadOverlayVisibility(rooms: [Room], publishEvents: Bool) async {
+        visibilityRooms = rooms
+        overlayVisibility.retain(userIDs: Set(rooms.flatMap { $0.members.map(\.userID) }))
+        let revision = overlayVisibility.revision
+        // Optional additive API: older servers must continue to support core messaging.
+        guard let rows: [OverlayVisibilityRecord] = try? await client.rpc("get_overlay_visibilities").execute().value else { return }
+        overlayVisibility.reconcile(rows, startedAtRevision: revision)
+        // The completed gap repair includes this snapshot baseline. Emitting it
+        // here would dirty its own structural revision and restart the repair.
+        if publishEvents, !loadingEventGapRepair { emitOverlayVisibility() }
+    }
+
+    private func emitOverlayVisibility() {
+        for event in overlayVisibility.changes(rooms: visibilityRooms) { emit(event) }
     }
 
     func subscribeEvents() -> AsyncStream<BackendEvent> {
@@ -147,6 +200,7 @@ actor SideyBackend {
         for event in presenceReplay.events(subscribedRoomIDs: livePresenceRoomIDs()) {
             pair.continuation.yield(event)
         }
+        for event in overlayVisibility.events(rooms: visibilityRooms) { pair.continuation.yield(event) }
         pair.continuation.onTermination = { [weak self] _ in
             Task { await self?.removeEventSubscriber(subscriberID) }
         }
@@ -277,20 +331,44 @@ actor SideyBackend {
         }
     }
 
+    /// Background refreshes must not replace the active room with a caller's
+    /// uncommitted or stale Firebase room selection.
+    func reconcilePreservingActiveRoom() async throws -> BackendReconciliation {
+        try await acquireTopologyMutation()
+        defer { releaseTopologyMutation() }
+        guard !isShuttingDown else { throw CancellationError() }
+        return try await reconcileCurrentState(emitEvents: false)
+    }
+
+    func repairDroppedEventsPreservingActiveRoom() async throws -> BackendEventGapRepair {
+        try await acquireTopologyMutation()
+        defer { releaseTopologyMutation() }
+        return try await repairRealtimeEventGapWhileOwningTopology(
+            activeRoomID: nil, preserveActiveRoom: true
+        )
+    }
+
     /// Return one atomic baseline; do not publish pieces while row queries are
     /// still in flight. Presence stays owned by the shared Supabase channels.
     func repairRealtimeEventGap(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
         try await acquireTopologyMutation()
         defer { releaseTopologyMutation() }
-        return try await repairRealtimeEventGapWhileOwningTopology(rooms: rooms, activeRoomID: activeRoomID)
+        return try await repairRealtimeEventGapWhileOwningTopology(activeRoomID: activeRoomID)
     }
 
-    private func repairRealtimeEventGapWhileOwningTopology(rooms: [Room], activeRoomID: UUID?) async throws -> BackendEventGapRepair {
+    private func repairRealtimeEventGapWhileOwningTopology(
+        activeRoomID: UUID?, preserveActiveRoom: Bool = false
+    ) async throws -> BackendEventGapRepair {
         let initialGeneration = realtimeGeneration
-        let snapshot = try await loadSnapshot()
+        let snapshot = try await loadSnapshot(publishOverlayVisibility: false)
         try ensureCurrentRealtimeGeneration(initialGeneration)
         _ = try await repairRoomChannels(snapshot: snapshot, generation: initialGeneration)
-        try await configureChannels(rooms: snapshot.rooms, activeRoomID: activeRoomID)
+        // Resolve after the awaited reads/repairs: a room switch may have
+        // updated the backend's selection while the snapshot was loading.
+        try await configureChannels(
+            rooms: snapshot.rooms,
+            activeRoomID: preserveActiveRoom ? self.activeRoomID : activeRoomID
+        )
         loadingEventGapRepair = true
         defer { loadingEventGapRepair = false }
         let result = try await reconcileCurrentState(emitEvents: false, replayPresenceEvents: false)
@@ -303,7 +381,8 @@ actor SideyBackend {
         }
         return BackendEventGapRepair(reconciliation: result, messagesByRoom: messagesByRoom,
             presence: presenceReplay.snapshot(rooms: result.snapshot.rooms,
-                subscribedRoomIDs: livePresenceRoomIDs()), connection: currentConnectionStatus())
+                subscribedRoomIDs: livePresenceRoomIDs()) + overlayVisibility.events(rooms: result.snapshot.rooms),
+            connection: currentConnectionStatus())
     }
 
     func setActiveRoom(_ roomID: UUID?) async throws {
@@ -409,7 +488,7 @@ actor SideyBackend {
         return profile.domain
     }
 
-    func loadSnapshot() async throws -> BackendSnapshot {
+    func loadSnapshot(publishOverlayVisibility: Bool = true) async throws -> BackendSnapshot {
         if let snapshotLoader { return try await snapshotLoader() }
         let session = try await client.auth.session
         async let profileRows: [DatabaseProfile] = client.from("profiles")
@@ -459,6 +538,7 @@ actor SideyBackend {
                 realtimeEpoch: room.realtimeEpoch
             )
         }
+        await loadOverlayVisibility(rooms: mappedRooms, publishEvents: publishOverlayVisibility)
         return BackendSnapshot(
             profile: profile?.domain,
             rooms: mappedRooms,
@@ -1139,6 +1219,7 @@ actor SideyBackend {
         let structureChanges = databaseChannel.broadcastStream(event: "structure_changed")
         let messagesPruned = databaseChannel.broadcastStream(event: "messages_pruned")
         let drawChanges = databaseChannel.broadcastStream(event: "draw_events_changed")
+        let visibilityChanges = databaseChannel.broadcastStream(event: "overlay_visibility_changed")
         let databaseStatuses = databaseChannel.statusChange
         let typingStart = ephemeralChannel.broadcastStream(event: "typing_start")
         let typingStop = ephemeralChannel.broadcastStream(event: "typing_stop")
@@ -1150,6 +1231,11 @@ actor SideyBackend {
         let callbackGeneration = nextChannelCallbackGeneration
 
         let tasks = [
+            Task { [weak self] in
+                for await payload in visibilityChanges {
+                    await self?.handleOverlayVisibility(roomID: roomID, generation: callbackGeneration, payload: payload)
+                }
+            },
             Task { [weak self] in
                 for await payload in drawChanges {
                     await self?.handleDrawBroadcast(
@@ -1299,6 +1385,8 @@ actor SideyBackend {
         }
         connectionTracker.setSubscribed(false, roomID: roomID)
         presenceReplay.invalidate(roomID: roomID)
+        overlayVisibility.resetRoom(roomID)
+        emitOverlayVisibility()
         presencePublicationLedger.invalidate(roomID: roomID)
         guard let roomChannels = channels.removeValue(forKey: roomID) else { return }
         let current = realtime
@@ -1334,6 +1422,8 @@ actor SideyBackend {
         // the live Presence channel. Only the latter owns this snapshot.
         if isPresenceChannel, status != .subscribed {
             presenceReplay.invalidate(roomID: roomID)
+            overlayVisibility.resetRoom(roomID)
+            emitOverlayVisibility()
         }
         switch status {
         case .subscribed:
@@ -1432,7 +1522,8 @@ actor SideyBackend {
             try await roomChannels.ephemeral.track(PresencePayload(
                 userID: userID,
                 state: state,
-                onlineAt: ISO8601DateFormatter().string(from: .now)
+                onlineAt: ISO8601DateFormatter().string(from: .now),
+                visibilityID: localVisibilityID
             ))
             // track does not expose the server acknowledgement. At least reject
             // a batch whose connection or channels changed while it suspended,
@@ -1733,6 +1824,8 @@ actor SideyBackend {
     private func markAllRoomsUnsubscribed() {
         presencePublicationLedger.invalidateAll()
         presenceReplay.invalidateAll()
+        overlayVisibility.resetConnections()
+        emitOverlayVisibility()
         for roomID in connectionTracker.desiredRoomIDs {
             connectionTracker.setSubscribed(false, roomID: roomID)
         }
@@ -1833,6 +1926,7 @@ actor SideyBackend {
         ) {
             emit(event)
         }
+        for event in overlayVisibility.events(rooms: rooms) { emit(event) }
     }
 
     private func handleDatabaseBroadcast(
@@ -1946,7 +2040,7 @@ actor SideyBackend {
                 try ensureCurrentRealtimeGeneration(realtime)
                 if eventGapRepairNeeded {
                     let result = try await repairRealtimeEventGapWhileOwningTopology(
-                        rooms: snapshot.rooms, activeRoomID: activeRoomID
+                        activeRoomID: nil, preserveActiveRoom: true
                     )
                     guard generation == structuralSnapshotGeneration, !isShuttingDown else { return }
                     if revision == structuralSnapshotRevision {
@@ -2016,22 +2110,61 @@ actor SideyBackend {
         action: any PresenceAction
     ) {
         guard isCurrentChannel(roomID: roomID, generation: generation) else { return }
-        var joined: [UUID: PresenceState] = [:]
-        for (userIDString, presence) in action.joins {
-            guard let userID = UUID(uuidString: userIDString),
-                  let payload = try? presence.decodeState(as: PresencePayload.self)
-            else { continue }
-            joined[userID] = payload.state
-        }
-        let left = Set(action.leaves.keys.compactMap(UUID.init(uuidString:)))
-        for update in PresenceChangePlan.updates(joined: joined, left: left) {
-            presenceReplay.record(roomID: roomID, userID: update.userID, state: update.state)
+        let previousUsers = overlayVisibility.connectedUserIDs(roomID: roomID)
+        updateOverlayConnections(roomID: roomID, action: action)
+        let members = visibilityRooms.first(where: { $0.id == roomID })?.members.map(\.userID) ?? []
+        // Channel authorization is already checked. A new member's join can
+        // arrive before the HTTP membership snapshot; preserve its baseline.
+        // The model still renders only members in the authoritative snapshot.
+        let affected = previousUsers.union(overlayVisibility.connectedUserIDs(roomID: roomID))
+            .union(members)
+        for userID in affected {
+            let state = overlayVisibility.basePresence(roomID: roomID, userID: userID)
+            presenceReplay.record(roomID: roomID, userID: userID, state: state)
             emit(.presence(
                 roomID: roomID,
-                userID: update.userID,
-                state: update.state
+                userID: userID,
+                state: state
             ))
         }
+        emitOverlayVisibility()
+    }
+
+    private func handleOverlayVisibility(roomID: UUID, generation: Int, payload: JSONObject) {
+        guard isCurrentChannel(roomID: roomID, generation: generation) else { return }
+        let value = payload["payload"]?.objectValue ?? payload
+        guard let rawRoom = value["room_id"]?.stringValue, UUID(uuidString: rawRoom) == roomID,
+              let record = try? value.decode(as: OverlayVisibilityRecord.self),
+              visibilityRooms.contains(where: { $0.id == roomID && $0.members.contains(where: { $0.userID == record.userID }) })
+        else { return }
+        overlayVisibility.merge([record])
+        emitOverlayVisibility()
+    }
+
+    private func updateOverlayConnections(roomID: UUID, action: any PresenceAction) {
+        let raw = action.rawMessage
+        let full = raw.event == "presence_state"
+        let joinMap = full ? raw.payload : (raw.payload["joins"]?.objectValue ?? [:])
+        let leaveMap: JSONObject = full ? [:] : (raw.payload["leaves"]?.objectValue ?? [:])
+        var joins: [UUID: [OverlayVisibilityState.Connection]] = [:]
+        var leaves: [UUID: [String]] = [:]
+        for (key, value) in joinMap {
+            guard let userID = UUID(uuidString: key),
+                  let metas = value.objectValue?["metas"]?.arrayValue else { continue }
+            joins[userID] = metas.compactMap { meta in
+                guard let value = meta.objectValue, let reference = value["phx_ref"]?.stringValue else { return nil }
+                return OverlayVisibilityState.Connection(reference: reference,
+                    previousReference: value["phx_ref_prev"]?.stringValue,
+                    visibilityID: value["visibility_id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+                    state: value["state"]?.stringValue.flatMap(PresenceState.init(rawValue:)) ?? .online)
+            }
+        }
+        for (key, value) in leaveMap {
+            guard let userID = UUID(uuidString: key),
+                  let metas = value.objectValue?["metas"]?.arrayValue else { continue }
+            leaves[userID] = metas.compactMap { $0.objectValue?["phx_ref"]?.stringValue }
+        }
+        overlayVisibility.update(roomID: roomID, joins: joins, leaves: leaves, full: full)
     }
 
     private func handleTyping(

@@ -2,6 +2,14 @@ import AppKit
 
 @MainActor
 final class AppCoordinator {
+    lazy var overlayVisibilityPublisher = makeOverlayVisibilityPublisher()
+
+    private func makeOverlayVisibilityPublisher() -> OverlayVisibilityPublisher {
+        OverlayVisibilityPublisher(now: { ProcessInfo.processInfo.systemUptime }) { [weak self] suppressed in
+            guard let self, let backend = self.backend, !self.model.authenticationRequired else { throw CancellationError() }
+            try await backend.setOverlaySuppressed(suppressed)
+        }
+    }
     let model: AppModel
 
     lazy var typingActivity = makeTypingActivity()
@@ -291,6 +299,7 @@ final class AppCoordinator {
     @discardableResult
     func shutdown() -> Task<Void, Never>? {
         if let shutdownTask { return shutdownTask }
+        overlayVisibilityPublisher.stop()
         globalShortcuts.uninstall()
         cancelTreeMovementRequests()
         model.treeMovement.reset()
@@ -442,6 +451,7 @@ final class AppCoordinator {
         applyRequestedOverlayVisibility()
         refreshStatusItem()
         persistPreferences()
+        overlayVisibilityPublisher.update(suppressed: model.localOverlaySuppressed)
     }
 
     func applyRequestedOverlayVisibility() {
@@ -475,6 +485,7 @@ final class AppCoordinator {
         if enabled { model.clearBubbles() }
         refreshStatusItem()
         persistPreferences()
+        overlayVisibilityPublisher.update(suppressed: model.localOverlaySuppressed)
     }
 
     func setGlobalShortcut(_ action: GlobalShortcutAction, binding: GlobalShortcutBinding) {

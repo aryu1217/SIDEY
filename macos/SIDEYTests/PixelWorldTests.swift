@@ -535,7 +535,7 @@ final class PixelWorldTests: XCTestCase {
         XCTAssertNotEqual(agents.first?.trackPosition, 40)
     }
 
-    func testUUIDDiffAndCharacterSwapKeepTrackPosition() throws {
+    func testUUIDDiffAndCharacterSwapKeepTrackPositionOnTheSameEdge() throws {
         let roomID = UUID()
         let memberID = UUID()
         let member = PixelWorldMember(
@@ -549,6 +549,7 @@ final class PixelWorldTests: XCTestCase {
         let scene = PixelWorldScene(size: CGSize(width: 1_000, height: 240))
         scene.apply(roomID: roomID, members: [member], bubbles: [], edge: .bottom, installationSeed: 42)
         let initial = try XCTUnwrap(scene.agentStates.first?.trackPosition)
+        let initialCenter = try XCTUnwrap(scene.renderedCharacterPosition(for: memberID))
 
         let updated = PixelWorldMember(
             id: memberID,
@@ -558,11 +559,55 @@ final class PixelWorldTests: XCTestCase {
             isTyping: false,
             isCurrentUser: true
         )
-        scene.apply(roomID: roomID, members: [updated], bubbles: [], edge: .left, installationSeed: 42)
+        scene.apply(roomID: roomID, members: [updated], bubbles: [], edge: .bottom, installationSeed: 42)
 
         XCTAssertEqual(scene.nodeIDs, [memberID])
         XCTAssertEqual(scene.agentStates.first?.trackPosition, initial)
+        XCTAssertEqual(try XCTUnwrap(scene.renderedCharacterPosition(for: memberID)), initialCenter)
         XCTAssertEqual(scene.renderedCharacterID(for: memberID), "pixel_cat")
+    }
+
+    func testChangingToAShorterEdgeKeepsCharacterAndTargetInsideTheNewTrack() throws {
+        let roomID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+        let memberID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
+        let member = PixelWorldMember(id: memberID, nickname: "친구", characterID: "pixel_hamster",
+            presence: .online, isTyping: false, isCurrentUser: true)
+        let configuration = PixelWorldRenderingConfiguration(
+            pulsePeakScale: PixelCharacterPulseStyle.peakScale,
+            initialTrackFractions: [memberID: 0.9], fixedTrackFractions: [:],
+            minimumTrackInset: EdgeTrackGeometry.hotspotPointSize / 2,
+            allowsLocalPreviewEvents: false)
+
+        for targetEdge in OverlayEdge.allCases {
+            let size = targetEdge.isHorizontal
+                ? CGSize(width: 240, height: 1_000)
+                : CGSize(width: 1_000, height: 240)
+            let initialEdge: OverlayEdge = targetEdge.isHorizontal ? .left : .bottom
+            let scene = PixelWorldScene(size: size, renderingConfiguration: configuration)
+            scene.apply(roomID: roomID, members: [member], bubbles: [], edge: initialEdge, installationSeed: 42)
+            let initial = try XCTUnwrap(scene.agentStates.first?.trackPosition)
+            let newTrack = EdgeTrackGeometry(bounds: CGRect(origin: .zero, size: size), edge: targetEdge)
+            XCTAssertGreaterThan(initial, newTrack.trackRange.upperBound,
+                                 "Fixture must exercise an out-of-range position on the shorter edge")
+
+            scene.apply(roomID: roomID, members: [member], bubbles: [], edge: targetEdge, installationSeed: 42)
+
+            let agent = try XCTUnwrap(scene.agentStates.first)
+            XCTAssertEqual(scene.nodeIDs, [memberID])
+            XCTAssertEqual(scene.renderedCharacterID(for: memberID), "pixel_hamster")
+            XCTAssertEqual(agent.trackPosition, newTrack.trackRange.upperBound, accuracy: 0.001)
+            XCTAssertTrue(newTrack.trackRange.contains(agent.target))
+            let center = try XCTUnwrap(scene.renderedCharacterPosition(for: memberID))
+            let footInset = EdgeTrackGeometry.footInset
+            let expectedCenter: CGPoint = switch targetEdge {
+            case .bottom: CGPoint(x: newTrack.trackRange.upperBound, y: footInset)
+            case .top: CGPoint(x: newTrack.trackRange.upperBound, y: size.height - footInset)
+            case .left: CGPoint(x: footInset, y: newTrack.trackRange.upperBound)
+            case .right: CGPoint(x: size.width - footInset, y: newTrack.trackRange.upperBound)
+            }
+            XCTAssertEqual(center.x, expectedCenter.x, accuracy: 0.001, "\(targetEdge)")
+            XCTAssertEqual(center.y, expectedCenter.y, accuracy: 0.001, "\(targetEdge)")
+        }
     }
 
     func testStableSeedReproducesInitialRoomPlacement() {

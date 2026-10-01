@@ -58,6 +58,7 @@ final class AppModel {
         didSet {
             if oldValue != currentUserID {
                 treeMovement.reset()
+                realtime.clearOverlaySuppression()
                 drawHistoryRoomID = nil
                 drawHistoryEvents = []
                 drawHistoryLoading = false
@@ -102,6 +103,13 @@ final class AppModel {
     func setOverlayVisibility(_ visibility: OverlayVisibility) {
         overlayVisibility = visibility
         preferences.overlayVisible = visibility.isVisible
+    }
+
+    var localOverlaySuppressed: Bool { !preferences.overlayVisible || preferences.quietModeEnabled }
+
+    func updateOverlaySuppression(roomID: UUID, userID: UUID, suppressed: Bool) {
+        guard rooms.contains(where: { $0.id == roomID && $0.members.contains(where: { $0.userID == userID }) }) else { return }
+        realtime.updateOverlaySuppression(roomID: roomID, userID: userID, suppressed: suppressed)
     }
 
     var canSubmitDraft: Bool {
@@ -479,7 +487,8 @@ final class AppModel {
                                         localPresence: effectiveLocalPresence,
                                         showsOffline: preferences.showOfflineMembers, state: realtime,
                                         quietModeEnabled: preferences.quietModeEnabled,
-                                        forcedVisibleUserIDs: Set(visibleDrawEvents.map(\.creatorID)))
+                                        forcedVisibleUserIDs: Set(visibleDrawEvents.map(\.creatorID)),
+                                        localOverlaySuppressed: localOverlaySuppressed)
     }
 
     var activeBubbles: [ActiveBubble] { preferences.quietModeEnabled ? [] : bubbleLedger.bubbles }

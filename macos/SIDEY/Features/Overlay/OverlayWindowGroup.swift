@@ -185,7 +185,19 @@ final class OverlayWindowGroup {
             guard let self, self.model.selectedCharacterID == PixelCharacterCatalog.pixelTreeID else { return }
             self.onTreeMovementToggle()
         },
-        onDoubleRightClick: { [weak self] in self?.activateThrowTargeting() }
+        onDoubleRightClick: { [weak self] in self?.activateThrowTargeting() },
+        onDragBegan: { [weak self] point in
+            guard let self, let id = self.model.currentUserID else { return }
+            self.beginCharacterDrag(id, at: point)
+        },
+        onDragMoved: { [weak self] point in
+            guard let self, let id = self.model.currentUserID else { return }
+            self.moveCharacterDrag(id, to: point)
+        },
+        onDragEnded: { [weak self] in
+            guard let self, let id = self.model.currentUserID else { return }
+            self.worldWindow.dragBridge.end(memberID: id)
+        }
     )
     private var targetHotspotWindows: [UUID: CharacterHotspotWindowController] = [:]
     private var drawIconWindows: [UUID: DrawIconBubbleController] = [:]
@@ -195,6 +207,9 @@ final class OverlayWindowGroup {
     var currentFrame: CGRect { activityFrame }
     private(set) var currentScreenIdentifier: String?
     private var overlayVisible = false
+    private var dragRenderingExpanded = false
+    private var dragRenderUpdatePending = false
+    private var interactionRoomID: UUID?
     private(set) var composerVisible = false
     private var currentUserLocalFrame: CGRect?
     private var characterLocalFrames: [UUID: CGRect] = [:]
@@ -234,6 +249,18 @@ final class OverlayWindowGroup {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensDidChange() }
         })
+        worldWindow.dragBridge.onActivityChanged = { [weak self] _ in
+            guard let self, !self.dragRenderUpdatePending else { return }
+            self.dragRenderUpdatePending = true
+            // Landing can run inside SKRenderer.update. Resize only after that
+            // update has finished, using the latest drag state when coalesced.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.dragRenderUpdatePending = false
+                let active = !(self.worldWindow.dragBridge.scene?.draggingMemberIDs.isEmpty ?? true)
+                self.updateDragRenderSurface(active: active)
+            }
+        }
         refreshAvailableScreens()
     }
 
@@ -263,6 +290,7 @@ final class OverlayWindowGroup {
             hotspotWindow.setVisible(false)
             resetThrowTargeting()
             worldWindow.orderOut()
+            updateDragRenderSurface(active: false)
             drawIconWindows.values.forEach { $0.hide() }
         }
     }
@@ -327,19 +355,18 @@ final class OverlayWindowGroup {
     }
 
     func invalidateThrowInteraction() {
+        hotspotWindow.cancelPointerInteraction()
+        targetHotspotWindows.values.forEach { $0.cancelPointerInteraction() }
+        worldWindow.dragBridge.cancel()
         resetThrowTargeting()
         refreshThrowHotspots()
     }
 
     func refreshThrowHotspots() {
-        let canTarget = overlayVisible
-            && model.activeRoomRealtimeAvailable
-            && model.activeRoom != nil
-            && currentUserLocalFrame != nil
-            && (!model.preferences.requiresRightClickToThrow || throwTargetingActive)
-        let eligibleIDs: Set<UUID> = canTarget ? Set(model.pixelWorldMembers.compactMap { member -> UUID? in
-            guard CharacterThrowTargetPolicy.canTarget(member) else { return nil }
-            return member.id
+        synchronizeInteractionRoom()
+        // Dragging is local and available independently of online throw eligibility.
+        let eligibleIDs: Set<UUID> = overlayVisible ? Set(model.pixelWorldMembers.compactMap { member in
+            member.isCurrentUser ? nil : member.id
         }) : []
 
         for id in targetHotspotWindows.keys where !eligibleIDs.contains(id) {
@@ -348,9 +375,16 @@ final class OverlayWindowGroup {
         for id in eligibleIDs.prefix(11) {
             let controller = targetHotspotWindows[id] ?? CharacterHotspotWindowController(
                 onClick: { [weak self] clickCount in
-                    guard clickCount == 1 else { return }
-                    self?.onTargetCharacterClick(id)
-                }
+                    guard let self, clickCount == 1,
+                          self.model.activeRoomRealtimeAvailable,
+                          (!self.model.preferences.requiresRightClickToThrow || self.throwTargetingActive),
+                          let member = self.model.pixelWorldMembers.first(where: { $0.id == id }),
+                          CharacterThrowTargetPolicy.canTarget(member) else { return }
+                    self.onTargetCharacterClick(id)
+                },
+                onDragBegan: { [weak self] point in self?.beginCharacterDrag(id, at: point) },
+                onDragMoved: { [weak self] point in self?.moveCharacterDrag(id, to: point) },
+                onDragEnded: { [weak self] in self?.worldWindow.dragBridge.end(memberID: id) }
             )
             targetHotspotWindows[id] = controller
             controller.setFrame(screenFrame(for: characterLocalFrames[id]))
@@ -424,10 +458,14 @@ final class OverlayWindowGroup {
         resolved.screenIdentifier = screen.identifier
         let frames = OverlayRegionLayout.frames(for: resolved, on: screen)
         let geometryChanged = currentScreenIdentifier != screen.identifier
-            || activityFrame != frames.activityFrame || renderFrame != frames.renderFrame
+            || activityFrame != frames.activityFrame
+        if geometryChanged {
+            worldWindow.dragBridge.cancel()
+            dragRenderingExpanded = false
+        }
         currentScreenIdentifier = screen.identifier
         activityFrame = frames.activityFrame
-        renderFrame = frames.renderFrame
+        renderFrame = dragRenderingExpanded ? screen.visibleFrame : frames.renderFrame
         if geometryChanged {
             // Reapplying visibility after a snapshot must not briefly erase
             // valid anchors and hide every draw bubble until the next frame.
@@ -438,8 +476,8 @@ final class OverlayWindowGroup {
             resetThrowTargeting()
         }
         worldWindow.setLayout(
-            renderFrame: frames.renderFrame,
-            localActivityFrame: frames.localActivityFrame
+            renderFrame: renderFrame,
+            localActivityFrame: activityFrame.offsetBy(dx: -renderFrame.minX, dy: -renderFrame.minY)
         )
         interactionWindow.setFrame(ComposerPositionLayout.frame(
             preference: model.preferences.composerPosition, screens: screens, fallback: screen
@@ -454,6 +492,46 @@ final class OverlayWindowGroup {
         }
     }
 
+    private func synchronizeInteractionRoom() {
+        guard interactionRoomID != model.activeRoom?.id else { return }
+        interactionRoomID = model.activeRoom?.id
+        hotspotWindow.cancelPointerInteraction()
+        targetHotspotWindows.values.forEach { $0.cancelPointerInteraction() }
+        worldWindow.dragBridge.cancel()
+    }
+
+    private func beginCharacterDrag(_ id: UUID, at point: CGPoint) {
+        guard overlayVisible, model.activeRoom != nil else { return }
+        composerVisibilityBeforeCharacterClick = nil
+        worldWindow.dragBridge.begin(memberID: id, pointer: dragPoint(point))
+        if worldWindow.dragBridge.scene?.draggingMemberIDs.contains(id) == true {
+            // Complete expansion within this input event before a simulation
+            // tick can constrain the newly grabbed body to the compact band.
+            updateDragRenderSurface(active: true)
+        }
+    }
+
+    private func moveCharacterDrag(_ id: UUID, to point: CGPoint) {
+        worldWindow.dragBridge.move(memberID: id, pointer: dragPoint(point))
+    }
+
+    private func dragPoint(_ screenPoint: CGPoint) -> CGPoint {
+        EdgeTrackGeometry(bounds: activityFrame, edge: model.preferences.overlayRegion.edge)
+            .dragPoint(for: screenPoint)
+    }
+
+    private func updateDragRenderSurface(active: Bool) {
+        let expanded = active && overlayVisible
+        guard dragRenderingExpanded != expanded,
+              let screen = screenGeometries.first(where: { $0.identifier == currentScreenIdentifier }) else { return }
+        dragRenderingExpanded = expanded
+        renderFrame = expanded ? screen.visibleFrame : OverlayRegionLayout.renderFrame(
+            for: activityFrame, edge: model.preferences.overlayRegion.edge, in: screen.visibleFrame)
+        worldWindow.setLayout(renderFrame: renderFrame,
+            localActivityFrame: activityFrame.offsetBy(dx: -renderFrame.minX, dy: -renderFrame.minY))
+        worldWindow.setComposerFrame(interactionWindow.frame.offsetBy(dx: -renderFrame.minX, dy: -renderFrame.minY))
+    }
+
     private func composerFrameChanged(_ frame: CGRect, finished: Bool) {
         worldWindow.setComposerFrame(frame.offsetBy(dx: -renderFrame.minX, dy: -renderFrame.minY))
         guard finished, let screen = ComposerPositionLayout.screen(for: frame, screens: screenGeometries) else { return }
@@ -464,8 +542,13 @@ final class OverlayWindowGroup {
     }
 
     private func screensDidChange() {
+        worldWindow.dragBridge.cancel()
+        hotspotWindow.setVisible(false)
+        targetHotspotWindows.values.forEach { $0.setVisible(false) }
         refreshAvailableScreens()
         apply(preference: model.preferences.overlayRegion, persistFallback: true)
+        hotspotWindow.setVisible(overlayVisible)
+        refreshThrowHotspots()
     }
 
     private func refreshAvailableScreens() {
@@ -495,6 +578,7 @@ final class OverlayWindowGroup {
     }
 
     private func characterFramesChanged(_ frames: [UUID: CGRect]) {
+        synchronizeInteractionRoom()
         characterLocalFrames = frames
         currentUserLocalFrame = model.currentUserID.flatMap { frames[$0] }
         let localFrame = currentUserLocalFrame
@@ -549,7 +633,7 @@ final class OverlayWindowGroup {
         throwTargetingTask?.cancel()
         throwTargetingTask = nil
         throwTargetingActive = false
-        if !clearOnly {
+        if !clearOnly, !overlayVisible {
             targetHotspotWindows.values.forEach { $0.setVisible(false) }
             targetHotspotWindows.removeAll()
         }

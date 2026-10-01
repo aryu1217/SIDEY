@@ -3,6 +3,8 @@ import SwiftUI
 
 struct PixelWorldView: View {
     @Bindable var model: AppModel
+    let renderView: PixelWorldRenderView
+    var dragBridge: CharacterDragBridge? = nil
     let activityFrame: CGRect
     let composerVisible: Bool
     var composerFrame: CGRect? = nil
@@ -15,6 +17,7 @@ struct PixelWorldView: View {
         let members = model.pixelWorldMembers
         PixelWorldRepresentable(
             model: model,
+            renderView: renderView,
             realtimeAvailable: model.activeRoomTransportConnected,
             roomID: model.activeRoom?.id,
             members: members,
@@ -25,10 +28,11 @@ struct PixelWorldView: View {
             }.map(\.id)),
             bubbles: model.activeBubbles,
             edge: model.preferences.overlayRegion.edge,
+            dragBridge: dragBridge,
             activityFrame: activityFrame,
             installationSeed: model.preferences.installationSeed,
             composerVisible: composerVisible,
-            composerFrame: composerFrame,
+            composerFrame: dragBridge?.composerFrame ?? composerFrame,
             characterPulse: characterPulse,
             characterThrow: characterThrow,
             onCharacterFramesChanged: onCharacterFramesChanged,
@@ -37,14 +41,18 @@ struct PixelWorldView: View {
     }
 }
 
+/// SwiftUI observes model inputs only. AppKit owns the sibling rendering view's
+/// geometry, so a SwiftUI layout pass cannot resize a live Metal drawable.
 private struct PixelWorldRepresentable: NSViewRepresentable {
     let model: AppModel
+    let renderView: PixelWorldRenderView
     let realtimeAvailable: Bool
     let roomID: UUID?
     let members: [PixelWorldMember]
     let pausedTreeUserIDs: Set<UUID>
     let bubbles: [ActiveBubble]
     let edge: OverlayEdge
+    var dragBridge: CharacterDragBridge? = nil
     let activityFrame: CGRect
     let installationSeed: UInt64
     let composerVisible: Bool
@@ -54,30 +62,23 @@ private struct PixelWorldRepresentable: NSViewRepresentable {
     let onCharacterFramesChanged: ([UUID: CGRect]) -> Void
     let onChatBubbleFramesChanged: ([UUID: CGRect]) -> Void
 
-    func makeNSView(context: Context) -> SKView {
-        let view = SKView(frame: .zero)
-        PixelWorldRendererPolicy.apply(to: view)
-        let scene = PixelWorldScene(size: view.bounds.size)
-        scene.scaleMode = .resizeFill
-        view.presentScene(scene)
-        apply(to: scene)
-        return view
+    func makeNSView(context: Context) -> NSView {
+        apply()
+        return NSView(frame: .zero)
     }
 
-    func updateNSView(_ view: SKView, context: Context) {
-        guard let scene = view.scene as? PixelWorldScene else { return }
-        apply(to: scene)
-        view.isPaused = false
+    func updateNSView(_ view: NSView, context: Context) {
+        apply()
     }
 
-    static func dismantleNSView(_ view: SKView, coordinator: Void) {
-        (view.scene as? PixelWorldScene)?.resetStunState()
-        (view.scene as? PixelWorldScene)?.onStopCharacterSounds?()
-        view.isPaused = true
-        view.presentScene(nil)
-    }
-
-    private func apply(to scene: PixelWorldScene) {
+    private func apply() {
+        let view = renderView
+        let scene = view.scene
+        scene.dragBridge = dragBridge
+        dragBridge?.scene = scene
+        view.dragBridge = dragBridge
+        dragBridge?.renderView = view
+        view.synchronizeViewport()
         scene.useStunState(model.characterStunState, realtimeAvailable: realtimeAvailable)
         model.characterImpactAudio.isEnabled = model.preferences.characterSoundEffectsEnabled
         scene.onCharacterImpact = { [weak model] id, time in
@@ -89,10 +90,10 @@ private struct PixelWorldRepresentable: NSViewRepresentable {
             members: members,
             bubbles: bubbles,
             edge: edge,
-            activityFrame: activityFrame,
+            activityFrame: view.appliedActivityFrame ?? activityFrame,
             installationSeed: installationSeed,
             composerVisible: composerVisible,
-            composerFrame: composerFrame,
+            composerFrame: dragBridge?.composerFrame ?? composerFrame,
             characterPulse: characterPulse,
             characterThrow: characterThrow,
             onCharacterFramesChanged: onCharacterFramesChanged,

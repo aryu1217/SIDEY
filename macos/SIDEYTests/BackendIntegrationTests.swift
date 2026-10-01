@@ -613,6 +613,8 @@ private actor BackendEventProbe {
                 messageIDs.formUnion(messages.map(\.id))
             case .drawEventsChanged:
                 break
+            case .overlaySuppression:
+                break
             case .typing(_, _, let active):
                 if active { typingStarted = true } else { typingStopped = true }
             case .characterPulse(let event):

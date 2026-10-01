@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 private final class InteractiveOverlayPanel: NSPanel {
@@ -78,8 +79,19 @@ final class CharacterRightClickCoordinator {
 private final class CharacterHotspotView: NSView {
     let onClick: (Int) -> Void
     let rightClicks: CharacterRightClickCoordinator
+    private var gesture = CharacterDragGesture()
+    private var clickCount = 0
+    private let onDragBegan: (CGPoint) -> Void
+    private let onDragMoved: (CGPoint) -> Void
+    private let onDragEnded: () -> Void
+    var hasPointerPress: Bool { gesture.origin != nil }
 
-    init(onClick: @escaping (Int) -> Void, onRightClick: @escaping () -> Void, onDoubleRightClick: @escaping () -> Void) {
+    init(onClick: @escaping (Int) -> Void, onRightClick: @escaping () -> Void,
+         onDoubleRightClick: @escaping () -> Void, onDragBegan: @escaping (CGPoint) -> Void,
+         onDragMoved: @escaping (CGPoint) -> Void, onDragEnded: @escaping () -> Void) {
+        self.onDragBegan = onDragBegan
+        self.onDragMoved = onDragMoved
+        self.onDragEnded = onDragEnded
         self.onClick = onClick
         self.rightClicks = CharacterRightClickCoordinator(onSingle: onRightClick, onDouble: onDoubleRightClick)
         super.init(frame: .zero)
@@ -88,8 +100,38 @@ private final class CharacterHotspotView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
 
-    override func mouseDown(with event: NSEvent) { onClick(event.clickCount) }
-    override func rightMouseDown(with event: NSEvent) { rightClicks.handle(clickCount: event.clickCount) }
+    override func mouseDown(with event: NSEvent) {
+        guard let point = window?.convertPoint(toScreen: event.locationInWindow) else { return }
+        clickCount = event.clickCount
+        gesture.begin(at: point)
+    }
+    override func mouseDragged(with event: NSEvent) {
+        guard let point = window?.convertPoint(toScreen: event.locationInWindow) else { return }
+        if gesture.move(to: point) {
+            rightClicks.cancel()
+            onDragBegan(point)
+        }
+        if gesture.isDragging { onDragMoved(point) }
+    }
+    override func mouseUp(with event: NSEvent) {
+        let wasDragging = gesture.isDragging
+        let clicks = gesture.end()
+        if wasDragging {
+            if let point = window?.convertPoint(toScreen: event.locationInWindow) { onDragMoved(point) }
+            onDragEnded()
+        }
+        else if clicks { onClick(clickCount) }
+    }
+    override func rightMouseDown(with event: NSEvent) {
+        guard !gesture.isDragging else { return }
+        rightClicks.handle(clickCount: event.clickCount)
+    }
+    func cancelPointerInteraction() {
+        let wasDragging = gesture.isDragging
+        gesture.cancel()
+        rightClicks.cancel()
+        if wasDragging { onDragEnded() }
+    }
 }
 
 enum OverlayWindowIdentifier {
@@ -105,7 +147,9 @@ enum OverlayWindowIdentifier {
 final class PixelWorldWindowController {
     private let panel: NSPanel
     private let model: AppModel
+    let dragBridge = CharacterDragBridge()
     private var hostingView: NSHostingView<PixelWorldView>?
+    private var renderView: PixelWorldRenderView?
     private var composerVisible = false
     private var composerFrame: CGRect?
     private var characterPulse: CharacterPulseEvent?
@@ -141,50 +185,93 @@ final class PixelWorldWindowController {
     }
 
     func setLayout(renderFrame: CGRect, localActivityFrame: CGRect) {
+        guard panel.frame != renderFrame || self.localActivityFrame != localActivityFrame
+            || dragBridge.viewport == nil else { return }
+        // AppKit owns the renderer's geometry; SwiftUI only supplies scene data.
+        // Present the replacement drawable in the same transaction as the panel
+        // resize so its previous contents never stretch into the new bounds.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         self.localActivityFrame = localActivityFrame
-        panel.setFrame(renderFrame, display: true)
-        hostingView?.rootView = makeRootView()
+        dragBridge.setViewport(size: renderFrame.size, activityFrame: localActivityFrame)
+        panel.setFrame(renderFrame, display: false)
+        if let container = panel.contentView, let renderView {
+            container.layoutSubtreeIfNeeded()
+            renderView.frame = container.bounds
+            renderView.synchronizeViewport()
+            _ = renderView.drawFrame(advanceSimulation: false)
+        }
+        CATransaction.commit()
     }
 
     func orderFront() {
-        if hostingView == nil {
-            let view = NSHostingView(rootView: makeRootView())
-            hostingView = view
-            panel.contentView = view
+        let needsInitialFrame = renderView == nil
+        if renderView == nil {
+            let container = NSView(frame: CGRect(origin: .zero, size: panel.frame.size))
+            let renderer = PixelWorldRenderView(frame: container.bounds)
+            renderView = renderer
+            renderer.autoresizingMask = [.width, .height]
+            renderer.dragBridge = dragBridge
+            dragBridge.renderView = renderer
+            dragBridge.scene = renderer.scene
+            container.addSubview(renderer)
+
+            // This transparent sibling observes the model without participating
+            // in drawable sizing or owning the scene's lifetime.
+            let relay = NSHostingView(rootView: makeRootView(renderView: renderer))
+            relay.sizingOptions = []
+            relay.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+            hostingView = relay
+            container.addSubview(relay)
+            panel.contentView = container
+            container.layoutSubtreeIfNeeded()
+            renderer.synchronizeViewport()
+            renderer.startRendering()
         }
         panel.orderFrontRegardless()
+        if needsInitialFrame {
+            _ = renderView?.drawFrame(advanceSimulation: false)
+        }
     }
 
     func setComposerVisible(_ visible: Bool) {
         guard composerVisible != visible else { return }
         composerVisible = visible
-        hostingView?.rootView = makeRootView()
+        if let renderView {
+            hostingView?.rootView = makeRootView(renderView: renderView)
+        }
     }
 
     func setComposerFrame(_ frame: CGRect) {
         guard composerFrame != frame else { return }
         composerFrame = frame
-        hostingView?.rootView = makeRootView()
+        dragBridge.setComposerFrame(frame)
     }
 
     func playCharacterPulse(_ event: CharacterPulseEvent) {
-        guard event.roomID == model.activeRoom?.id, let hostingView else { return }
+        guard event.roomID == model.activeRoom?.id, let hostingView, let renderView else { return }
         characterPulse = event
-        hostingView.rootView = makeRootView()
+        hostingView.rootView = makeRootView(renderView: renderView)
     }
 
     func playCharacterThrow(_ event: CharacterThrowEvent) {
-        guard event.roomID == model.activeRoom?.id, let hostingView else { return }
+        guard event.roomID == model.activeRoom?.id, let hostingView, let renderView else { return }
         characterThrow = event
-        hostingView.rootView = makeRootView()
+        hostingView.rootView = makeRootView(renderView: renderView)
     }
 
     func orderOut() {
+        dragBridge.cancel()
         model.characterStunState.reset()
         model.characterImpactAudio.stopAll()
         panel.orderOut(nil)
+        renderView?.stopRendering()
         panel.contentView = nil
         hostingView = nil
+        renderView?.dragBridge = nil
+        renderView = nil
+        dragBridge.renderView = nil
+        dragBridge.scene = nil
         characterPulse = nil
         characterThrow = nil
     }
@@ -193,13 +280,15 @@ final class PixelWorldWindowController {
     var isVisible: Bool { panel.isVisible }
     var canHide: Bool { panel.canHide }
     var ignoresMouseEvents: Bool { panel.ignoresMouseEvents }
-    var isRendering: Bool { hostingView != nil }
+    var isRendering: Bool { renderView != nil }
     var size: CGSize { panel.frame.size }
     var collectionBehavior: NSWindow.CollectionBehavior { panel.collectionBehavior }
 
-    private func makeRootView() -> PixelWorldView {
+    private func makeRootView(renderView: PixelWorldRenderView) -> PixelWorldView {
         PixelWorldView(
             model: model,
+            renderView: renderView,
+            dragBridge: dragBridge,
             activityFrame: localActivityFrame,
             composerVisible: composerVisible,
             composerFrame: composerFrame,
@@ -473,7 +562,10 @@ final class CharacterHotspotWindowController {
     init(
         onClick: @escaping (Int) -> Void,
         onRightClick: @escaping () -> Void = {},
-        onDoubleRightClick: @escaping () -> Void = {}
+        onDoubleRightClick: @escaping () -> Void = {},
+        onDragBegan: @escaping (CGPoint) -> Void = { _ in },
+        onDragMoved: @escaping (CGPoint) -> Void = { _ in },
+        onDragEnded: @escaping () -> Void = {}
     ) {
         panel = CharacterHotspotPanel(
             contentRect: CGRect(origin: .zero, size: Self.panelSize),
@@ -491,29 +583,37 @@ final class CharacterHotspotWindowController {
         panel.canHide = false
         panel.ignoresMouseEvents = false
         panel.isReleasedWhenClosed = false
-        panel.contentView = CharacterHotspotView(onClick: onClick, onRightClick: onRightClick, onDoubleRightClick: onDoubleRightClick)
+        panel.contentView = CharacterHotspotView(onClick: onClick, onRightClick: onRightClick,
+            onDoubleRightClick: onDoubleRightClick, onDragBegan: onDragBegan,
+            onDragMoved: onDragMoved, onDragEnded: onDragEnded)
     }
 
     func setFrame(_ frame: CGRect?) {
         guard let frame else {
             hasFrame = false
-            (panel.contentView as? CharacterHotspotView)?.rightClicks.cancel()
+            (panel.contentView as? CharacterHotspotView)?.cancelPointerInteraction()
             panel.orderOut(nil)
             return
         }
         hasFrame = true
+        // Keep event coordinates stable while AppKit owns this local drag stream.
+        guard (panel.contentView as? CharacterHotspotView)?.hasPointerPress != true else { return }
         panel.setFrame(frame, display: false)
         if requestedVisible { panel.orderFrontRegardless() }
     }
 
     func setVisible(_ visible: Bool) {
         requestedVisible = visible
-        if !visible { (panel.contentView as? CharacterHotspotView)?.rightClicks.cancel() }
+        if !visible { (panel.contentView as? CharacterHotspotView)?.cancelPointerInteraction() }
         if visible, hasFrame {
             panel.orderFrontRegardless()
         } else {
             panel.orderOut(nil)
         }
+    }
+
+    func cancelPointerInteraction() {
+        (panel.contentView as? CharacterHotspotView)?.cancelPointerInteraction()
     }
 
     var isVisible: Bool { panel.isVisible }
