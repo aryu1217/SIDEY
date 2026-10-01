@@ -66,13 +66,26 @@ compatibility bridge가 Firebase event를 legacy Supabase plane으로, legacy ev
 
 인증된 server rollout selector가 명시적으로 허용한 session만 Firebase v2를 사용한다.
 Bootstrap도 현재 session의 capability, frozen contract와 전역 kill-switch를 다시 확인하고
-최대 5분의 server-enforced rollout lease를 custom token과 RTDB·callable 권한에 묶는다.
-Client는 lease 만료 전에 selector를 다시 확인하고 token과 listener를 교체한다. 개별
+server-enforced rollout lease를 custom token과 RTDB·callable 권한에 묶는다.
+30분 lease를 지원하는 client는 `register_realtime_capability_v3`로 capability를 등록한다.
+기존 `register_realtime_capability_v2` client에는 최대 5분을 유지하며, 같은 session을
+기존 client로 다시 등록하면 짧은 lease로 되돌린다. 등록 RPC의 버전과 별개로 실시간
+wire protocol은 v2이며 frozen contract hash와 bootstrap 응답 구조는 유지한다.
+Client는 서버가 발급한 lease와 refresh 시각을 검증하고, 만료 전에 selector를 다시
+확인해 token과 listener를 갱신한다. 조기 갱신 여유와 monotonic 만료 처리를 유지하며,
+새 client도 기존 5분 응답을 수용한다. 개별
 session이나 cohort의 명시적인 Selector OFF는 legacy 지원 기간에 이 bounded refresh 안에
 legacy transport로 전환한다. 이와 별도로 server-only Firebase 전역 emergency kill gate는
 RTDB read와 callable write를 즉시 fail-closed로 막아, 이미 발급한 lease가 남아 있어도
 전체 v2 traffic을 중단한다. Selector·bootstrap·권한 확인 실패를 legacy downgrade로
 우회하지 않으며, 갱신하지 못한 lease는 서버와 client 양쪽에서 fail-closed로 끝난다.
+
+Lease 연장은 정기 bootstrap 부하를 줄이며 방 강퇴·탈퇴·계정 및 session 취소의
+event-driven access 반영 주기를 바꾸지 않는다. Access worker의 별도 health deadline과
+재시도 주기도 유지한다. 재등록 때만 확인하는 rollout 정책 변경과 누락된 변경의
+bootstrap 재확인은 긴 lease만큼 늦어질 수 있으므로 긴급 차단은 전역 gate를 사용한다.
+서버가 긴 lease를 검증·발급할 수 있게 먼저 배포한 뒤 새 client를 배포한다.
+기존 client가 긴 lease를 거부하므로 전체 session의 TTL을 일괄 연장하지 않는다.
 
 Legacy bridge는 서버 runtime switch로 제어한다. 7일은 client rollout 뒤의 최소 관찰
 기간일 뿐 자동 cutover나 제거 시점이 아니다. Adoption, old/new 상호운용, 오류와 비용을
