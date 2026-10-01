@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/Sidey.App/Services/AppCoordinator.cs" Link="AppCoordinator.cs" />
+    <Compile Include="../../src/Sidey.App/Services/OverlayVisibilityPublisher.cs" Link="OverlayVisibilityPublisher.cs" />
     <Compile Include="../../src/Sidey.App/Startup/SingleInstanceGuard.cs" Link="SingleInstanceGuard.cs" />
     <Compile Include="../../src/Sidey.Launcher/Program.cs" Link="SideyLauncherProgram.cs" />
     <Compile Include="../../installer/Sidey.Setup/InstallerLanguages.cs" Link="InstallerLanguages.cs" />

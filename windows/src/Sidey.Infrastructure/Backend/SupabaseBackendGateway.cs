@@ -162,7 +162,42 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
             ref _equippedThrowableId,
             CosmeticCatalog.NormalizeThrowableId(snapshot.Profile?.EquippedThrowableId)
                 ?? "patch_soft_ball");
+        _realtime.SetOverlayVisibilityMembers(snapshot.Rooms);
+        await LoadOverlayVisibilitiesIfAvailableAsync(cancellationToken).ConfigureAwait(false);
         return snapshot;
+    }
+
+    public async Task SetOverlaySuppressedAsync(bool suppressed, CancellationToken cancellationToken = default)
+    {
+        StoredSupabaseSession session = await RequiredSessionAsync(cancellationToken).ConfigureAwait(false);
+        OverlayVisibilityRecord row = await RpcSingleAsync<OverlayVisibilityRecord>(
+            "set_overlay_visibility", new { p_suppressed = suppressed }, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Volatile.Read(ref _sessionInvalidated) != 0 || row.UserId != session.UserId)
+            throw new OperationCanceledException("Overlay visibility response belongs to an obsolete session.");
+        _realtime.MergeOverlayVisibility(row);
+        await _realtime.SetLocalVisibilityIdAsync(row.VisibilityId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task LoadOverlayVisibilitiesIfAvailableAsync(CancellationToken cancellationToken)
+    {
+        long startedAtRevision = _realtime.OverlayVisibilityRevision;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(3));
+        try
+        {
+            using HttpRequestMessage request = await CreateRequestAsync(
+                HttpMethod.Post, "/rest/v1/rpc/get_overlay_visibilities", deadline.Token).ConfigureAwait(false);
+            request.Content = JsonContent.Create(new { }, options: s_jsonOptions);
+            using HttpResponseMessage response = await _httpClient.SendAsync(request, deadline.Token).ConfigureAwait(false);
+            OverlayVisibilityRecord[] rows = await ReadRequiredAsync<OverlayVisibilityRecord[]>(
+                response, deadline.Token).ConfigureAwait(false);
+            if (Volatile.Read(ref _sessionInvalidated) == 0)
+                _realtime.ReconcileOverlayVisibilities(rows, startedAtRevision);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        catch (HttpRequestException) { } // This additive API must not break messaging on older servers.
+        catch (JsonException) { }
     }
 
     /// <summary>
@@ -1455,6 +1490,15 @@ public sealed class SupabaseBackendGateway : IBackendGateway, IAsyncDisposable
         request.Headers.TryAddWithoutValidation("Prefer", "return=representation");
         request.Content = JsonContent.Create(body, options: s_jsonOptions);
         using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (function == "set_overlay_visibility"
+            && response.StatusCode == System.Net.HttpStatusCode.BadRequest
+            && response.Content.Headers.ContentLength is null or <= 4096
+            && (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false))
+                .Contains("overlay_visibility_rate_limited", StringComparison.Ordinal))
+        {
+            throw new HttpRequestException("Overlay visibility rate limited.", null,
+                System.Net.HttpStatusCode.TooManyRequests);
+        }
         using JsonDocument document = await ReadDocumentAsync(response, cancellationToken).ConfigureAwait(false);
         JsonElement root = document.RootElement;
         JsonElement element = root.ValueKind == JsonValueKind.Array

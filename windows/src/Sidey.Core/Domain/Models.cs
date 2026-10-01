@@ -79,7 +79,8 @@ public sealed record PixelWorldMember(
     bool IsCurrentUser,
     string? EquippedBubbleStyleId = null,
     bool TreeMovementPaused = false,
-    long? TreeMovementRevision = null);
+    long? TreeMovementRevision = null,
+    bool IsOverlaySuppressed = false);
 
 public sealed record CharacterPulseEvent(Guid Id, Guid RoomId, Guid UserId);
 

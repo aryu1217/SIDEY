@@ -84,6 +84,18 @@ internal sealed class FirebaseV2RealtimeTransport : IRealtimeTransport
     public bool UsesFirebaseChat => Volatile.Read(ref _firebaseEnabled) != 0;
     public bool RequiresThrowableWireCodes => true;
 
+    public long OverlayVisibilityRevision => _legacy.OverlayVisibilityRevision;
+
+    public void SetOverlayVisibilityMembers(IReadOnlyList<Room> rooms) => _legacy.SetOverlayVisibilityMembers(rooms);
+
+    public void ReconcileOverlayVisibilities(IReadOnlyList<OverlayVisibilityRecord> rows, long startedAtRevision) =>
+        _legacy.ReconcileOverlayVisibilities(rows, startedAtRevision);
+
+    public void MergeOverlayVisibility(OverlayVisibilityRecord row) => _legacy.MergeOverlayVisibility(row);
+
+    public Task SetLocalVisibilityIdAsync(Guid visibilityId, CancellationToken cancellationToken) =>
+        _legacy.SetLocalVisibilityIdAsync(visibilityId, cancellationToken);
+
     public async IAsyncEnumerable<BackendEvent> ReadEventsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

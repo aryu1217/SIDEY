@@ -655,7 +655,7 @@ public sealed class RealtimeStartupTests
                 "presence_state",
                 new Dictionary<string, object>
                 {
-                    [friendId.ToString("D")] = new { metas = new[] { new { state = "Away" } } },
+                    [friendId.ToString("D")] = new { metas = new[] { new { phx_ref = "friend-connection", state = "Away" } } },
                 },
                 token);
             firstSnapshotSent.SetResult();
@@ -739,7 +739,7 @@ public sealed class RealtimeStartupTests
     }
 
     [Fact]
-    public async Task LosingInternetDisconnectsImmediatelyAndPausesReconnectUntilItReturns()
+    public async Task NcsiFalseDoesNotGrayOutAHealthyRoomOrCancelWork()
     {
         await using var server = new LocalServer(async (socket, _, token) =>
         {
@@ -764,23 +764,18 @@ public sealed class RealtimeStartupTests
         await reconciliationStarted.Task;
 
         network.SetAvailable(false);
-        Assert.Equal(RealtimeConnectionStatus.Disconnected, transport.ConnectionStatus);
-        Assert.False(await reconciliation.WaitAsync(TimeSpan.FromSeconds(1)));
-        Assert.False(await transport.RunWhileConnectedAsync(_ => throw new InvalidOperationException("No offline query is allowed."), server.Token));
+        Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
+        Assert.False(reconciliation.IsCompleted);
+        Assert.True(await transport.RunWhileConnectedAsync(_ => Task.CompletedTask, server.Token));
         await transport.SynchronizeAsync(rooms, roomId, PresenceState.Online, server.Token);
-        await Task.Delay(700, server.Token); // Past the first recovery delay; no socket may be opened.
+        await Task.Delay(700, server.Token);
         Assert.Equal(1, server.ConnectionCount);
 
         network.SetAvailable(true);
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await foreach (BackendEvent item in transport.ReadEventsAsync(deadline.Token))
-        {
-            if (item is BackendEvent.ConnectionChanged { Status.ActiveRoomTransportConnected: true }
-                && transport.ConnectionStatus.ActiveRoomTransportConnected)
-                break;
-        }
         Assert.True(transport.ConnectionStatus.ActiveRoomTransportConnected);
-        Assert.Equal(2, server.ConnectionCount);
+        Assert.Equal(1, server.ConnectionCount);
+        transport.RequestReconnect(userInitiated: true);
+        Assert.False(await reconciliation.WaitAsync(TimeSpan.FromSeconds(3)));
     }
 
     [Theory]
@@ -823,7 +818,7 @@ public sealed class RealtimeStartupTests
     }
 
     [Fact]
-    public async Task PathLossCancelsInitialHandshakeBeforeAnySocketHasBeenInstalled()
+    public async Task NcsiFalseDoesNotCancelAnInitialHandshake()
     {
         var connecting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var network = new Network();
@@ -836,11 +831,14 @@ public sealed class RealtimeStartupTests
                 throw new InvalidOperationException("The offline handshake must be canceled.");
             });
         var room = Guid.NewGuid();
+        using var stop = new CancellationTokenSource();
         Task synchronization = transport.SynchronizeAsync(new Dictionary<Guid, long> { [room] = 1 },
-            room, PresenceState.Online, CancellationToken.None);
+            room, PresenceState.Online, stop.Token);
         await connecting.Task.WaitAsync(TimeSpan.FromSeconds(3));
         network.SetAvailable(false);
-        await synchronization.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.False(synchronization.IsCompleted);
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => synchronization);
         Assert.False(transport.ConnectionStatus.TransportConnected);
     }
 

@@ -39,7 +39,7 @@ public sealed class NativeLeftClickTests
     }
 
     [Fact]
-    public void HidingAfterADoubleClickClearsTheIgnoredFinalRelease()
+    public void HidingAfterADoubleClickDoesNotTurnTheOrphanReleaseIntoAClick()
     {
         int singles = 0;
         using NativeOverlayWindowThread windows = Create(
@@ -51,7 +51,7 @@ public sealed class NativeLeftClickTests
         windows.SetVisible(true);
         Send(windows.HotspotWindowHandle, 0x0202);
 
-        Assert.Equal(2, Volatile.Read(ref singles));
+        Assert.Equal(1, Volatile.Read(ref singles));
     }
 
     [Fact]

@@ -42,6 +42,9 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
     private readonly Action<string>? _diagnostic;
     private readonly Action<string, Exception>? _diagnosticFailure;
     private readonly Guid?[] _targetUserIds = new Guid?[NativeOverlayWindowThread.MaximumTargetHotspots];
+    private readonly Guid?[] _dragTargetUserIds = new Guid?[NativeOverlayWindowThread.MaximumTargetHotspots];
+    private Guid? _selfUserId;
+    private Guid? _selfDragUserId;
     private readonly NativePixelRect[] _targetBounds = new NativePixelRect[NativeOverlayWindowThread.MaximumTargetHotspots];
     private readonly NativePixelRect[] _appliedTargetBounds = new NativePixelRect[NativeOverlayWindowThread.MaximumTargetHotspots];
     private readonly bool[] _targetWindowsShown = new bool[NativeOverlayWindowThread.MaximumTargetHotspots];
@@ -186,7 +189,8 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
                     metrics,
                     initialTaskbarInset,
                     options.AnimationsEnabled,
-                    options.CharacterImpact);
+                    options.CharacterImpact,
+                    monitor.MonitorPixels);
                 return renderer;
             },
             () => characterClicked(1),
@@ -199,7 +203,9 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
                 }
             },
             isDoubleClick => session?.HandleRightClick(isDoubleClick),
-            index => session?.ActivateTarget(index));
+            index => session?.ActivateTarget(index),
+            pointer => session?.HandleDragPointer(true, -1, pointer),
+            (index, pointer) => session?.HandleDragPointer(false, index, pointer));
         session = new NativePixelWorldSession(
             windows,
             renderer ?? throw new InvalidOperationException("SIDEY renderer did not initialize."),
@@ -214,6 +220,7 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
             options.DiagnosticFailure);
         session._requestTreeMovementToggle = options.TreeMovementToggleRequested;
         session._selfCharacterId = initialSnapshot.Members.FirstOrDefault(member => member.IsCurrentUser)?.CharacterId;
+        session._selfUserId = initialSnapshot.Members.FirstOrDefault(member => member.IsCurrentUser)?.Id;
         options.Diagnostic?.Invoke("overlay-window-created result=success");
         return session;
     }
@@ -232,13 +239,17 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         }
         if (_roomId != snapshot.RoomId)
         {
+            _renderer.CancelCharacterDrags();
             lock (_throwGate)
             {
                 _roomId = snapshot.RoomId;
                 CancelThrowTargetingWithinGate();
                 ClearTargetsWithinGate();
+                _selfDragUserId = null;
+                Array.Clear(_dragTargetUserIds);
             }
         }
+        _selfUserId = snapshot.Members.FirstOrDefault(member => member.IsCurrentUser)?.Id;
         _renderer.ApplySnapshot(snapshot);
     }
 
@@ -255,6 +266,9 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         _selfWindowShown = visible && _selfHotspotAvailable;
         if (!visible)
         {
+            _renderer.CancelCharacterDrags();
+            _selfDragUserId = null;
+            Array.Clear(_dragTargetUserIds);
             _renderer.ResetFeedback();
             lock (_throwGate)
             {
@@ -285,6 +299,9 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         IsVisible = false;
         _windows.SetHotspotBounds(_lastSelfHotspot, visible: false);
         _selfWindowShown = false;
+        _renderer.CancelCharacterDrags();
+        _selfDragUserId = null;
+        Array.Clear(_dragTargetUserIds);
         _renderer.ResetFeedback();
         lock (_throwGate)
         {
@@ -338,6 +355,7 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         }
 
         _disposed = true;
+        _renderer.CancelCharacterDrags();
         _taskbarTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _taskbarTimer.Dispose();
         _throwTargetingTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -444,6 +462,65 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
         }
     }
 
+    private void HandleDragPointer(bool self, int index, NativeDragPointerEvent pointer)
+    {
+        Guid? memberId;
+        lock (_throwGate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            if (self)
+            {
+                if (pointer.Kind == NativeDragPointerKind.Began)
+                {
+                    _selfDragUserId = IsVisible ? _selfUserId : null;
+                }
+                memberId = _selfDragUserId;
+                if (pointer.Kind is NativeDragPointerKind.Released or NativeDragPointerKind.Cancelled)
+                {
+                    _selfDragUserId = null;
+                }
+            }
+            else
+            {
+                if (index < 0 || index >= _dragTargetUserIds.Length)
+                {
+                    return;
+                }
+                if (pointer.Kind == NativeDragPointerKind.Began)
+                {
+                    _dragTargetUserIds[index] = IsVisible ? _targetUserIds[index] : null;
+                }
+                memberId = _dragTargetUserIds[index];
+                if (pointer.Kind is NativeDragPointerKind.Released or NativeDragPointerKind.Cancelled)
+                {
+                    _dragTargetUserIds[index] = null;
+                }
+            }
+        }
+        if (memberId is not { } id)
+        {
+            return;
+        }
+        switch (pointer.Kind)
+        {
+            case NativeDragPointerKind.Began:
+                _renderer.BeginCharacterDrag(id, pointer.ScreenX, pointer.ScreenY);
+                break;
+            case NativeDragPointerKind.Moved:
+                _renderer.MoveCharacterDrag(id, pointer.ScreenX, pointer.ScreenY);
+                break;
+            case NativeDragPointerKind.Released:
+                _renderer.EndCharacterDrag(id);
+                break;
+            case NativeDragPointerKind.Cancelled:
+                _renderer.CancelCharacterDrag(id);
+                break;
+        }
+    }
+
     private void UpdateHotspots(
         NativePixelRect? self,
         IReadOnlyList<CharacterHotspotFrame> targets)
@@ -500,10 +577,9 @@ public sealed class NativePixelWorldSession : IOverlayHost, IDisposable
 
     private void RefreshTargetVisibilityWithinGate()
     {
-        bool enabled = TargetsEnabledWithinGate();
         for (int index = 0; index < _targetUserIds.Length; index++)
         {
-            bool visible = enabled && _targetUserIds[index] is not null;
+            bool visible = IsVisible && _targetUserIds[index] is not null;
             if (visible)
             {
                 if (!_targetWindowsShown[index]

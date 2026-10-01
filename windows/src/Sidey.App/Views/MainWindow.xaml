@@ -1195,8 +1195,9 @@
 
               <Border Style="{StaticResource SideySettingsCardStyle}">
                 <Grid ColumnSpacing="16">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <Ellipse Width="10" Height="10" VerticalAlignment="Center" Fill="{Binding IsConnected, Converter={StaticResource ConnectionBrushConverter}}" />
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Ellipse Width="10" Height="10" VerticalAlignment="Center" Fill="{Binding IsConnected, Converter={StaticResource ConnectionBrushConverter}}" Visibility="{Binding IsReconnecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                  <ProgressRing Width="18" Height="18" VerticalAlignment="Center" IsActive="{Binding IsReconnecting}" IsHitTestVisible="False" Visibility="{Binding IsReconnecting, Converter={StaticResource BooleanToVisibilityConverter}}" />
                   <TextBlock Grid.Column="1" Style="{StaticResource SideySettingsRowTitleStyle}" Text="{Binding ConnectionText}" VerticalAlignment="Center" />
                   <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding RetryConnectionCommand}" Content="{Binding Value, Source={i18n:I18n Key=connection.retry.action}, Mode=OneWay}" ToolTipService.ToolTip="{Binding Value, Source={i18n:I18n Key=connection.retry.action}, Mode=OneWay}" />
                 </Grid>

@@ -19,6 +19,10 @@ public readonly record struct NativePixelRect(int X, int Y, int Width, int Heigh
     public bool IsValid => Width > 0 && Height > 0;
 }
 
+public enum NativeDragPointerKind { Began, Moved, Released, Cancelled }
+
+public readonly record struct NativeDragPointerEvent(NativeDragPointerKind Kind, int ScreenX, int ScreenY);
+
 public sealed unsafe class NativeOverlayWindow : IDisposable
 {
     private const string WindowClassName = "SIDEY.NativeOverlayWindow";
@@ -29,6 +33,7 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
     private static readonly ConcurrentDictionary<nint, Action> s_doubleClickActivations = new();
     private static readonly ConcurrentDictionary<nint, LeftClickState> s_leftClicks = new();
     private static readonly ConcurrentDictionary<nint, Action<bool>> s_rightClickActivations = new();
+    private static readonly ConcurrentDictionary<nint, Action<NativeDragPointerEvent>> s_dragPointers = new();
     private static readonly ConcurrentDictionary<nint, uint> s_ownerThreads = new();
     private static readonly ConcurrentDictionary<uint, int> s_threadWindowCounts = new();
     private static readonly WNDPROC s_windowProcedureCallback = WindowProcedure;
@@ -47,7 +52,8 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         NativeOverlayWindowRole role,
         Action? activated,
         Action? doubleClicked,
-        Action<bool>? rightClicked)
+        Action<bool>? rightClicked,
+        Action<NativeDragPointerEvent>? dragPointer)
     {
         _handle = handle;
         Role = role;
@@ -59,14 +65,21 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         {
             s_activations[handleValue] = activated;
         }
+        if (role == NativeOverlayWindowRole.Hotspot)
+        {
+            s_leftClicks[handleValue] = new LeftClickState();
+        }
         if (doubleClicked is not null)
         {
             s_doubleClickActivations[handleValue] = doubleClicked;
-            s_leftClicks[handleValue] = new LeftClickState();
         }
         if (rightClicked is not null)
         {
             s_rightClickActivations[handleValue] = rightClicked;
+        }
+        if (dragPointer is not null)
+        {
+            s_dragPointers[handleValue] = dragPointer;
         }
         s_ownerThreads[handleValue] = ownerThread;
         s_threadWindowCounts.AddOrUpdate(ownerThread, 1, static (_, count) => count + 1);
@@ -86,7 +99,8 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         NativePixelRect initialBounds,
         Action? activated = null,
         Action? doubleClicked = null,
-        Action<bool>? rightClicked = null)
+        Action<bool>? rightClicked = null,
+        Action<NativeDragPointerEvent>? dragPointer = null)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -131,7 +145,7 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             throw new Win32Exception(Marshal.GetLastPInvokeError(), "SetLayeredWindowAttributes failed.");
         }
 
-        var window = new NativeOverlayWindow(handle, role, activated, doubleClicked, rightClicked);
+        var window = new NativeOverlayWindow(handle, role, activated, doubleClicked, rightClicked, dragPointer);
         window.SetBounds(initialBounds, visible: true);
         return window;
     }
@@ -144,7 +158,10 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             throw new ArgumentOutOfRangeException(nameof(bounds));
         }
 
-        SET_WINDOW_POS_FLAGS flags = SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_NOOWNERZORDER;
+        // Rendering can reposition hotspots while holding its frame lock. Queue cross-thread
+        // window moves so the HWND thread never waits for that lock while we wait for it.
+        SET_WINDOW_POS_FLAGS flags = SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE
+            | SET_WINDOW_POS_FLAGS.SWP_NOOWNERZORDER | SET_WINDOW_POS_FLAGS.SWP_ASYNCWINDOWPOS;
         flags |= visible ? SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW : SET_WINDOW_POS_FLAGS.SWP_HIDEWINDOW;
         if (!PInvoke.SetWindowPos(
                 _handle,
@@ -221,7 +238,27 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool IsWindow(nint window);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetCursorPos(out ScreenPoint point);
+
+        [DllImport("user32.dll")]
+        internal static extern nint SetCapture(nint window);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        internal static extern nint GetCapture();
+
+        [DllImport("user32.dll")]
+        internal static extern uint GetDpiForWindow(nint window);
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint { public int X; public int Y; }
 
     public void Dispose()
     {
@@ -239,6 +276,7 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             s_activations.TryRemove((nint)handle.Value, out _);
             s_doubleClickActivations.TryRemove((nint)handle.Value, out _);
             s_rightClickActivations.TryRemove((nint)handle.Value, out _);
+            s_dragPointers.TryRemove((nint)handle.Value, out _);
             if (PInvoke.GetCurrentThreadId() == _ownerThreadId)
             {
                 PInvoke.DestroyWindow(handle);
@@ -300,47 +338,84 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         {
             if (message == 0x0018 && wParam.Value == 0) // WM_SHOWWINDOW: hidden
             {
-                leftClick._ignoreRelease = false;
+                CancelDrag(handleValue, leftClick);
             }
-            else if (message == 0x0201) // WM_LBUTTONDOWN: a new single-click sequence
+            else if (message is 0x0201 or 0x0203) // WM_LBUTTONDOWN / WM_LBUTTONDBLCLK
             {
-                leftClick._ignoreRelease = false;
-            }
-            else if (message == 0x0203) // WM_LBUTTONDBLCLK
-            {
-                leftClick._ignoreRelease = true;
-            }
-            else if (message == PInvoke.WM_LBUTTONUP)
-            {
-                if (leftClick._ignoreRelease)
+                if (NativeMethods.GetCursorPos(out ScreenPoint point))
                 {
-                    leftClick._ignoreRelease = false;
-                    return default;
+                    leftClick._pressed = true;
+                    leftClick._dragging = false;
+                    leftClick._doubleClick = message == 0x0203;
+                    leftClick._startX = point.X;
+                    leftClick._startY = point.Y;
+                    NativeMethods.SetCapture(handleValue);
                 }
-                InvokeActivation(handleValue);
                 return default;
             }
-        }
-
-        if (message == PInvoke.WM_LBUTTONUP)
-        {
-            InvokeActivation(handleValue);
-            return default;
-        }
-
-        if (message == 0x0203 // WM_LBUTTONDBLCLK
-            && s_doubleClickActivations.TryGetValue((nint)window.Value, out Action? doubleClicked))
-        {
-            try
+            else if (message == 0x0200 && leftClick._pressed) // WM_MOUSEMOVE
             {
-                doubleClicked();
+                if (NativeMethods.GetCursorPos(out ScreenPoint point))
+                {
+                    double dx = point.X - leftClick._startX;
+                    double dy = point.Y - leftClick._startY;
+                    double threshold = 5d * Math.Max(1d, NativeMethods.GetDpiForWindow(handleValue) / 96d);
+                    if (!leftClick._dragging && dx * dx + dy * dy >= threshold * threshold)
+                    {
+                        leftClick._dragging = true;
+                        InvokeDrag(handleValue, new NativeDragPointerEvent(
+                            NativeDragPointerKind.Began, leftClick._startX, leftClick._startY));
+                    }
+                    if (leftClick._dragging)
+                    {
+                        InvokeDrag(handleValue, new NativeDragPointerEvent(
+                            NativeDragPointerKind.Moved, point.X, point.Y));
+                    }
+                }
+                return default;
             }
-            catch (Exception exception)
+            else if (message == PInvoke.WM_LBUTTONUP && leftClick._pressed)
             {
-                Trace.TraceError("SIDEY hotspot double-click callback failed: {0}", exception);
+                leftClick._pressed = false;
+                bool doubleClick = leftClick._doubleClick;
+                if (leftClick._dragging)
+                {
+                    if (NativeMethods.GetCursorPos(out ScreenPoint point))
+                    {
+                        InvokeDrag(handleValue, new NativeDragPointerEvent(
+                            NativeDragPointerKind.Moved, point.X, point.Y));
+                        InvokeDrag(handleValue, new NativeDragPointerEvent(
+                            NativeDragPointerKind.Released, point.X, point.Y));
+                    }
+                    else
+                    {
+                        InvokeDrag(handleValue, new NativeDragPointerEvent(NativeDragPointerKind.Cancelled, 0, 0));
+                    }
+                    leftClick._dragging = false;
+                    if (NativeMethods.GetCapture() == handleValue)
+                    {
+                        NativeMethods.ReleaseCapture();
+                    }
+                    return default;
+                }
+                if (NativeMethods.GetCapture() == handleValue)
+                {
+                    NativeMethods.ReleaseCapture();
+                }
+                if (doubleClick)
+                {
+                    InvokeDoubleClick(handleValue);
+                }
+                else
+                {
+                    InvokeActivation(handleValue);
+                }
+                return default;
             }
-
-            return default;
+            else if (message is 0x0215 or 0x001F) // WM_CAPTURECHANGED / WM_CANCELMODE
+            {
+                CancelDrag(handleValue, leftClick);
+            }
         }
 
         if (message is 0x0204 or 0x0206 // WM_RBUTTONDOWN / WM_RBUTTONDBLCLK
@@ -372,9 +447,10 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
             s_doubleClickActivations.TryRemove(handle, out _);
             if (s_leftClicks.TryRemove(handle, out LeftClickState? pendingClick))
             {
-                pendingClick._ignoreRelease = false;
+                CancelDrag(handle, pendingClick);
             }
             s_rightClickActivations.TryRemove(handle, out _);
+            s_dragPointers.TryRemove(handle, out _);
             if (s_ownerThreads.TryRemove(handle, out uint ownerThread))
             {
                 int remaining = s_threadWindowCounts.AddOrUpdate(
@@ -408,9 +484,48 @@ public sealed unsafe class NativeOverlayWindow : IDisposable
         }
     }
 
+    private static void InvokeDoubleClick(nint handle)
+    {
+        if (s_doubleClickActivations.TryGetValue(handle, out Action? doubleClicked))
+        {
+            try
+            { doubleClicked(); }
+            catch (Exception exception) { Trace.TraceError("SIDEY hotspot double-click callback failed: {0}", exception); }
+        }
+    }
+
+    private static void InvokeDrag(nint handle, NativeDragPointerEvent pointer)
+    {
+        if (s_dragPointers.TryGetValue(handle, out Action<NativeDragPointerEvent>? callback))
+        {
+            try
+            { callback(pointer); }
+            catch (Exception) { Trace.TraceError("SIDEY hotspot drag callback failed."); }
+        }
+    }
+
+    private static void CancelDrag(nint handle, LeftClickState click)
+    {
+        if (click._pressed && click._dragging)
+        {
+            InvokeDrag(handle, new NativeDragPointerEvent(NativeDragPointerKind.Cancelled, 0, 0));
+        }
+        click._pressed = false;
+        click._dragging = false;
+        click._doubleClick = false;
+        if (NativeMethods.GetCapture() == handle)
+        {
+            NativeMethods.ReleaseCapture();
+        }
+    }
+
     private sealed class LeftClickState
     {
-        internal bool _ignoreRelease;
+        internal bool _pressed;
+        internal bool _dragging;
+        internal bool _doubleClick;
+        internal int _startX;
+        internal int _startY;
     }
 }
 

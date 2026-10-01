@@ -158,6 +158,7 @@ public sealed unsafe class NativeLayeredBitmap : IDisposable
 
     public int Width { get; }
     public int Height { get; }
+    public nint WindowHandle => (nint)_window.Value;
 
     public Span<byte> Pixels
     {

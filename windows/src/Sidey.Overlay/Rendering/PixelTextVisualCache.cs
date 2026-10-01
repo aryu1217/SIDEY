@@ -166,7 +166,8 @@ internal sealed class PixelTextVisualCache : IDisposable
                 olderBubble,
                 latestBubble,
                 member.IsTyping,
-                member.EquippedBubbleStyleId);
+                member.EquippedBubbleStyleId,
+                member.IsOverlaySuppressed && member.Presence is PresenceState.Online or PresenceState.Away);
             if (_entries.TryGetValue(member.Id, out CacheEntry? existing) && existing.Key == key)
             {
                 continue;
@@ -212,7 +213,7 @@ internal sealed class PixelTextVisualCache : IDisposable
     {
         PremultipliedVisual nameplate = PixelVisualOrientation.ApplyToNameplate(RasterizeNameplate(
             key.Name,
-            StatusColor(key.Presence)), _edge);
+            StatusColor(key.Presence), key.IsOverlaySuppressed), _edge);
 
         var messageBubbles = new Dictionary<Guid, PremultipliedVisual>(
             ActiveBubbleLedger.MaximumVisiblePerSender);
@@ -383,7 +384,8 @@ internal sealed class PixelTextVisualCache : IDisposable
 
     private PremultipliedVisual RasterizeNameplate(
         string text,
-        Color status)
+        Color status,
+        bool isOverlaySuppressed)
     {
         using var format = new CanvasTextFormat
         {
@@ -401,7 +403,7 @@ internal sealed class PixelTextVisualCache : IDisposable
             NameplateHeightDip);
         float measuredTextWidth = (float)Math.Ceiling(layout.DrawBounds.Width);
         float boxWidthDip = Math.Clamp(
-            measuredTextWidth + (NameplateHorizontalPaddingDip * 2f),
+            measuredTextWidth + (NameplateHorizontalPaddingDip * 2f) + (isOverlaySuppressed ? 18f : 0f),
             NameplateMinimumWidthDip,
             NameplateMaximumWidthDip);
         float boxLeftDip = (NameplateStatusRadiusDip * 2f) + NameplateStatusSpacingDip;
@@ -434,10 +436,20 @@ internal sealed class PixelTextVisualCache : IDisposable
                 new Rect(
                     boxLeftDip + NameplateHorizontalPaddingDip,
                     1f,
-                    boxWidthDip - (NameplateHorizontalPaddingDip * 2f),
+                    boxWidthDip - (NameplateHorizontalPaddingDip * 2f) - (isOverlaySuppressed ? 18f : 0f),
                     NameplateHeightDip - 2f),
                 Color.FromArgb(255, 255, 255, 255),
                 format);
+            if (isOverlaySuppressed)
+            {
+                float centerX = boxLeftDip + boxWidthDip - 10f;
+                float centerY = NameplateHeightDip / 2f;
+                var ink = Color.FromArgb(255, 255, 255, 255);
+                drawing.DrawEllipse(centerX, centerY, 5.5f, 3.2f, ink, 1.4f);
+                drawing.FillCircle(centerX, centerY, 1.4f, ink);
+                drawing.DrawLine(centerX - 6.5f, centerY - 5f,
+                    centerX + 6.5f, centerY + 5f, ink, 1.5f);
+            }
         }
 
         BitmapSize size = target.SizeInPixels;
@@ -551,7 +563,8 @@ internal sealed class PixelTextVisualCache : IDisposable
         BubbleVisualKey? OlderBubble,
         BubbleVisualKey? LatestBubble,
         bool IsTyping,
-        string? TypingBubbleStyleId);
+        string? TypingBubbleStyleId,
+        bool IsOverlaySuppressed);
 
     private readonly record struct BubbleVisualKey(Guid MessageId, string Body, string? BubbleStyleId);
 

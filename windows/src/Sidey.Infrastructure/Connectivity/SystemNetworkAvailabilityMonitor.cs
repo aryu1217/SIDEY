@@ -85,14 +85,14 @@ internal sealed class SystemNetworkAvailabilityMonitor : INetworkAvailabilityMon
     }
 
     internal static bool CanAttemptConnection(NetworkConnectivityLevel? level) =>
-        level is NetworkConnectivityLevel.LocalAccess or NetworkConnectivityLevel.InternetAccess
+        level is null or NetworkConnectivityLevel.LocalAccess or NetworkConnectivityLevel.InternetAccess
             or NetworkConnectivityLevel.ConstrainedInternetAccess;
 
     private static bool ReadInternetAvailability()
     {
         try
         {
-            // NCSI is a hint: a local path may still reach SIDEY when Microsoft's probe cannot.
+            // NCSI is a hint: an unknown profile after resume is not proof that SIDEY is unreachable.
             return CanAttemptConnection(NetworkInformation.GetInternetConnectionProfile()?.GetNetworkConnectivityLevel());
         }
         catch (Exception exception) when (exception is COMException or InvalidOperationException)

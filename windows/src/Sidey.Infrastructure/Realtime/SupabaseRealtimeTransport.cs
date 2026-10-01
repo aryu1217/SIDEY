@@ -33,7 +33,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
     private readonly CancellationTokenSource _shutdown = new();
     private readonly CoalescingPublicationQueue<RealtimePresenceIntent> _presenceQueue;
     // Accessed only by the serialized presence publication queue.
-    private readonly Dictionary<string, (string JoinReference, PresenceState State)> _publishedPresence = [];
+    private readonly Dictionary<string, (string JoinReference, PresenceState State, Guid? VisibilityId)> _publishedPresence = [];
     private readonly ExpiringLeaseRegistry<(Guid RoomId, Guid UserId)> _typingExpiries;
     private readonly INetworkAvailabilityMonitor _networkMonitor;
     private readonly TimeSpan _watchdogInterval;
@@ -41,6 +41,9 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingReplies = [];
     private readonly ConcurrentDictionary<string, string> _joinReferences = [];
     private readonly ConcurrentDictionary<Guid, IReadOnlySet<Guid>> _presentUsersByRoom = [];
+    private readonly Lock _visibilityGate = new();
+    private readonly OverlayVisibilityState _visibility = new();
+    private Guid? _localVisibilityId;
     private readonly ConcurrentDictionary<Guid, int> _roomRefreshAttempts = [];
     private readonly ConcurrentDictionary<Guid, long> _roomRefreshPending = [];
     private readonly Lock _recoveryGate = new();
@@ -94,6 +97,57 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
     public RealtimeConnectionStatus ConnectionStatus =>
         Volatile.Read(ref _lastEmittedConnectionStatus);
     public bool IsRecoveryPaused => Volatile.Read(ref _recoveryPaused) != 0;
+
+    public long OverlayVisibilityRevision
+    {
+        get { lock (_visibilityGate) return _visibility.Revision; }
+    }
+
+    public void SetOverlayVisibilityMembers(IReadOnlyList<Room> rooms)
+    {
+        lock (_visibilityGate)
+        {
+            _visibility.SetMembers(rooms);
+            EmitVisibilityChanges();
+        }
+    }
+
+    public void ReconcileOverlayVisibilities(IReadOnlyList<OverlayVisibilityRecord> rows, long startedAtRevision)
+    {
+        lock (_visibilityGate)
+        {
+            _visibility.Reconcile(rows, startedAtRevision);
+            EmitVisibilityChanges();
+        }
+    }
+
+    public void MergeOverlayVisibility(OverlayVisibilityRecord row)
+    {
+        lock (_visibilityGate)
+        {
+            _visibility.Merge([row]);
+            EmitVisibilityChanges();
+        }
+    }
+
+    public Task SetLocalVisibilityIdAsync(Guid visibilityId, CancellationToken cancellationToken)
+    {
+        bool changed;
+        lock (_visibilityGate)
+        {
+            changed = _localVisibilityId != visibilityId;
+            _localVisibilityId = visibilityId;
+        }
+        return changed
+            ? _presenceQueue.SubmitAsync(new RealtimePresenceIntent(_desiredRoomEpochs, _activeRoomId, _localPresence), cancellationToken)
+            : Task.CompletedTask;
+    }
+
+    private void EmitVisibilityChanges()
+    {
+        foreach (BackendEvent.OverlaySuppressionChanged change in _visibility.Changes())
+            Emit(change);
+    }
 
     private event Action<RealtimeConnectionStatus>? ConnectionStatusChanged;
 
@@ -157,7 +211,8 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             Volatile.Write(ref _hasSynchronized, 1);
             if (roomsChanged)
             {
-                Volatile.Write(ref _recoveryPaused, 0);
+                if (Interlocked.Exchange(ref _recoveryPaused, 0) != 0)
+                    Emit(new BackendEvent.RecoveryPauseChanged(false));
                 Interlocked.Exchange(ref _authorizationFailures, 0);
                 foreach (RealtimeRoomDescriptor descriptor in delta.Joins)
                     _roomRefreshAttempts.TryRemove(descriptor.RoomId, out _);
@@ -166,14 +221,19 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             {
                 _presentUsersByRoom.TryRemove(roomId, out _);
                 _roomRefreshAttempts.TryRemove(roomId, out _);
+                lock (_visibilityGate)
+                {
+                    _visibility.ResetRoom(roomId);
+                    EmitVisibilityChanges();
+                }
             }
             Guid? nextActiveRoomId = activeRoomId is { } id && desired.ContainsKey(id) ? id : null;
             bool activeRoomChanged = _activeRoomId != nextActiveRoomId;
             _activeRoomId = nextActiveRoomId;
             _localPresence = localPresence;
-            if (!IsNetworkAvailable || Volatile.Read(ref _recoveryPaused) != 0)
+            if (Volatile.Read(ref _recoveryPaused) != 0)
             {
-                Emit(new BackendEvent.Diagnostic("realtime-network-unavailable synchronization=deferred"));
+                Emit(new BackendEvent.Diagnostic("realtime-recovery-paused synchronization=deferred"));
                 EmitDisconnected();
                 return;
             }
@@ -287,6 +347,11 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         _pendingReplies.Clear();
         _joinReferences.Clear();
         _presentUsersByRoom.Clear();
+        lock (_visibilityGate)
+        {
+            _visibility.Reset();
+            _localVisibilityId = null;
+        }
         await _presenceQueue.DisposeAsync().ConfigureAwait(false);
         await _connectionGate.WaitAsync().ConfigureAwait(false);
         try
@@ -353,33 +418,21 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             return;
         }
 
-        // An initial ConnectAsync has no installed socket to abort yet. Cancel it on path loss too.
+        // NCSI is only a hint: VPNs and sleep resume can report unavailable while
+        // the private socket or a fresh connection is healthy.
         using var interrupted = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
-        void OnAvailabilityChanged(bool available)
+        _ = await _sessions.GetStoredSessionAsync(interrupted.Token).ConfigureAwait(false)
+            ?? throw new UnauthorizedAccessException(I18n.Get("auth.session.expired"));
+        var builder = new UriBuilder(_configuration.Url)
         {
-            if (!available)
-                CancelRecoverySafely(interrupted);
-        }
-        _networkMonitor.AvailabilityChanged += OnAvailabilityChanged;
-        ClientWebSocket socket;
-        try
-        {
-            if (!IsNetworkAvailable)
-                interrupted.Cancel();
-            _ = await _sessions.GetStoredSessionAsync(interrupted.Token).ConfigureAwait(false)
-                ?? throw new UnauthorizedAccessException(I18n.Get("auth.session.expired"));
-            var builder = new UriBuilder(_configuration.Url)
-            {
-                Scheme = "wss",
-                Port = -1,
-                Path = "/realtime/v1/websocket",
-                Query = $"apikey={Uri.EscapeDataString(_configuration.PublishableKey)}&vsn=1.0.0",
-            };
-            Emit(new BackendEvent.Diagnostic("realtime-websocket-connect-started"));
-            socket = await _connectSocket(builder.Uri, interrupted.Token).ConfigureAwait(false);
-            Emit(new BackendEvent.Diagnostic("realtime-websocket-connect-completed"));
-        }
-        finally { _networkMonitor.AvailabilityChanged -= OnAvailabilityChanged; }
+            Scheme = "wss",
+            Port = -1,
+            Path = "/realtime/v1/websocket",
+            Query = $"apikey={Uri.EscapeDataString(_configuration.PublishableKey)}&vsn=1.0.0",
+        };
+        Emit(new BackendEvent.Diagnostic("realtime-websocket-connect-started"));
+        ClientWebSocket socket = await _connectSocket(builder.Uri, interrupted.Token).ConfigureAwait(false);
+        Emit(new BackendEvent.Diagnostic("realtime-websocket-connect-completed"));
 
         await DisconnectSocketWithinGateAsync().ConfigureAwait(false);
         _joinReferences.Clear();
@@ -419,6 +472,12 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             await session.DisposeAsync().ConfigureAwait(false);
         }
         _joinReferences.Clear();
+        _presentUsersByRoom.Clear();
+        lock (_visibilityGate)
+        {
+            _visibility.ResetConnections();
+            EmitVisibilityChanges();
+        }
     }
 
     private static string ConnectionFailureMessage(Exception exception)
@@ -603,11 +662,22 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             string? joinReference = _joinReferences.GetValueOrDefault(topic.PhoenixTopic);
             if (_socketSession?.Socket.State != WebSocketState.Open || joinReference is null)
                 continue;
-            if (_publishedPresence.TryGetValue(topic.PhoenixTopic, out (string JoinReference, PresenceState State) published)
-                && published == (joinReference, state))
+            Guid? visibilityId;
+            lock (_visibilityGate)
+                visibilityId = _localVisibilityId;
+            if (_publishedPresence.TryGetValue(topic.PhoenixTopic, out (string JoinReference, PresenceState State, Guid? VisibilityId) published)
+                && published == (joinReference, state, visibilityId))
             {
                 continue;
             }
+            var presencePayload = new Dictionary<string, object>
+            {
+                ["user_id"] = session.UserId,
+                ["state"] = state.ToString().ToLowerInvariant(),
+                ["online_at"] = DateTimeOffset.UtcNow.ToString("O"),
+            };
+            if (visibilityId is { } opaqueId)
+                presencePayload["visibility_id"] = opaqueId;
             await SendAsync(
                 topic.PhoenixTopic,
                 "presence",
@@ -615,18 +685,13 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 {
                     type = "presence",
                     @event = "track",
-                    payload = new
-                    {
-                        user_id = session.UserId,
-                        state = state.ToString().ToLowerInvariant(),
-                        online_at = DateTimeOffset.UtcNow.ToString("O"),
-                    },
+                    payload = presencePayload,
                 },
                 cancellationToken).ConfigureAwait(false);
             if (joinReference is not null
                 && _joinReferences.GetValueOrDefault(topic.PhoenixTopic) == joinReference)
             {
-                _publishedPresence[topic.PhoenixTopic] = (joinReference, state);
+                _publishedPresence[topic.PhoenixTopic] = (joinReference, state, visibilityId);
             }
         }
     }
@@ -762,7 +827,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         using var timer = new PeriodicTimer(_watchdogInterval);
         while (await timer.WaitForNextTickAsync(_shutdown.Token).ConfigureAwait(false))
         {
-            if (!IsNetworkAvailable || IsRecoveryPaused)
+            if (IsRecoveryPaused)
             {
                 continue;
             }
@@ -863,7 +928,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         {
             for (int attempt = 1; !cancellationToken.IsCancellationRequested; attempt++)
             {
-                if (!IsNetworkAvailable || Volatile.Read(ref _recoveryPaused) != 0)
+                if (Volatile.Read(ref _recoveryPaused) != 0)
                 {
                     return;
                 }
@@ -874,7 +939,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                 Emit(new BackendEvent.Diagnostic(
                     $"realtime-reconnect-scheduled attempt={attempt} delay-ms={(long)delay.TotalMilliseconds}"));
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                if (!IsNetworkAvailable || Volatile.Read(ref _recoveryPaused) != 0)
+                if (Volatile.Read(ref _recoveryPaused) != 0)
                 {
                     return;
                 }
@@ -940,7 +1005,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
 
     private RealtimeConnectionStatus CurrentTransportStatus()
     {
-        bool socketConnected = IsNetworkAvailable && _socketSession?.Socket.State == WebSocketState.Open;
+        bool socketConnected = _socketSession?.Socket.State == WebSocketState.Open;
         bool transportConnected = socketConnected
             && _desiredRoomEpochs.All(room => RealtimeEpochSubscriptionPlan
                 .Descriptors(room.Key, room.Value)
@@ -1048,6 +1113,23 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
 
         if (descriptor.Kind == RealtimeTopicKind.Database)
         {
+            if (broadcastEvent == "overlay_visibility_changed")
+            {
+                try
+                {
+                    OverlayVisibilityRecord? row = inner.Deserialize<OverlayVisibilityRecord>(s_jsonOptions);
+                    if (row is not null)
+                    {
+                        lock (_visibilityGate)
+                        {
+                            _visibility.Merge([row]);
+                            EmitVisibilityChanges();
+                        }
+                    }
+                }
+                catch (JsonException) { }
+                return;
+            }
             HandleDatabaseBroadcast(descriptor.RoomId, broadcastEvent, inner);
             return;
         }
@@ -1234,7 +1316,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             return;
         }
 
-        var joined = new Dictionary<Guid, PresenceState>();
+        var joined = new Dictionary<Guid, IReadOnlyList<OverlayPresenceConnection>>();
         if (payload.TryGetProperty("joins", out JsonElement joins) && joins.ValueKind == JsonValueKind.Object)
         {
             foreach (JsonProperty property in joins.EnumerateObject())
@@ -1244,35 +1326,39 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
                     continue;
                 }
 
-                joined[userId] = ParsePresenceState(property.Value);
+                joined[userId] = ParsePresenceConnections(property.Value);
             }
         }
 
-        var left = new HashSet<Guid>();
+        var left = new Dictionary<Guid, IReadOnlyList<string>>();
         if (payload.TryGetProperty("leaves", out JsonElement leaves) && leaves.ValueKind == JsonValueKind.Object)
         {
             foreach (JsonProperty property in leaves.EnumerateObject())
             {
                 if (Guid.TryParse(property.Name, out Guid userId))
                 {
-                    left.Add(userId);
+                    left[userId] = ParsePresenceReferences(property.Value);
                 }
             }
         }
 
-        foreach (PresenceUpdate update in PresenceChangePlan.Updates(joined, left))
+        lock (_visibilityGate)
         {
-            Emit(new BackendEvent.PresenceChanged(
-                roomId,
-                update.UserId,
-                update.State));
+            _visibility.Update(roomId, joined, left, full: false);
+            foreach (Guid userId in joined.Keys.Concat(left.Keys).Distinct())
+                Emit(new BackendEvent.PresenceChanged(roomId, userId, _visibility.BasePresence(roomId, userId)));
+            EmitVisibilityChanges();
         }
 
         IReadOnlySet<Guid> previous = _presentUsersByRoom.GetValueOrDefault(
             roomId,
             new HashSet<Guid>());
         _presentUsersByRoom[roomId] = previous
-            .Except(left)
+            .Except(left.Keys.Where(userId =>
+            {
+                lock (_visibilityGate)
+                    return _visibility.BasePresence(roomId, userId) == PresenceState.Offline;
+            }))
             .Concat(joined.Keys)
             .ToHashSet();
     }
@@ -1284,39 +1370,59 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             return;
         }
 
-        var current = new Dictionary<Guid, PresenceState>();
+        var current = new Dictionary<Guid, IReadOnlyList<OverlayPresenceConnection>>();
         foreach (JsonProperty property in payload.EnumerateObject())
         {
             if (Guid.TryParse(property.Name, out Guid userId))
             {
-                current[userId] = ParsePresenceState(property.Value);
+                current[userId] = ParsePresenceConnections(property.Value);
             }
         }
 
         IReadOnlySet<Guid> previous = _presentUsersByRoom.GetValueOrDefault(
             roomId,
             new HashSet<Guid>());
-        _presentUsersByRoom[roomId] = current.Keys.ToHashSet();
-        foreach (PresenceUpdate update in PresenceSnapshotPlan.Updates(current, previous))
+        lock (_visibilityGate)
         {
-            Emit(new BackendEvent.PresenceChanged(
-                roomId,
-                update.UserId,
-                update.State));
+            _visibility.Update(roomId, current, new Dictionary<Guid, IReadOnlyList<string>>(), full: true);
+            _presentUsersByRoom[roomId] = _visibility.ConnectedUsers(roomId);
+            foreach (Guid userId in current.Keys.Concat(previous).Distinct())
+                Emit(new BackendEvent.PresenceChanged(roomId, userId, _visibility.BasePresence(roomId, userId)));
+            EmitVisibilityChanges();
         }
     }
 
-    private static PresenceState ParsePresenceState(JsonElement value)
+    private static IReadOnlyList<OverlayPresenceConnection> ParsePresenceConnections(JsonElement value)
     {
-        if (value.TryGetProperty("metas", out JsonElement metas)
-            && metas.ValueKind == JsonValueKind.Array
-            && metas.GetArrayLength() > 0)
+        if (!value.TryGetProperty("metas", out JsonElement metas) || metas.ValueKind != JsonValueKind.Array)
+            return [];
+        var connections = new List<OverlayPresenceConnection>();
+        foreach (JsonElement meta in metas.EnumerateArray())
         {
-            return PresenceAggregatePlan.MostAvailable(
-                metas.EnumerateArray().Select(ParsePresenceMeta));
+            if (meta.ValueKind != JsonValueKind.Object
+                || !meta.TryGetProperty("phx_ref", out JsonElement reference)
+                || reference.ValueKind != JsonValueKind.String
+                || string.IsNullOrEmpty(reference.GetString()))
+                continue;
+            string? previous = meta.TryGetProperty("phx_ref_prev", out JsonElement old)
+                && old.ValueKind == JsonValueKind.String ? old.GetString() : null;
+            Guid? visibilityId = TryGuid(meta, "visibility_id", out Guid id) ? id : null;
+            connections.Add(new OverlayPresenceConnection(
+                reference.GetString()!, previous, visibilityId, ParsePresenceMeta(meta)));
         }
+        return connections;
+    }
 
-        return ParsePresenceMeta(value);
+    private static IReadOnlyList<string> ParsePresenceReferences(JsonElement value)
+    {
+        if (!value.TryGetProperty("metas", out JsonElement metas) || metas.ValueKind != JsonValueKind.Array)
+            return [];
+        return [.. metas.EnumerateArray()
+            .Where(meta => meta.ValueKind == JsonValueKind.Object
+                && meta.TryGetProperty("phx_ref", out JsonElement reference)
+                && reference.ValueKind == JsonValueKind.String)
+            .Select(meta => meta.GetProperty("phx_ref").GetString()!)
+            .Where(reference => !string.IsNullOrEmpty(reference))];
     }
 
     private static PresenceState ParsePresenceMeta(JsonElement value)
@@ -1362,8 +1468,6 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         }
     }
 
-    private bool IsNetworkAvailable => Volatile.Read(ref _networkAvailable) != 0;
-
     private bool PauseForNonRetryableFailure(Exception exception)
     {
         bool authorizationFailure = exception is UnauthorizedAccessException;
@@ -1398,6 +1502,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             return false;
 
         Volatile.Write(ref _recoveryPaused, 1);
+        Emit(new BackendEvent.RecoveryPauseChanged(true));
         EmitDisconnected();
         try
         { _socketSession?.Socket.Abort(); }
@@ -1414,11 +1519,15 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             return;
         if (userInitiated)
         {
-            Volatile.Write(ref _recoveryPaused, 0);
+            if (Interlocked.Exchange(ref _recoveryPaused, 0) != 0)
+                Emit(new BackendEvent.RecoveryPauseChanged(false));
             Interlocked.Exchange(ref _authorizationFailures, 0);
         }
         _networkMonitor.Refresh();
         // Resume must discard a socket that still appears open after sleep.
+        try
+        { _socketSession?.Socket.Abort(); }
+        catch (ObjectDisposedException) { }
         EmitDisconnected();
         ScheduleRecovery(immediate: true);
     }
@@ -1443,24 +1552,12 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
             isAvailable ? "realtime-network-available" : "realtime-network-unavailable"));
         if (isAvailable)
         {
-            ScheduleRecovery(immediate: true);
+            if (!ConnectionStatus.SocketConnected)
+                ScheduleRecovery(immediate: true);
             return;
         }
-
-        CancellationTokenSource? recoveryCancellation;
-        lock (_recoveryGate)
-        {
-            recoveryCancellation = _recoveryCancellation;
-        }
-        CancelRecoverySafely(recoveryCancellation);
-        try
-        {
-            _socketSession?.Socket.Abort();
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        EmitDisconnected();
+        // Do not paint an otherwise live room gray solely on a captive portal,
+        // VPN or post-sleep NCSI result. Socket failures and the watchdog own recovery.
     }
 
     private void ScheduleRecovery(bool immediate = false)
@@ -1468,7 +1565,7 @@ internal sealed class SupabaseRealtimeTransport : IRealtimeTransport
         CancellationTokenSource? superseded;
         lock (_recoveryGate)
         {
-            if (_shutdown.IsCancellationRequested || !IsNetworkAvailable
+            if (_shutdown.IsCancellationRequested
                 || Volatile.Read(ref _hasSynchronized) == 0 || Volatile.Read(ref _recoveryPaused) != 0)
             {
                 return;

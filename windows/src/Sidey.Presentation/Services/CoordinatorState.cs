@@ -57,6 +57,8 @@ public sealed record CoordinatorState(
 
     public bool ActiveRoomReady => ActiveRoomConnected && RealtimeConnection.RecoveryReconciled;
 
+    public bool RealtimeRecoveryPaused { get; init; }
+
     public static CoordinatorState Initial { get; } = new(
         null,
         [],

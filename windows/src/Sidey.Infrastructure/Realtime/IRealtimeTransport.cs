@@ -10,6 +10,19 @@ internal interface IRealtimeTransport : IAsyncDisposable
     public bool UsesFirebaseChat => false;
     public bool RequiresThrowableWireCodes => false;
 
+    public long OverlayVisibilityRevision => 0;
+
+    public void SetOverlayVisibilityMembers(IReadOnlyList<Room> rooms) { }
+
+    public void ReconcileOverlayVisibilities(
+        IReadOnlyList<OverlayVisibilityRecord> rows,
+        long startedAtRevision)
+    { }
+
+    public void MergeOverlayVisibility(OverlayVisibilityRecord row) { }
+
+    public Task SetLocalVisibilityIdAsync(Guid visibilityId, CancellationToken cancellationToken) => Task.CompletedTask;
+
     public IAsyncEnumerable<BackendEvent> ReadEventsAsync(CancellationToken cancellationToken);
 
     public Task SynchronizeAsync(

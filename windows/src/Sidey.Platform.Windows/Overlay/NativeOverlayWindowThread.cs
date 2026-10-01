@@ -17,6 +17,8 @@ public sealed class NativeOverlayWindowThread : IDisposable
     private readonly Action? _hotspotDoubleClicked;
     private readonly Action<bool>? _hotspotRightClicked;
     private readonly Action<int>? _targetHotspotActivated;
+    private readonly Action<NativeDragPointerEvent>? _hotspotDragged;
+    private readonly Action<int, NativeDragPointerEvent>? _targetHotspotDragged;
     private NativeOverlayWindow? _worldWindow;
     private NativeOverlayWindow? _hotspotWindow;
     private readonly NativeOverlayWindow?[] _targetHotspotWindows = new NativeOverlayWindow?[MaximumTargetHotspots];
@@ -34,7 +36,9 @@ public sealed class NativeOverlayWindowThread : IDisposable
         Action? hotspotActivated,
         Action? hotspotDoubleClicked,
         Action<bool>? hotspotRightClicked,
-        Action<int>? targetHotspotActivated)
+        Action<int>? targetHotspotActivated,
+        Action<NativeDragPointerEvent>? hotspotDragged,
+        Action<int, NativeDragPointerEvent>? targetHotspotDragged)
     {
         _initialWorldBounds = initialWorldBounds;
         _initialHotspotBounds = initialHotspotBounds;
@@ -43,6 +47,8 @@ public sealed class NativeOverlayWindowThread : IDisposable
         _hotspotDoubleClicked = hotspotDoubleClicked;
         _hotspotRightClicked = hotspotRightClicked;
         _targetHotspotActivated = targetHotspotActivated;
+        _hotspotDragged = hotspotDragged;
+        _targetHotspotDragged = targetHotspotDragged;
         _thread = new Thread(Run)
         {
             IsBackground = true,
@@ -61,7 +67,9 @@ public sealed class NativeOverlayWindowThread : IDisposable
         Action? hotspotActivated = null,
         Action? hotspotDoubleClicked = null,
         Action<bool>? hotspotRightClicked = null,
-        Action<int>? targetHotspotActivated = null)
+        Action<int>? targetHotspotActivated = null,
+        Action<NativeDragPointerEvent>? hotspotDragged = null,
+        Action<int, NativeDragPointerEvent>? targetHotspotDragged = null)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -75,7 +83,9 @@ public sealed class NativeOverlayWindowThread : IDisposable
             hotspotActivated,
             hotspotDoubleClicked,
             hotspotRightClicked,
-            targetHotspotActivated);
+            targetHotspotActivated,
+            hotspotDragged,
+            targetHotspotDragged);
         owner._thread.Start();
         if (!owner._started.Wait(s_startupTimeout))
         {
@@ -200,14 +210,16 @@ public sealed class NativeOverlayWindowThread : IDisposable
                 _initialHotspotBounds,
                 _hotspotActivated,
                 _hotspotDoubleClicked,
-                _hotspotRightClicked);
+                _hotspotRightClicked,
+                _hotspotDragged);
             for (int index = 0; index < MaximumTargetHotspots; index++)
             {
                 int capturedIndex = index;
                 _targetHotspotWindows[index] = NativeOverlayWindow.Create(
                     NativeOverlayWindowRole.Hotspot,
                     _initialHotspotBounds,
-                    () => _targetHotspotActivated?.Invoke(capturedIndex));
+                    () => _targetHotspotActivated?.Invoke(capturedIndex),
+                    dragPointer: pointer => _targetHotspotDragged?.Invoke(capturedIndex, pointer));
                 _targetHotspotWindows[index]!.SetVisible(false);
             }
             _threadResource = _initializeWorld?.Invoke(_worldWindow.Handle);

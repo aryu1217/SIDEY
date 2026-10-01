@@ -267,6 +267,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public partial string ConnectionText { get; set; } = I18n.Get("connection.state.reconnecting");
 
     [ObservableProperty]
+    public partial bool IsReconnecting { get; set; }
+
+    [ObservableProperty]
     public partial bool HasRooms { get; set; }
 
     [ObservableProperty]
@@ -554,9 +557,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? I18n.Get("groups.join.in_progress")
                 : I18n.Get("groups.action.join_by_code");
             IsConnected = state.Connected;
+            IsReconnecting = !state.Connected && !state.RealtimeRecoveryPaused
+                && state.GoogleVerified && state.ActiveRoomId is not null;
             ConnectionText = state.Connected
                 ? I18n.Get("connection.state.connected")
-                : I18n.Get("connection.state.disconnected");
+                : I18n.Get(IsReconnecting ? "connection.state.reconnecting" : "connection.state.disconnected");
             IsOverlayVisible = state.Preferences.OverlayVisible;
             IsQuietMode = state.Preferences.QuietMode;
             if (!_savingSoundSettings)

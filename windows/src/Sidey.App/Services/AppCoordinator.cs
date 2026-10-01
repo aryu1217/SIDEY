@@ -43,6 +43,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
     private readonly Lock _localMessageReconciliationGate = new();
     private readonly Dictionary<Guid, (ChatMessage Message, long ConfirmedAt)> _localConfirmations = [];
     private readonly ActiveBubbleLedger _bubbles = new();
+    private readonly OverlayVisibilityPublisher _visibilityPublisher;
+    private int _wakeRecoveryInProgress;
     private readonly CharacterPulseCooldown _pulseCooldown = new();
     private readonly CharacterThrowCooldown _throwCooldown = new();
     private readonly TypingActivityController _typingActivity;
@@ -53,6 +55,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
     private readonly List<CharacterThrowEvent> _pendingThrows = [];
     private readonly HashSet<(Guid RoomId, Guid UserId)> _typing = [];
     private readonly Dictionary<(Guid RoomId, Guid UserId), PresenceState> _basePresence = [];
+    private readonly Dictionary<(Guid RoomId, Guid UserId), bool> _overlaySuppression = [];
     private readonly Dictionary<Guid, int> _unreadByRoom = [];
     private readonly TreeMovementLedger _treeMovement = new();
     private readonly HashSet<Guid> _treeMovementMigrationAttempted = [];
@@ -84,6 +87,9 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         _credentialStore = credentialStore ?? new WindowsCredentialStore();
         _startup = startupService ?? new WindowsStartupService();
         _audio = new WindowsImpactAudio(StartupDiagnostics.NonFatal);
+        _visibilityPublisher = new OverlayVisibilityPublisher((suppressed, token) =>
+            _backend?.SetOverlaySuppressedAsync(suppressed, token)
+                ?? Task.FromException(new InvalidOperationException("Backend is unavailable.")));
         // The UI host supplies its dispatcher; headless coordinators have no overlay owner.
         _typingFeedback = new TypingFeedbackDispatcher(
             dispatchTypingFeedback ?? (_ => { }),
@@ -271,6 +277,29 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         }
         if (_backend is SupabaseBackendGateway backend)
         {
+            if (!userInitiated && backend.IsRealtimeRecoveryPaused)
+            {
+                if (Interlocked.Exchange(ref _wakeRecoveryInProgress, 1) != 0)
+                    return;
+                try
+                {
+                    int[] retryDelaysMs = [2000, 5000, 10000];
+                    for (int attempt = 0; ; attempt++)
+                    {
+                        try
+                        {
+                            await RefreshSnapshotAsync(_roomSession.Token);
+                            backend.RetryRealtimeConnection(userInitiated: true);
+                            return;
+                        }
+                        catch (Exception) when (attempt < retryDelaysMs.Length && !_roomSession.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(retryDelaysMs[attempt], _roomSession.Token);
+                        }
+                    }
+                }
+                finally { Volatile.Write(ref _wakeRecoveryInProgress, 0); }
+            }
             if (userInitiated && backend.IsRealtimeRecoveryPaused)
                 await RefreshSnapshotAsync(_roomSession.Token);
             backend.RetryRealtimeConnection(userInitiated);
@@ -395,6 +424,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                 firebaseV2Capable: realtimeTransport.Effective == RealtimeTransportMode.FirebaseV2);
         }
         var backend = (SupabaseBackendGateway)_backend;
+        _visibilityPublisher.Reconnect(!_state.Preferences.OverlayVisible || _state.Preferences.QuietMode);
 
         StartupDiagnostics.Stage("server-snapshot-fetch-started");
         BackendSnapshot snapshot = await backend.FetchSnapshotAsync(cancellationToken);
@@ -1017,6 +1047,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             _bubbles.Clear();
             _typing.Clear();
             _basePresence.Clear();
+            _overlaySuppression.Clear();
+            _visibilityPublisher.Reset();
             _unreadByRoom.Clear();
             _treeMovement.Clear();
             _treeMovementAccountId = null;
@@ -1145,7 +1177,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         Guid id;
         id = Guid.NewGuid();
         _messages.Stage(id, roomId, profile.Id, normalized, bubbleStyleId: profile.EquippedBubbleStyleId);
-        _bubbles.Show(profile.Id, id, normalized, bubbleStyleId: profile.EquippedBubbleStyleId);
+        if (_state.Preferences.OverlayVisible && !_state.Preferences.QuietMode)
+            _bubbles.Show(profile.Id, id, normalized, bubbleStyleId: profile.EquippedBubbleStyleId);
         PublishState();
         ApplyWorldSnapshot();
         StartupDiagnostics.Stage("chat-send-staged");
@@ -1220,10 +1253,13 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
     public async Task SetOverlayVisibleAsync(bool visible, CancellationToken cancellationToken = default)
     {
+        if (!visible)
+            _bubbles.Clear();
         SetState(_state with
         {
             Preferences = _state.Preferences with { OverlayVisible = visible },
         });
+        _visibilityPublisher.Update(!visible || _state.Preferences.QuietMode);
 
         await _overlayVisibilityGate.WaitAsync(cancellationToken);
         try
@@ -1274,11 +1310,14 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
 
     public async Task SetQuietModeAsync(bool enabled, CancellationToken cancellationToken = default)
     {
+        if (enabled)
+            _bubbles.Clear();
         SetState(_state with
         {
             Preferences = _state.Preferences with { QuietMode = enabled },
         });
         ApplyWorldSnapshot();
+        _visibilityPublisher.Update(!_state.Preferences.OverlayVisible || enabled);
         await PersistPreferencesAsync(cancellationToken);
     }
 
@@ -1704,6 +1743,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         _animations.Dispose();
         CancelTreeMovementRequest();
         await _typingActivity.DisposeAsync().ConfigureAwait(false);
+        await _visibilityPublisher.DisposeAsync().ConfigureAwait(false);
         _audio.Dispose();
         await _roomSession.DisposeAsync().ConfigureAwait(false);
         await Task.WhenAll(_treeMovementOperations).ConfigureAwait(false);
@@ -1794,7 +1834,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                             _messages.Confirm(message.Message);
                         }
                         StartupDiagnostics.Stage("message-ledger-confirmed");
-                        if (isActiveRoom)
+                        if (isActiveRoom && _state.Preferences.OverlayVisible && !_state.Preferences.QuietMode)
                         {
                             _bubbles.Show(
                                 message.Message.SenderId,
@@ -1805,7 +1845,7 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                                 $"message-bubble-enqueued active=true quiet={_state.Preferences.QuietMode.ToString().ToLowerInvariant()}");
                         }
                         if (message.Message.SenderId != _state.Profile?.Id
-                            && (!isActiveRoom || _state.Preferences.QuietMode))
+                            && (!isActiveRoom || _state.Preferences.QuietMode || !_state.Preferences.OverlayVisible))
                         {
                             _unreadByRoom[message.Message.RoomId] = Math.Min(
                                 99,
@@ -1843,6 +1883,10 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                             presence.RoomId,
                             presence.UserId,
                             presence.State);
+                        break;
+                    case BackendEvent.OverlaySuppressionChanged suppression:
+                        _overlaySuppression[(suppression.RoomId, suppression.UserId)] = suppression.Suppressed;
+                        ApplyWorldSnapshot();
                         break;
                     case BackendEvent.TypingChanged typing:
                         // Local activity owns self feedback; delayed echoes/TTL cannot revive it.
@@ -1906,7 +1950,13 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                             $"realtime-connection transport={connection.Status.TransportConnected.ToString().ToLowerInvariant()} "
                             + $"active-room={connection.Status.ActiveRoomTransportConnected.ToString().ToLowerInvariant()} "
                             + $"reconciled={connection.Status.RecoveryReconciled.ToString().ToLowerInvariant()}");
+                        bool wasTransportConnected = _state.RealtimeConnection.TransportConnected;
                         SetRealtimeConnection(connection.Status);
+                        if (!wasTransportConnected && connection.Status.TransportConnected)
+                            _visibilityPublisher.Reconnect(!_state.Preferences.OverlayVisible || _state.Preferences.QuietMode);
+                        break;
+                    case BackendEvent.RecoveryPauseChanged recovery:
+                        SetState(_state with { RealtimeRecoveryPaused = recovery.Paused });
                         break;
                     case BackendEvent.Diagnostic diagnostic:
                         StartupDiagnostics.Stage(diagnostic.Stage);
@@ -2087,7 +2137,12 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
             } : room)]
             : _state.Rooms;
 
-        SetState(_state with { Rooms = rooms, RealtimeConnection = status });
+        SetState(_state with
+        {
+            Rooms = rooms,
+            RealtimeConnection = status,
+            RealtimeRecoveryPaused = (_backend as Sidey.Infrastructure.Backend.SupabaseBackendGateway)?.IsRealtimeRecoveryPaused ?? false,
+        });
         _overlay?.ConfigureThrowInteraction(
             _state.Preferences.RequiresRightClickToThrow,
             status.ActiveRoomTransportConnected);
@@ -2162,6 +2217,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         {
             _basePresence.Remove(key);
         }
+        foreach ((Guid RoomId, Guid UserId) key in _overlaySuppression.Keys.Where(key => !validPresenceKeys.Contains(key)).ToArray())
+            _overlaySuppression.Remove(key);
         foreach (Room room in snapshot.Rooms)
         {
             foreach (RoomMember member in room.Members)
@@ -2464,7 +2521,8 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
         }
 
         if (!_initialSnapshotReceived && CachedStartupWorld.Create(_state.Preferences) is { } cached)
-            return cached with { TreeMovementPaused = _state.Preferences.TreeMovementPaused };
+            return QuietModeProjection.Apply(cached with { TreeMovementPaused = _state.Preferences.TreeMovementPaused },
+                _state.Preferences.QuietMode);
 
         Room? room = _state.ActiveRoomId is { } roomId
             ? _state.Rooms.FirstOrDefault(candidate => candidate.Id == roomId)
@@ -2482,7 +2540,11 @@ public sealed class AppCoordinator : IMainWindowCoordinator, IHistoryCoordinator
                 IsCurrentUser: member.UserId == _state.Profile?.Id,
                 EquippedBubbleStyleId: member.EquippedBubbleStyleId,
                 TreeMovementPaused: member.TreeMovementPaused,
-                TreeMovementRevision: member.TreeMovementRevision))
+                TreeMovementRevision: member.TreeMovementRevision,
+                IsOverlaySuppressed: _state.ActiveRoomConnected
+                    && member.UserId != _state.Profile?.Id
+                    && member.Presence is (PresenceState.Online or PresenceState.Away)
+                    && _overlaySuppression.GetValueOrDefault((room!.Id, member.UserId))))
             .ToArray() ?? [];
         return QuietModeProjection.Apply(new WorldSnapshot(
             room?.Id,

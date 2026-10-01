@@ -111,11 +111,13 @@ public abstract record BackendEvent
     public sealed record MessageChanged(Guid RoomId, Guid MessageId, string Operation) : BackendEvent;
     public sealed record MessagesInvalidated(Guid RoomId) : BackendEvent;
     public sealed record PresenceChanged(Guid RoomId, Guid UserId, PresenceState State) : BackendEvent;
+    public sealed record OverlaySuppressionChanged(Guid RoomId, Guid UserId, bool Suppressed) : BackendEvent;
     public sealed record TypingChanged(Guid RoomId, Guid UserId, bool Active) : BackendEvent;
     public sealed record CharacterPulsed(CharacterPulseEvent Pulse) : BackendEvent;
     public sealed record CharacterThrown(CharacterThrowEvent Throw) : BackendEvent;
     public sealed record RoomStructureChanged(Guid RoomId) : BackendEvent;
     public sealed record ConnectionChanged(RealtimeConnectionStatus Status) : BackendEvent;
+    public sealed record RecoveryPauseChanged(bool Paused) : BackendEvent;
     public sealed record ReconciliationRequired : BackendEvent;
     public sealed record Diagnostic(string Stage) : BackendEvent;
     public sealed record TechnicalError(string Message) : BackendEvent;
@@ -147,6 +149,7 @@ public interface IBackendGateway
         CancellationToken cancellationToken = default);
     public Task<ChatMessage> SendMessageAsync(Guid id, Guid roomId, string body, CancellationToken cancellationToken = default);
     public Task PublishPresenceAsync(Guid roomId, PresenceState state, CancellationToken cancellationToken = default);
+    public Task SetOverlaySuppressedAsync(bool suppressed, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task BroadcastTypingAsync(Guid roomId, bool active, bool keepalive, CancellationToken cancellationToken = default);
     public Task BroadcastCharacterPulseAsync(Guid roomId, Guid eventId, CancellationToken cancellationToken = default);
     public Task BroadcastCharacterThrowAsync(

@@ -47,7 +47,11 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         }
     }
     private readonly NativePixelRect _activityBounds;
-    private readonly NativePixelRect _renderBounds;
+    private readonly RectD _activityScreen;
+    private readonly RectD _monitorScreen;
+    private NativePixelRect _renderBounds;
+    private readonly NativePixelRect _compactRenderBounds;
+    private readonly NativePixelRect _expandedRenderBounds;
     private readonly int _hotspotPixelSize;
     private readonly int _integerScale;
     private readonly int _dozeFloatingDistancePixels;
@@ -71,7 +75,10 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
     private readonly PixelCharacterFrameCache _frameCache;
     private readonly CharacterThrowFrameCache _throwFrameCache;
     private readonly PixelTextVisualCache _textVisuals;
-    private readonly NativeLayeredBitmap _surface;
+    private NativeLayeredBitmap _surface;
+    private NativeLayeredBitmap? _retiredSurface;
+    private readonly Dictionary<Guid, CharacterDragPhysics> _drags = [];
+    private readonly List<Guid> _landedDragIds = new(12);
     private readonly List<WorldNode> _nodes = [];
     private readonly List<PixelMovementAgent> _agents = [];
     private readonly Dictionary<Guid, WorldNode> _nodeById = [];
@@ -126,7 +133,8 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         ValidationMetricsCollector? metrics = null,
         int initialEdgeInsetPixels = 0,
         Func<bool>? animationsEnabled = null,
-        Action<string, long>? impact = null)
+        Action<string, long>? impact = null,
+        NativePixelRect? expandedRenderBounds = null)
     {
         if (!activityBounds.IsValid || !renderBounds.IsValid)
         {
@@ -134,10 +142,16 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         }
 
         _activityBounds = activityBounds;
+        _activityScreen = new RectD(activityBounds.X, activityBounds.Y,
+            activityBounds.Width, activityBounds.Height);
         _ = CharacterStunPixels.Create(0, false);
         _animationsEnabled = animationsEnabled ?? (() => true);
         _impact = impact;
         _renderBounds = renderBounds;
+        _compactRenderBounds = renderBounds;
+        _expandedRenderBounds = expandedRenderBounds ?? renderBounds;
+        _monitorScreen = new RectD(_expandedRenderBounds.X, _expandedRenderBounds.Y,
+            _expandedRenderBounds.Width, _expandedRenderBounds.Height);
         _hotspotsMoved = hotspotsMoved ?? throw new ArgumentNullException(nameof(hotspotsMoved));
         _renderingFailed = renderingFailed ?? throw new ArgumentNullException(nameof(renderingFailed));
         _messageBubblesPresented = messageBubblesPresented;
@@ -249,6 +263,123 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         }
     }
 
+    public bool BeginCharacterDrag(Guid memberId, int screenX, int screenY)
+    {
+        lock (_gate)
+        {
+            if (_disposed || _faulted || !_nodeById.TryGetValue(memberId, out WorldNode? node))
+            {
+                return false;
+            }
+
+            CharacterDragPoint pointer = DragPointForScreen(screenX, screenY);
+            var drag = new CharacterDragPhysics(new CharacterDragPoint(node.Agent.TrackPosition, 0d));
+            drag.MovePin(pointer);
+            _drags[memberId] = drag;
+            ChangeRenderBounds(_expandedRenderBounds);
+            RenderFrame();
+            return true;
+        }
+    }
+
+    public void MoveCharacterDrag(Guid memberId, int screenX, int screenY)
+    {
+        lock (_gate)
+        {
+            if (_drags.TryGetValue(memberId, out CharacterDragPhysics? drag) && drag.Pointer is not null)
+            {
+                drag.MovePin(DragPointForScreen(screenX, screenY));
+            }
+        }
+    }
+
+    public void EndCharacterDrag(Guid memberId)
+    {
+        lock (_gate)
+        {
+            if (_drags.TryGetValue(memberId, out CharacterDragPhysics? drag) && drag.Pointer is not null)
+            {
+                drag.Release(_geometry.TrackLowerBound, _geometry.TrackUpperBound,
+                    MaximumDragDepth(), !_animationsEnabled());
+                RenderFrame();
+            }
+        }
+    }
+
+    public void CancelCharacterDrags()
+    {
+        lock (_gate)
+        {
+            if (_drags.Count == 0)
+            {
+                return;
+            }
+            foreach (Guid memberId in _drags.Keys)
+            {
+                if (_nodeById.TryGetValue(memberId, out WorldNode? node))
+                {
+                    node.Agent.Target = node.Agent.TrackPosition;
+                    node.Agent.Velocity = 0d;
+                    node.Agent.IdleRemaining = 1d;
+                }
+            }
+            _drags.Clear();
+            ChangeRenderBounds(_compactRenderBounds);
+            if (!_disposed && !_faulted)
+            {
+                RenderFrame();
+            }
+        }
+    }
+
+    public void CancelCharacterDrag(Guid memberId)
+    {
+        lock (_gate)
+        {
+            if (!_drags.Remove(memberId))
+            {
+                return;
+            }
+            if (_nodeById.TryGetValue(memberId, out WorldNode? node))
+            {
+                node.Agent.Target = node.Agent.TrackPosition;
+                node.Agent.Velocity = 0d;
+                node.Agent.IdleRemaining = 1d;
+            }
+            if (_drags.Count == 0)
+            {
+                ChangeRenderBounds(_compactRenderBounds);
+            }
+            if (!_disposed && !_faulted)
+            {
+                RenderFrame();
+            }
+        }
+    }
+
+    private CharacterDragPoint DragPointForScreen(int screenX, int screenY)
+        => CharacterDragCoordinates.FromScreen(new PointD(screenX, screenY),
+            _activityScreen, _monitorScreen, _edge, _edgeInsetPixels);
+
+    private double MaximumDragDepth() => CharacterDragCoordinates.MaximumDepth(
+        _activityScreen, _monitorScreen, _edge, _edgeInsetPixels);
+
+    private void ChangeRenderBounds(NativePixelRect bounds)
+    {
+        if (_renderBounds == bounds)
+        {
+            return;
+        }
+        // UpdateLayeredWindow presents this new DIB and its destination size together.
+        // Never resize the HWND first: DWM would stretch the previous frame meanwhile.
+        var next = new NativeLayeredBitmap(_surface.WindowHandle, bounds.Width, bounds.Height);
+        NativeLayeredBitmap previous = _surface;
+        _surface = next;
+        _renderBounds = bounds;
+        _retiredSurface?.Dispose();
+        _retiredSurface = previous;
+    }
+
     public Task FadeOutAsync(CancellationToken cancellationToken = default)
     {
         Task completion;
@@ -287,6 +418,7 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             _timer.Dispose();
             _surface.Dispose();
+            _retiredSurface?.Dispose();
             _textVisuals.Dispose();
             _frameCache.Dispose();
             _throwFrameCache.Dispose();
@@ -455,6 +587,32 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
                 _agents, FixedDeltaTime, _geometry, s_noAvoidanceRects,
                 _stoppedIds, _movementScratch, _dpiScale, separatedIds);
             PixelRoamingPolicy.UpdateAfterMovement(_agents, _stoppedIds, _geometry, _random, _dpiScale);
+            _landedDragIds.Clear();
+            foreach (KeyValuePair<Guid, CharacterDragPhysics> active in _drags)
+            {
+                CharacterDragPhysics drag = active.Value;
+                drag.Step(FixedDeltaTime, _geometry.TrackLowerBound,
+                    _geometry.TrackUpperBound, MaximumDragDepth(), !_animationsEnabled());
+                if (_nodeById.TryGetValue(active.Key, out WorldNode? node))
+                {
+                    node.Agent.TrackPosition = _geometry.Clamp(drag.Position.Tangent);
+                    node.Agent.Target = node.Agent.TrackPosition;
+                    node.Agent.Velocity = 0d;
+                    node.Agent.IdleRemaining = 1d;
+                }
+                if (drag.Landed)
+                {
+                    _landedDragIds.Add(active.Key);
+                }
+            }
+            foreach (Guid memberId in _landedDragIds)
+            {
+                _drags.Remove(memberId);
+            }
+            if (_drags.Count == 0 && _renderBounds != _compactRenderBounds)
+            {
+                ChangeRenderBounds(_compactRenderBounds);
+            }
             _tick++;
             _hotspotTrackingElapsed = Math.Min(1d, _hotspotTrackingElapsed + FixedDeltaTime);
             RenderFrame();
@@ -484,7 +642,7 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             }
             double? pulseElapsed = PulseElapsed(node.Member.Id);
             double pulseScale = stunElapsed is not null ? 1 : PulseScale(node.Member.Id);
-            (double X, double Y) foot = FootPoint(node.Agent.TrackPosition);
+            (double X, double Y) foot = VisualFootPoint(node);
             (int X, int Y) baseDestination = DestinationForFoot(
                 foot,
                 cached.PixelSize,
@@ -506,17 +664,42 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
                 node.FacingLeft = ShouldMirrorForVelocity(node.Agent.Velocity);
             }
             bool flipped = cached.Definition.MirrorsToMovementDirection && node.FacingLeft;
-            Composite(
-                destinationPixels,
-                actionFrame is { } activeAction
+            if (_drags.TryGetValue(node.Member.Id, out CharacterDragPhysics? ropeDrag)
+                && ropeDrag.Pin(_geometry.TrackLowerBound, _geometry.TrackUpperBound,
+                    MaximumDragDepth()) is { } pin)
+            {
+                (double pinX, double pinY) = DragWorldPoint(pin);
+                (double bodyX, double bodyY) = CharacterCenterPoint(
+                    foot, cached.PixelSize,
+                    cached.Definition.FootBaselinePixel * _integerScale,
+                    cached.OnlineContentBounds, _edge);
+                double dx = pinX - bodyX;
+                double dy = pinY - bodyY;
+                double distance = Math.Max(1d, Math.Sqrt(dx * dx + dy * dy));
+                DrawDragLine(destinationPixels, pinX, pinY,
+                    bodyX + dx / distance * Math.Min(16d * _dpiScale, distance),
+                    bodyY + dy / distance * Math.Min(16d * _dpiScale, distance));
+            }
+            ReadOnlySpan<byte> sprite = actionFrame is { } activeAction
                     ? _throwFrameCache.ActionFrame(node.Member.CharacterId, activeAction, flipped)
-                    : cached.Frame(frame, flipped),
-                cached.PixelSize,
-                destination.X - _renderBounds.X,
-                destination.Y - _renderBounds.Y,
-                pulseScale,
-                node.Member.Presence == PresenceState.Offline ? 0.75d : 1d,
-                desaturate: node.Member.Presence == PresenceState.Offline);
+                    : cached.Frame(frame, flipped);
+            double spriteOpacity = node.Member.Presence == PresenceState.Offline ? 0.75d : 1d;
+            if (_drags.TryGetValue(node.Member.Id, out CharacterDragPhysics? rotatedDrag)
+                && _animationsEnabled() && Math.Abs(rotatedDrag.Rotation) > 0.02d)
+            {
+                double rotationSign = _edge is OverlayEdge.Top or OverlayEdge.Left ? -1d : 1d;
+                CompositeRotated(destinationPixels, sprite, cached.PixelSize,
+                    destination.X - _renderBounds.X, destination.Y - _renderBounds.Y,
+                    pulseScale, rotatedDrag.Rotation * rotationSign,
+                    spriteOpacity, node.Member.Presence == PresenceState.Offline);
+            }
+            else
+            {
+                Composite(destinationPixels, sprite, cached.PixelSize,
+                    destination.X - _renderBounds.X, destination.Y - _renderBounds.Y,
+                    pulseScale, spriteOpacity,
+                    desaturate: node.Member.Presence == PresenceState.Offline);
+            }
             if (stunElapsed is null && ActiveCannonProjectile(node.Member.Id) is { } cannon)
             {
                 bool emitterMirrored = ShouldMirrorEmitter(cannon);
@@ -599,11 +782,22 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         foreach ((int X, int Y, double Elapsed) effect in _stunDraws)
             DrawStun(destinationPixels, effect.X, effect.Y, effect.Elapsed);
         RenderProjectiles(destinationPixels);
+        foreach (CharacterDragPhysics drag in _drags.Values)
+        {
+            if (drag.Pin(_geometry.TrackLowerBound, _geometry.TrackUpperBound,
+                MaximumDragDepth()) is { } pin)
+            {
+                (double x, double y) = DragWorldPoint(pin);
+                DrawDragPin(destinationPixels, x, y);
+            }
+        }
 
         byte opacity = _fadeOutStartedFrame < 0
             ? EntranceOpacity(_presentedFrameCount, _animationsEnabled())
             : ExitOpacity(_presentedFrameCount - _fadeOutStartedFrame, _animationsEnabled());
         _surface.Present(_renderBounds.X, _renderBounds.Y, opacity);
+        _retiredSurface?.Dispose();
+        _retiredSurface = null;
         _presentedFrameCount++;
         if (_fadeOutStartedFrame >= 0 && opacity == 0)
         {
@@ -852,6 +1046,8 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             _selfId = snapshot.Members.FirstOrDefault(member => member.IsCurrentUser)?.Id ?? Guid.Empty;
         if (_roomId != snapshot.RoomId)
         {
+            _drags.Clear();
+            ChangeRenderBounds(_compactRenderBounds);
             _stun.Reset();
             _impactNotifications.Clear();
             _roomId = snapshot.RoomId;
@@ -877,9 +1073,14 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             _stun.Remove(node.Member.Id);
             _agents.Remove(node.Agent);
             _nodeById.Remove(node.Member.Id);
+            _drags.Remove(node.Member.Id);
             _stoppedIds.Remove(node.Member.Id);
             _pulseStartedAt.Remove(node.Member.Id);
             _dozeStartedAt.Remove(node.Member.Id);
+        }
+        if (_drags.Count == 0)
+        {
+            ChangeRenderBounds(_compactRenderBounds);
         }
 
         foreach (PixelWorldMember member in snapshot.Members)
@@ -1002,7 +1203,8 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         {
             if (node.Member.Presence is PresenceState.Away or PresenceState.Offline or PresenceState.Reconnecting
                 || _hitStartedAt.ContainsKey(node.Member.Id) || _stun.IsStunned(node.Member.Id)
-                || PixelMovementPolicy.IsTreePaused(node.Member, _treeMovementPaused))
+                || PixelMovementPolicy.IsTreePaused(node.Member, _treeMovementPaused)
+                || _drags.ContainsKey(node.Member.Id))
             {
                 _stoppedIds.Add(node.Member.Id);
             }
@@ -1167,7 +1369,7 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
 
     private (double X, double Y) BodyPoint(WorldNode node)
     {
-        (double X, double Y) foot = FootPoint(node.Agent.TrackPosition);
+        (double X, double Y) foot = VisualFootPoint(node);
         double inward = 12d * _integerScale;
         return _edge switch
         {
@@ -1183,7 +1385,7 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
     {
         CachedCharacterFrames cached = _frameCache.Get(node.Member.CharacterId);
         return CharacterCenterPoint(
-            FootPoint(node.Agent.TrackPosition), cached.PixelSize,
+            VisualFootPoint(node), cached.PixelSize,
             cached.Definition.FootBaselinePixel * _integerScale,
             cached.OnlineContentBounds, _edge);
     }
@@ -1437,6 +1639,87 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
         _ => throw new ArgumentOutOfRangeException(),
     };
 
+    private (double X, double Y) VisualFootPoint(WorldNode node)
+    {
+        if (!_drags.TryGetValue(node.Member.Id, out CharacterDragPhysics? drag))
+        {
+            return FootPoint(node.Agent.TrackPosition);
+        }
+        return DragWorldPoint(drag.Position);
+    }
+
+    private (double X, double Y) DragWorldPoint(CharacterDragPoint point)
+    {
+        PointD screen = CharacterDragCoordinates.ToScreen(point,
+            _activityScreen, _edge, _edgeInsetPixels);
+        return (screen.X, screen.Y);
+    }
+
+    private void DrawDragLine(Span<byte> pixels, double startX, double startY, double endX, double endY)
+    {
+        int x0 = (int)Math.Round(startX);
+        int y0 = (int)Math.Round(startY);
+        int x1 = (int)Math.Round(endX);
+        int y1 = (int)Math.Round(endY);
+        int dx = Math.Abs(x1 - x0);
+        int dy = Math.Abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int error = dx - dy;
+        for (int step = 0; step <= dx + dy; step++)
+        {
+            DrawDragPixel(pixels, x0, y0, 228, 228, 228, 228);
+            if (x0 == x1 && y0 == y1)
+            {
+                break;
+            }
+            int doubled = 2 * error;
+            if (doubled > -dy)
+            { error -= dy; x0 += sx; }
+            if (doubled < dx)
+            { error += dx; y0 += sy; }
+        }
+    }
+
+    private void DrawDragPin(Span<byte> pixels, double worldX, double worldY)
+    {
+        int radius = Math.Max(3, (int)Math.Round(3d * _dpiScale));
+        int cx = (int)Math.Round(worldX);
+        int cy = (int)Math.Round(worldY);
+        for (int y = -radius - 1; y <= radius + 1; y++)
+        {
+            for (int x = -radius - 1; x <= radius + 1; x++)
+            {
+                int distanceSquared = x * x + y * y;
+                if (distanceSquared <= radius * radius)
+                {
+                    DrawDragPixel(pixels, cx + x, cy + y, 255, 255, 255, 255);
+                }
+                else if (distanceSquared <= (radius + 1) * (radius + 1))
+                {
+                    DrawDragPixel(pixels, cx + x, cy + y, 32, 32, 32, 180);
+                }
+            }
+        }
+    }
+
+    private void DrawDragPixel(Span<byte> pixels, int worldX, int worldY,
+        byte red, byte green, byte blue, byte alpha)
+    {
+        int x = worldX - _renderBounds.X;
+        int y = worldY - _renderBounds.Y;
+        if (x < 0 || y < 0 || x >= _renderBounds.Width || y >= _renderBounds.Height)
+        {
+            return;
+        }
+        int index = (y * _renderBounds.Width + x) * 4;
+        int inverse = 255 - alpha;
+        pixels[index] = Blend((byte)(blue * alpha / 255), pixels[index], inverse);
+        pixels[index + 1] = Blend((byte)(green * alpha / 255), pixels[index + 1], inverse);
+        pixels[index + 2] = Blend((byte)(red * alpha / 255), pixels[index + 2], inverse);
+        pixels[index + 3] = Blend(alpha, pixels[index + 3], inverse);
+    }
+
     private int ClampEdgeInset(int edgeInsetPixels)
     {
         int depth = _edge is OverlayEdge.Bottom or OverlayEdge.Top
@@ -1591,6 +1874,69 @@ internal sealed class LayeredPixelWorldRenderer : IDisposable
             scale,
             opacity,
             desaturate);
+    }
+
+    private void CompositeRotated(
+        Span<byte> destination,
+        ReadOnlySpan<byte> source,
+        int sourceSize,
+        int destinationX,
+        int destinationY,
+        double scale,
+        double rotation,
+        double opacity,
+        bool desaturate)
+    {
+        int size = Math.Max(1, (int)Math.Round(sourceSize * scale));
+        int centerX = destinationX + size / 2;
+        int centerY = destinationY + size / 2;
+        int radius = (int)Math.Ceiling(size * 0.72d);
+        double cosine = Math.Cos(rotation);
+        double sine = Math.Sin(rotation);
+        for (int y = -radius; y <= radius; y++)
+        {
+            int targetY = centerY + y;
+            if (targetY < 0 || targetY >= _renderBounds.Height)
+            {
+                continue;
+            }
+            for (int x = -radius; x <= radius; x++)
+            {
+                int targetX = centerX + x;
+                if (targetX < 0 || targetX >= _renderBounds.Width)
+                {
+                    continue;
+                }
+                int sourceX = (int)Math.Floor((cosine * x + sine * y + size / 2d) / scale);
+                int sourceY = (int)Math.Floor((-sine * x + cosine * y + size / 2d) / scale);
+                if (sourceX < 0 || sourceY < 0 || sourceX >= sourceSize || sourceY >= sourceSize)
+                {
+                    continue;
+                }
+                int sourceIndex = (sourceY * sourceSize + sourceX) * 4;
+                byte alpha = (byte)Math.Round(source[sourceIndex + 3] * opacity);
+                if (alpha == 0)
+                {
+                    continue;
+                }
+                byte blue = source[sourceIndex];
+                byte green = source[sourceIndex + 1];
+                byte red = source[sourceIndex + 2];
+                if (desaturate)
+                {
+                    byte gray = (byte)((blue * 11 + green * 59 + red * 30) / 100);
+                    blue = (byte)((blue * 42 + gray * 58) / 100);
+                    green = (byte)((green * 42 + gray * 58) / 100);
+                    red = (byte)((red * 42 + gray * 58) / 100);
+                }
+                int index = (targetY * _renderBounds.Width + targetX) * 4;
+                int inverse = 255 - alpha;
+                destination[index] = Blend((byte)Math.Round(blue * opacity), destination[index], inverse);
+                destination[index + 1] = Blend((byte)Math.Round(green * opacity), destination[index + 1], inverse);
+                destination[index + 2] = Blend((byte)Math.Round(red * opacity), destination[index + 2], inverse);
+                destination[index + 3] = Blend(alpha, destination[index + 3], inverse);
+            }
+        }
     }
 
     private void CompositeBubbleTail(

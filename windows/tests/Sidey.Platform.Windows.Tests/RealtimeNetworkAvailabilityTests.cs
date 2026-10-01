@@ -8,7 +8,7 @@ namespace Sidey.Platform.Windows.Tests;
 public sealed class RealtimeNetworkAvailabilityTests
 {
     [Theory]
-    [InlineData(null, false)]
+    [InlineData(null, true)]
     [InlineData(NetworkConnectivityLevel.None, false)]
     [InlineData(NetworkConnectivityLevel.LocalAccess, true)]
     [InlineData(NetworkConnectivityLevel.ConstrainedInternetAccess, true)]
@@ -54,7 +54,7 @@ public sealed class RealtimeNetworkAvailabilityTests
     }
 
     [Fact]
-    public async Task SynchronizationDefersWithoutReadingAuthWhileNetworkIsUnavailable()
+    public async Task NetworkIndicatorCannotPreventAnActualConnectionAttempt()
     {
         var network = new FakeNetworkAvailabilityMonitor(isAvailable: false);
         var sessions = new CountingSessionAccessor();
@@ -69,7 +69,7 @@ public sealed class RealtimeNetworkAvailabilityTests
                 PresenceState.Online,
                 CancellationToken.None);
 
-            Assert.Equal(0, sessions.ReadCount);
+            Assert.True(sessions.ReadCount > 0);
             Assert.Equal(RealtimeConnectionStatus.Disconnected, transport.ConnectionStatus);
             Assert.True(network.Started);
         }

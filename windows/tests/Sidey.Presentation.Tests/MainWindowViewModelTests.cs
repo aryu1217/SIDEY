@@ -1003,6 +1003,29 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void ActiveRoomReconnectShowsProgressButPausedRecoveryDoesNot()
+    {
+        (FakeSideyCoordinator coordinator, CoordinatorState state) = CreateRoomState();
+        var viewModel = new MainWindowViewModel(
+            coordinator,
+            new FakeMainWindowDialogService(),
+            new FakeUpdateService());
+        CoordinatorState reconnecting = state with { GoogleAuthentication = GoogleAuthenticationState.Verified };
+
+        viewModel.ApplyState(reconnecting);
+        Assert.True(viewModel.IsReconnecting);
+        Assert.Equal("연결 중…", viewModel.ConnectionText);
+
+        viewModel.ApplyState(reconnecting with { RealtimeRecoveryPaused = true });
+        Assert.False(viewModel.IsReconnecting);
+        Assert.Equal("연결되지 않음", viewModel.ConnectionText);
+
+        viewModel.ApplyState(reconnecting with { RealtimeConnection = ConnectedStatus() });
+        Assert.False(viewModel.IsReconnecting);
+        Assert.Equal("연결됨", viewModel.ConnectionText);
+    }
+
+    [Fact]
     public void MonitorRefreshIncludesHotPluggedDisplays()
     {
         (FakeSideyCoordinator coordinator, _) = CreateRoomState();
