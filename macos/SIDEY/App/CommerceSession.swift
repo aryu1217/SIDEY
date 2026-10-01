@@ -7,8 +7,18 @@ final class CommerceSession {
     var productTasks: [String: Task<Void, Never>] = [:]
     var equipmentTasks: [CommerceProductKind: Task<Void, Never>] = [:]
     var characterTask: Task<Void, Never>?
+    var configurationTask: Task<Void, Never>?
+    var configurationID: UUID?
+
+    func cancelConfiguration() {
+        configurationID = nil
+        configurationTask?.cancel()
+        configurationTask = nil
+        purchaseController.stopObserving()
+    }
 
     func cancel(model: AppModel) {
+        cancelConfiguration()
         productTasks.values.forEach { $0.cancel() }
         productTasks.removeAll()
         equipmentTasks.values.forEach { $0.cancel() }
@@ -17,6 +27,5 @@ final class CommerceSession {
         characterTask?.cancel()
         characterTask = nil
         model.endCharacterEquipmentRequest()
-        purchaseController.stopObserving()
     }
 }

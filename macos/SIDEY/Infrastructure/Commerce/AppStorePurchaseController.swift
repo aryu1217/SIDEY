@@ -17,6 +17,7 @@ final class AppStorePurchaseController {
 
     func loadProducts() async throws -> [String: StorefrontProductMetadata] {
         let products = try await Product.products(for: CommerceCatalog.products.map(\.appStoreProductID))
+        try Task.checkCancellation()
         let missingIDs = Set(CommerceCatalog.products.map(\.appStoreProductID))
             .subtracting(products.map(\.id)).sorted().joined(separator: ",")
         logger.notice("StoreKit returned \(products.count) products; unavailable IDs: \(missingIDs, privacy: .public)")
@@ -60,6 +61,7 @@ final class AppStorePurchaseController {
 
     func reconcileCurrentEntitlements(accessToken: String) async throws {
         for await verification in Transaction.currentEntitlements {
+            try Task.checkCancellation()
             try await submit(verification, accessToken: accessToken)
         }
     }
@@ -97,6 +99,7 @@ final class AppStorePurchaseController {
         _ verification: VerificationResult<Transaction>,
         accessToken: String
     ) async throws {
+        try Task.checkCancellation()
         guard case .verified(let transaction) = verification else {
             throw AppStorePurchaseError.unverifiedTransaction
         }
@@ -115,6 +118,7 @@ final class AppStorePurchaseController {
             SignedTransactionRequest(signedTransactionInfo: verification.jwsRepresentation)
         )
         let (_, response) = try await URLSession.shared.data(for: request)
+        try Task.checkCancellation()
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw AppStorePurchaseError.serverRejected
         }

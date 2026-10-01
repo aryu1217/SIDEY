@@ -205,6 +205,7 @@ extension AppCoordinator {
         guard releaseChannel.requiresAppleAuthentication, let backend,
               !model.accountOperationInProgress else { return }
         model.accountOperationInProgress = true
+        commerceSession.cancelConfiguration()
         stopAllTyping()
         let previousTreeTask = cancelTreeMovementRequests()
         model.errorMessage = nil
@@ -254,6 +255,7 @@ extension AppCoordinator {
         guard releaseChannel.requiresAppleAuthentication, let backend,
               !model.accountOperationInProgress else { return }
         model.accountOperationInProgress = true
+        commerceSession.cancelConfiguration()
         stopAllTyping()
         let previousTreeTask = cancelTreeMovementRequests()
         model.errorMessage = nil
@@ -275,6 +277,9 @@ extension AppCoordinator {
                 preferencesStore.save(.defaults)
                 NSApplication.shared.terminate(nil)
             } catch {
+                if let userID = model.currentUserID {
+                    startAppStoreCommerce(backend: backend, userID: userID)
+                }
                 model.errorMessage = L10n.text("account.delete.failed")
             }
         }
@@ -283,26 +288,56 @@ extension AppCoordinator {
     func refreshAppStorePrices() async {
         model.beginCommercePriceLoading()
         do {
-            model.setCommerceStorefrontMetadata(try await commerceSession.purchaseController.loadProducts())
+            let products = try await commerceSession.purchaseController.loadProducts()
+            guard !Task.isCancelled else { return }
+            model.setCommerceStorefrontMetadata(products)
         } catch {
+            guard !Task.isCancelled else { return }
             model.failCommercePriceLoading()
             model.errorMessage = L10n.text("store.error.products_load_failed")
         }
     }
 
-    func configureAppStoreCommerce(backend: SideyBackend) async {
+    func startAppStoreCommerce(backend: SideyBackend, userID: UUID) {
+        commerceSession.cancelConfiguration()
+        let configurationID = UUID()
+        commerceSession.configurationID = configurationID
+        // The initial Postgres snapshot already contains equipment and ownership.
+        // Apple reconciliation must not delay the messaging connection.
+        commerceSession.configurationTask = Task { [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            defer {
+                if commerceSession.configurationID == configurationID {
+                    commerceSession.configurationTask = nil
+                }
+            }
+            await configureAppStoreCommerce(backend: backend, userID: userID)
+        }
+    }
+
+    private func configureAppStoreCommerce(backend: SideyBackend, userID: UUID) async {
         await refreshAppStorePrices()
+        guard !Task.isCancelled, model.currentUserID == userID else { return }
         do {
+            let accessToken = try await backend.currentAccessToken()
+            try Task.checkCancellation()
             try await commerceSession.purchaseController.reconcileCurrentEntitlements(
-                accessToken: try await backend.currentAccessToken()
+                accessToken: accessToken
             )
         } catch {
+            guard !Task.isCancelled, model.currentUserID == userID else { return }
             model.errorMessage = L10n.text("store.error.entitlements_reconcile_failed")
         }
+        guard !Task.isCancelled, model.currentUserID == userID else { return }
+        refreshCommerceState()
         commerceSession.purchaseController.startObserving(
             accessToken: { try await backend.currentAccessToken() },
-            didChange: { [weak self] in self?.refreshCommerceState() },
+            didChange: { [weak self] in
+                guard !Task.isCancelled, self?.model.currentUserID == userID else { return }
+                self?.refreshCommerceState()
+            },
             didFail: { [weak self] in
+                guard !Task.isCancelled, self?.model.currentUserID == userID else { return }
                 self?.model.errorMessage = L10n.text("store.error.transaction_update_failed")
             }
         )

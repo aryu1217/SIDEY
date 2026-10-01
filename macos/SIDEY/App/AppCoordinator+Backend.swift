@@ -44,6 +44,7 @@ extension AppCoordinator {
         model.setActiveRoomRealtimeConnected(false)
         model.connectionState = .connecting
         roomSession.bootstrapTask?.cancel()
+        commerceSession.cancelConfiguration()
         roomSession.bootstrapTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -93,19 +94,21 @@ extension AppCoordinator {
                 try await messagingTransport.setLocalPresence(model.presence)
                 startBackendEventHandling(messagingTransport.events)
                 applyBackendSnapshot(snapshot, currentUserID: userID)
-                if releaseChannel.requiresAppleAuthentication, userID != nil {
-                    await configureAppStoreCommerce(backend: backend)
-                }
-                refreshCommerceState()
                 let reconciliation = try await messagingTransport.synchronize(
                     rooms: snapshot.rooms,
                     activeRoomID: model.activeRoom?.id
                 )
+                try Task.checkCancellation()
                 applyBackendReconciliation(reconciliation)
                 model.setActiveRoomRealtimeConnected(true)
                 model.connectionState = .online
                 model.errorMessage = nil
                 backendBootstrapState = .ready
+                if releaseChannel.requiresAppleAuthentication, let userID {
+                    startAppStoreCommerce(backend: backend, userID: userID)
+                } else {
+                    refreshCommerceState()
+                }
                 roomSession.bootstrapLastSuccessAt = ContinuousClock().now
                 model.preferences.keychainTransitionComplete = true
                 startRealtimeRolloutMonitoring()
