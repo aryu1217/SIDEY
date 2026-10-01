@@ -28,6 +28,8 @@
     "hero": {
       "title": "Prijatelji na ivici vašeg ekrana.",
       "description": "Vaši prijatelji postaju male pikselske životinje koje šetaju duž ivice ekrana. Bacite pogled dok radite i pošaljite kratku poruku kad ih se setite.",
+      "freeDownload": "Preuzmite SIDEY besplatno",
+      "purchaseNote": "Sadrži kupovine u aplikaciji",
       "downloadsLabel": "Opcije preuzimanja",
       "appStoreDownload": "Preuzmite na App Store",
       "macDownload": "Preuzmite za macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Preuzmite za Windows",
       "releaseNotes": "Napomene o izdanju",
       "macSystem": "macOS 26 ili noviji · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (izrada 17763) ili novija · x64",
+      "windowsSystem": "Windows 10 1809 (izrada 17763) ili novija · x64 / ARM64",
       "copyFailure": "Nije moguće kopirati. Izaberite heš ručno.",
       "hashCopy": "Kopiraj heš SHA-256",
       "hashCopied": "SHA-256 heš kopiran."
@@ -300,7 +302,7 @@
     "refund": "Politika refundiranja",
     "language": "Izaberite jezik"
   },
-  "legalNotice": "Korišćenjem zvanične usluge SIDEY, prihvatate {terms} i {privacy}.",
+  "legalNotice": "Preuzimanjem SIDEY, prihvatate {terms} i {privacy}.",
   "policies": {
     "terms": {
       "title": "Uslovi korišćenja · SIDEY",

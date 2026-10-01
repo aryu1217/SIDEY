@@ -28,6 +28,8 @@
     "hero": {
       "title": "Vrienden aan de rand van je scherm.",
       "description": "Je vrienden worden kleine pixelpersonages die langs de rand van je scherm wandelen. Kijk even op tijdens je werk en stuur een berichtje wanneer je aan ze denkt.",
+      "freeDownload": "Download SIDEY gratis",
+      "purchaseNote": "Bevat in-app aankopen",
       "downloadsLabel": "Downloadopties",
       "appStoreDownload": "Downloaden in de App Store",
       "macDownload": "Downloaden voor macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Downloaden voor Windows",
       "releaseNotes": "Versie-informatie",
       "macSystem": "macOS 26 of hoger · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (build 17763) of hoger · x64",
+      "windowsSystem": "Windows 10 1809 (build 17763) of hoger · x64 / ARM64",
       "copyFailure": "Kan niet kopiëren. Selecteer de hash handmatig.",
       "hashCopy": "Kopieer SHA-256-hash",
       "hashCopied": "SHA-256-hash gekopieerd."
@@ -300,7 +302,7 @@
     "refund": "Terugbetalingsbeleid",
     "language": "Kies taal"
   },
-  "legalNotice": "Door gebruik te maken van de officiële SIDEY-service gaat u akkoord met de {terms} en {privacy}.",
+  "legalNotice": "Door SIDEY te downloaden gaat u akkoord met de {terms} en {privacy}.",
   "policies": {
     "terms": {
       "title": "Gebruiksvoorwaarden · SIDEY",

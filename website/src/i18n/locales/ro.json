@@ -28,6 +28,8 @@
     "hero": {
       "title": "Prieteni la marginea ecranului.",
       "description": "Prietenii tăi devin mici personaje pixelate care se plimbă la marginea ecranului. Aruncă-le o privire în timp ce lucrezi și trimite-le un mesaj scurt când te gândești la ei.",
+      "freeDownload": "Descarcă SIDEY gratuit",
+      "purchaseNote": "Include achiziții în aplicație",
       "downloadsLabel": "Opțiuni de descărcare",
       "appStoreDownload": "Descarcă din App Store",
       "macDownload": "Descarcă pentru macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Descarcă pentru Windows",
       "releaseNotes": "Note de lansare",
       "macSystem": "macOS 26 sau o versiune ulterioară · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (build 17763) sau o versiune ulterioară · x64",
+      "windowsSystem": "Windows 10 1809 (build 17763) sau o versiune ulterioară · x64 / ARM64",
       "copyFailure": "Nu s-a putut copia. Vă rugăm să selectați manual hash-ul.",
       "hashCopy": "Copiază hash-ul SHA-256",
       "hashCopied": "Hash-ul SHA-256 a fost copiat."
@@ -300,7 +302,7 @@
     "refund": "Politica de rambursare",
     "language": "Alegeți limba"
   },
-  "legalNotice": "Prin utilizarea serviciului oficial SIDEY, sunteți de acord cu {terms} și {privacy}.",
+  "legalNotice": "Prin descărcarea SIDEY, sunteți de acord cu {terms} și {privacy}.",
   "policies": {
     "terms": {
       "title": "Condiții de utilizare · SIDEY",

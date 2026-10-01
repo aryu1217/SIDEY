@@ -33,6 +33,8 @@
         "トコトコ。"
       ],
       "description": "友だちが小さなピクセルキャラクターになって、画面の端を歩き回ります。作業の合間にちらっと眺めたり、思い立ったときに短いひと言を送ったり。",
+      "freeDownload": "SIDEYを無料でダウンロード",
+      "purchaseNote": "アプリ内課金あり",
       "downloadsLabel": "ダウンロードを選択",
       "appStoreDownload": "App Storeでダウンロード",
       "macDownload": "macOS版をダウンロード",
@@ -138,7 +140,7 @@
       "windowsButton": "Windows版をダウンロード",
       "releaseNotes": "リリースノート",
       "macSystem": "macOS 26以降 · Appleシリコン（arm64）",
-      "windowsSystem": "Windows 10 1809（ビルド17763）以降 · x64",
+      "windowsSystem": "Windows 10 1809（ビルド17763）以降 · x64 / ARM64",
       "copyFailure": "コピーできませんでした。ハッシュを選択してコピーしてください。",
       "hashCopy": "SHA-256ハッシュをコピー",
       "hashCopied": "SHA-256ハッシュをコピーしました。"
@@ -328,7 +330,7 @@
     "refund": "キャンセル・返金ポリシー",
     "language": "言語を選択"
   },
-  "legalNotice": "SIDEYの公式サービスを利用すると、{terms}および{privacy}に同意したものとみなされます。",
+  "legalNotice": "SIDEYをダウンロードすると、{terms}および{privacy}に同意したものとみなされます。",
   "policies": {
     "terms": {
       "title": "利用規約 · SIDEY",

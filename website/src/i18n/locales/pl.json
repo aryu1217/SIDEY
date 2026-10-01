@@ -28,6 +28,8 @@
     "hero": {
       "title": "Przyjaciele na krawędzi ekranu.",
       "description": "Twoi przyjaciele stają się małymi pikselowymi postaciami spacerującymi wzdłuż krawędzi ekranu. Zerknij na nich podczas pracy i wyślij krótką wiadomość, kiedy o nich pomyślisz.",
+      "freeDownload": "Pobierz SIDEY za darmo",
+      "purchaseNote": "Zawiera zakupy w aplikacji",
       "downloadsLabel": "Opcje pobierania",
       "appStoreDownload": "Pobierz w App Store",
       "macDownload": "Pobierz dla systemu macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Pobierz dla systemu Windows",
       "releaseNotes": "Informacje o wydaniu",
       "macSystem": "macOS 26 lub nowszy · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (kompilacja 17763) lub nowszy · x64",
+      "windowsSystem": "Windows 10 1809 (kompilacja 17763) lub nowszy · x64 / ARM64",
       "copyFailure": "Nie udało się skopiować. Wybierz skrót ręcznie.",
       "hashCopy": "Skopiuj skrót SHA-256",
       "hashCopied": "Skopiowano skrót SHA-256."
@@ -300,7 +302,7 @@
     "refund": "Polityka zwrotów",
     "language": "Wybierz język"
   },
-  "legalNotice": "Korzystając z oficjalnej usługi SIDEY, wyrażasz zgodę na {terms} i {privacy}.",
+  "legalNotice": "Pobierając SIDEY, wyrażasz zgodę na {terms} i {privacy}.",
   "policies": {
     "terms": {
       "title": "Warunki korzystania · SIDEY",

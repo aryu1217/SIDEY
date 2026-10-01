@@ -28,6 +28,8 @@
     "hero": {
       "title": "Freunde am Rand Ihres Bildschirms.",
       "description": "Ihre Freunde werden zu kleinen Pixelfiguren, die am Bildschirmrand entlanglaufen. Werfen Sie bei der Arbeit einen Blick hinüber und schicken Sie eine kurze Nachricht, wenn Sie an sie denken.",
+      "freeDownload": "SIDEY kostenlos herunterladen",
+      "purchaseNote": "Enthält In-App-Käufe",
       "downloadsLabel": "Download-Optionen",
       "appStoreDownload": "Im App Store herunterladen",
       "macDownload": "Für macOS herunterladen",
@@ -110,7 +112,7 @@
       "windowsButton": "Für Windows herunterladen",
       "releaseNotes": "Versionshinweise",
       "macSystem": "macOS 26 oder höher · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (Build 17763) oder höher · x64",
+      "windowsSystem": "Windows 10 1809 (Build 17763) oder höher · x64 / ARM64",
       "copyFailure": "Konnte nicht kopiert werden. Bitte wählen Sie den Hash manuell aus.",
       "hashCopy": "Kopieren Sie den SHA-256-Hash",
       "hashCopied": "SHA-256-Hash kopiert."
@@ -300,7 +302,7 @@
     "refund": "Rückerstattungsrichtlinie",
     "language": "Sprache wählen"
   },
-  "legalNotice": "Durch die Nutzung des offiziellen SIDEY-Dienstes stimmen Sie den {terms} und {privacy} zu.",
+  "legalNotice": "Durch das Herunterladen von SIDEY stimmen Sie den {terms} und {privacy} zu.",
   "policies": {
     "terms": {
       "title": "Nutzungsbedingungen · SIDEY",

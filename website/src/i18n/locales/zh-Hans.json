@@ -28,6 +28,8 @@
     "hero": {
       "title": "朋友，就在屏幕边缘。",
       "description": "朋友们变成小小的像素角色，沿着屏幕边缘散步。工作时看一眼，想起他们时，就随手发一句消息。",
+      "freeDownload": "免费下载 SIDEY",
+      "purchaseNote": "含 App 内购买",
       "downloadsLabel": "下载选项",
       "appStoreDownload": "在 App Store 下载",
       "macDownload": "下载 macOS 版",
@@ -110,7 +112,7 @@
       "windowsButton": "下载 Windows 版",
       "releaseNotes": "版本说明",
       "macSystem": "macOS 26 或更高 · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809（内部版本 17763）或更高版本 · x64",
+      "windowsSystem": "Windows 10 1809（内部版本 17763）或更高版本 · x64 / ARM64",
       "copyFailure": "复制失败，请手动选中哈希值。",
       "hashCopy": "复制 SHA-256 哈希值",
       "hashCopied": "已复制 SHA-256 哈希值。"
@@ -300,7 +302,7 @@
     "refund": "退款政策",
     "language": "选择语言"
   },
-  "legalNotice": "使用 SIDEY 官方服务，即表示你同意{terms}和{privacy}。",
+  "legalNotice": "下载 SIDEY，即表示你同意{terms}和{privacy}。",
   "policies": {
     "terms": {
       "title": "使用条款·SIDEY",

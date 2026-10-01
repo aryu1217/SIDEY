@@ -21,5 +21,6 @@ export const releases = {
     url: windowsRelease.asset.url,
     // Published preview metadata. Pages replaces it with the verified release asset hash.
     sha256: windowsRelease.asset.sha256,
+    arm64: windowsRelease.arm64Asset,
   },
 } as const;

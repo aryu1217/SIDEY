@@ -28,6 +28,8 @@
     "hero": {
       "title": "朋友就在螢幕邊緣走走停停。",
       "description": "好友會化身成小小像素角色，在螢幕邊緣散步。工作時瞄一眼近況，想起對方時就傳一句簡短訊息。",
+      "freeDownload": "免費下載 SIDEY",
+      "purchaseNote": "包含 App 內購買",
       "downloadsLabel": "下載選項",
       "appStoreDownload": "從 App Store 下載",
       "macDownload": "下載 macOS 版",
@@ -110,7 +112,7 @@
       "windowsButton": "下載 Windows 版",
       "releaseNotes": "版本資訊",
       "macSystem": "macOS 26 或更新版本 · Apple 晶片（arm64）",
-      "windowsSystem": "Windows 10 1809（組建 17763）或更新版本 · x64",
+      "windowsSystem": "Windows 10 1809（組建 17763）或更新版本 · x64 / ARM64",
       "copyFailure": "無法複製，請手動選取雜湊值。",
       "hashCopy": "複製 SHA-256 雜湊值",
       "hashCopied": "已複製 SHA-256 雜湊值。"
@@ -300,7 +302,7 @@
     "refund": "取消與退款政策",
     "language": "選擇語言"
   },
-  "legalNotice": "使用 SIDEY 官方服務即表示你同意{terms}及{privacy}。",
+  "legalNotice": "下載 SIDEY 即表示你同意{terms}及{privacy}。",
   "policies": {
     "terms": {
       "title": "使用條款 · SIDEY",

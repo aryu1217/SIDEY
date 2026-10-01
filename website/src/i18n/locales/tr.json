@@ -28,6 +28,8 @@
     "hero": {
       "title": "Arkadaşlar ekranınızın kenarında.",
       "description": "Arkadaşlarınız, ekranınızın kenarında dolaşan minik piksel karakterlere dönüşür. Çalışırken bir göz atın; aklınıza geldiklerinde kısa bir mesaj gönderin.",
+      "freeDownload": "SIDEY’yi ücretsiz indir",
+      "purchaseNote": "Uygulama içi satın alımlar içerir",
       "downloadsLabel": "İndirme seçenekleri",
       "appStoreDownload": "App Store'dan indir",
       "macDownload": "macOS için indirin",
@@ -110,7 +112,7 @@
       "windowsButton": "Windows için indirin",
       "releaseNotes": "Sürüm notları",
       "macSystem": "macOS 26 veya üzeri · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (derleme 17763) veya üzeri · x64",
+      "windowsSystem": "Windows 10 1809 (derleme 17763) veya üzeri · x64 / ARM64",
       "copyFailure": "Kopyalanamadı. Lütfen karmayı manuel olarak seçin.",
       "hashCopy": "SHA-256 karma değerini kopyala",
       "hashCopied": "SHA-256 karma kopyalandı."
@@ -300,7 +302,7 @@
     "refund": "Geri Ödeme Politikası",
     "language": "Dil seçin"
   },
-  "legalNotice": "Resmi SIDEY hizmetini kullanarak {terms} ve {privacy}'yi kabul etmiş olursunuz.",
+  "legalNotice": "SIDEY’yi indirerek {terms} ve {privacy}'yi kabul etmiş olursunuz.",
   "policies": {
     "terms": {
       "title": "Kullanım Koşulları · SIDEY",

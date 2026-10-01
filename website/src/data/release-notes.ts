@@ -17,6 +17,7 @@ interface ReleaseMetadata {
   url: string;
   publishedAt: string;
   asset?: { url: string; sha256: string };
+  arm64Asset?: { url: string; sha256: string };
 }
 export interface WebsiteRelease extends ReleaseMetadata {
   locales: Record<Locale, ReleaseCopy>;

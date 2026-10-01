@@ -236,20 +236,23 @@ def replace_displayed_version(html: str, platform: str, version: str) -> str:
 
 
 def apply_arm64_downloads(html: str, url: str, digest: str) -> str:
-    """Expose a separate ARM64 download only after verifying its release asset."""
+    """Update ARM64 options and checksum, hiding them when no asset is supplied."""
     if "data-windows-arm64-url" not in html:
         return html
-    html = replace_anchor_attribute(html, "primary-download-action", "data-windows-arm64-url", url)
-    for element_id in ("hero-windows-arm64-download-action", "windows-arm64-download-action"):
-        html = replace_anchor_attribute(html, element_id, "href", url)
+    html = replace_anchor_attribute(html, "windows-download-action", "data-windows-arm64-url", url)
+    html = replace_anchor_attribute(html, "windows-arm64-download-action", "href", url or "#download")
     pattern = re.compile(r'(<code(?=[^>]*\bid="windows-arm64-download-sha256")[^>]*>)[^<]*(</code>)')
     html, count = pattern.subn(rf"\g<1>{digest}\g<2>", html)
     if count != 1:
         raise ValueError("Expected one ARM64 installer checksum")
     marker = re.compile(r'<[a-z][a-z0-9]*(?=[\s>])(?=[^>]*\bdata-windows-arm64-download(?:[\s=>]))[^>]*>')
-    html, count = marker.subn(lambda match: re.sub(r'\s+hidden(?:="(?:hidden)?")?(?=[\s>])', "", match[0]), html)
+    def update_visibility(match: re.Match[str]) -> str:
+        element = re.sub(r'\s+hidden(?:="(?:hidden)?")?(?=[\s>])', "", match[0])
+        return element if url else element[:-1] + " hidden>"
+
+    html, count = marker.subn(update_visibility, html)
     if count != 2:
-        raise ValueError("Expected ARM64 hero and card download markers")
+        raise ValueError("Expected ARM64 option and checksum markers")
     return html
 
 
@@ -381,21 +384,15 @@ def prepare(
             raise ValueError(f"Localized landing page is missing: {relative_path.as_posix()}")
         html = path.read_text(encoding="utf-8")
         html = replace_anchor_attribute(
-            html, "primary-download-action", "data-windows-url", update_url
-        )
-        html = replace_anchor_attribute(
             html, "windows-download-action", "href", update_url
         )
-        if 'id="hero-windows-x64-download-action"' in html:
-            html = replace_anchor_attribute(html, "hero-windows-x64-download-action", "href", update_url)
-        if arm64_feed is not None:
-            html = apply_arm64_downloads(html, arm64_feed["installer_url"], arm64_feed["sha256"])
-        require_anchor(
-            html,
-            "primary-download-action",
-            href=app_store_url,
-            **{"data-macos-url": app_store_url, "data-windows-url": update_url},
+        html = replace_anchor_attribute(html, "windows-download-action", "data-windows-url", update_url)
+        html = replace_anchor_attribute(html, "windows-x64-download-action", "href", update_url)
+        html = apply_arm64_downloads(
+            html, arm64_feed["installer_url"] if arm64_feed else "",
+            arm64_feed["sha256"] if arm64_feed else "",
         )
+        require_anchor(html, "primary-download-action", href="#download")
         require_anchor(html, "macos-download-action", href=app_store_url)
         require_anchor(html, "windows-download-action", href=update_url)
         html = replace_checksum(html, "windows", update_hash)

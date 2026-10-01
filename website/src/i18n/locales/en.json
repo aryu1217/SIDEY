@@ -28,6 +28,8 @@
     "hero": {
       "title": "Friends at the edge of your screen.",
       "description": "Your friends become tiny pixel characters wandering along the edge of your screen. Glance over while you work, and send a quick note when they cross your mind.",
+      "freeDownload": "Download SIDEY for free",
+      "purchaseNote": "Includes in-app purchases",
       "downloadsLabel": "Download options",
       "appStoreDownload": "Download on App Store",
       "macDownload": "Download for macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Download for Windows",
       "releaseNotes": "Release notes",
       "macSystem": "macOS 26 or later · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (build 17763) or later · x64",
+      "windowsSystem": "Windows 10 1809 (build 17763) or later · x64 / ARM64",
       "copyFailure": "Could not copy. Please select the hash manually.",
       "hashCopy": "Copy SHA-256 hash",
       "hashCopied": "SHA-256 hash copied."
@@ -300,7 +302,7 @@
     "refund": "Refund Policy",
     "language": "Choose language"
   },
-  "legalNotice": "By using the official SIDEY service, you agree to the {terms} and {privacy}.",
+  "legalNotice": "By downloading SIDEY, you agree to the {terms} and {privacy}.",
   "policies": {
     "terms": {
       "title": "Terms of Use · SIDEY",

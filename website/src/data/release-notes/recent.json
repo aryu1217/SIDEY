@@ -6,6 +6,10 @@
     "asset": {
       "url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.12/SIDEY-Windows-x64-v2.2640.12-Setup.exe",
       "sha256": "ec93c03e03137b188f83ef728b2e55a11d912d87f77d4efb4363ff9517e737c2"
+    },
+    "arm64Asset": {
+      "url": "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.2640.12/SIDEY-Windows-arm64-v2.2640.12-Setup.exe",
+      "sha256": "bbafd47fa914484ee3f4571ecb15ba44e247e4abd291a6778cc85abca1dcfd26"
     }
   },
   {

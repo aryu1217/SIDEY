@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts" / "pages"))
 from prepare_release_metadata import (
     APP_STORE_URLS, prepare, read_incremental_manifest, read_manifest,
-    replace_displayed_version, validate_repository,
+    replace_displayed_version, validate_repository, apply_arm64_downloads,
 )
 
 
@@ -39,6 +39,8 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
             html = (output / "en/index.html").read_text(encoding="utf-8")
             self.assertIn(f'data-windows-arm64-url="https://github.com/sidey-app/SIDEY/releases/download/windows-v{version}/{arm64.name}"', html)
             self.assertIn(hashlib.sha256(arm64.read_bytes()).hexdigest(), html)
+            self.assertEqual(html.count('data-windows-arm64-url="https://github.com/sidey-app/SIDEY/releases/download/'), 1)
+            self.assertIn(f'id="windows-arm64-download-action" href="https://github.com/sidey-app/SIDEY/releases/download/windows-v{version}/{arm64.name}"', html)
             self.assertNotIn('data-windows-arm64-download hidden', html)
             for architecture, installer in (("x64", x64), ("arm64", arm64)):
                 filename = "windows-latest.json" if architecture == "x64" else "windows-arm64-latest.json"
@@ -55,15 +57,12 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
             path = site / locale / "index.html"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(
-                f'<a id="primary-download-action" href="{app_store_url}" '
-                f'data-macos-url="{app_store_url}" data-windows-url="https://old.invalid/" data-windows-arm64-url="">'
-                'Download</a>'
+                '<a id="primary-download-action" href="#download">Download</a>'
                 f'<a id="macos-download-action" href="{app_store_url}">Mac</a>'
-                '<a id="windows-download-action" href="https://old.invalid/">Windows</a>'
-                '<a id="hero-windows-x64-download-action" href="https://old.invalid/">x64</a>'
-                '<a id="hero-windows-arm64-download-action" href="#download" data-windows-arm64-download hidden>ARM64</a>'
+                '<a id="windows-download-action" href="https://old.invalid/" data-windows-url="https://old.invalid/" data-windows-arm64-url="">Windows</a>'
+                '<a id="windows-x64-download-action" href="https://old.invalid/">x64</a>'
+                '<a id="windows-arm64-download-action" href="#download" data-windows-arm64-download hidden>ARM64</a>'
                 '<div data-windows-arm64-download hidden>'
-                '<a id="windows-arm64-download-action" href="#download">ARM64</a>'
                 '<code id="windows-arm64-download-sha256"></code></div>'
                 '<code id="windows-download-sha256" data-release-platform="windows">'
                 + "0" * 64 + '</code>'
@@ -79,6 +78,9 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="SIDEY-Localized-Pages-") as temporary:
             root = Path(temporary)
             site = self.write_landing_site(root)
+            # The local preview already includes a previously published ARM64 installer.
+            for path in site.glob("*/index.html"):
+                path.write_text(apply_arm64_downloads(path.read_text(), "https://old.invalid/arm64.exe", "b" * 64), encoding="utf-8")
             manifest = self.write_manifest(root)
             installer = root / "SIDEY-Windows-x64-v2.0.1-Setup.exe"
             installer.write_bytes(b"verified localized installer")
@@ -88,8 +90,14 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
             url = "https://github.com/sidey-app/SIDEY/releases/download/windows-v2.0.1/" + installer.name
             self.assertIn(f'data-windows-url="{url}"', html)
             self.assertIn(f'id="windows-download-action" href="{url}"', html)
+            self.assertIn(f'id="windows-x64-download-action" href="{url}"', html)
+            self.assertEqual(html.count(f'data-windows-url="{url}"'), 1)
+            self.assertNotIn("https://old.invalid/arm64.exe", html)
+            self.assertEqual(html.count('data-windows-arm64-url=""'), 1)
+            self.assertEqual(html.count('data-windows-arm64-download hidden'), 2)
+            self.assertIn('<code id="windows-arm64-download-sha256"></code>', html)
             self.assertIn(hashlib.sha256(installer.read_bytes()).hexdigest(), html)
-            self.assertIn(f'data-macos-url="{APP_STORE_URLS["en"]}"', html)
+            self.assertIn('id="primary-download-action" href="#download"', html)
             self.assertIn(f'id="macos-download-action" href="{APP_STORE_URLS["en"]}"', html)
             self.assertIn('<span data-release-version="windows">2.0.1</span>', html)
             self.assertNotIn("https://old.invalid/", html)
@@ -365,7 +373,7 @@ class PrepareReleaseMetadataTests(unittest.TestCase):
                 self.assertNotIn("brew-command", html)
                 self.assertIn(f'href="{app_store_url}"', html)
                 self.assertIn(
-                    f'<code id="windows-download-sha256" data-release-platform="windows">{windows_hash}</code>',
+                    f'id="windows-download-sha256" data-release-platform="windows" data-checksum-text tabindex="0" aria-labelledby="windows-download-sha256-label">{windows_hash}</code>',
                     html,
                 )
 

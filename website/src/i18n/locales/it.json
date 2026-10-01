@@ -28,6 +28,8 @@
     "hero": {
       "title": "Amici ai margini dello schermo.",
       "description": "I tuoi amici diventano piccoli personaggi in pixel che vagano lungo il bordo dello schermo. Dai un'occhiata mentre lavori e invia una breve nota quando ti passano per la mente.",
+      "freeDownload": "Scarica SIDEY gratis",
+      "purchaseNote": "Include acquisti in-app",
       "downloadsLabel": "Opzioni di download",
       "appStoreDownload": "Scarica sull'App Store",
       "macDownload": "Scarica per macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Scarica per Windows",
       "releaseNotes": "Note sulla versione",
       "macSystem": "macOS 26 o successivo · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (build 17763) o successivo · x64",
+      "windowsSystem": "Windows 10 1809 (build 17763) o successivo · x64 / ARM64",
       "copyFailure": "Impossibile copiare. Seleziona l'hash manualmente.",
       "hashCopy": "Copia l'hash SHA-256",
       "hashCopied": "Hash SHA-256 copiato."
@@ -300,7 +302,7 @@
     "refund": "Politica di rimborso",
     "language": "Scegli la lingua"
   },
-  "legalNotice": "Utilizzando il servizio ufficiale SIDEY, accetti {terms} e {privacy}.",
+  "legalNotice": "Scaricando SIDEY, accetti {terms} e {privacy}.",
   "policies": {
     "terms": {
       "title": "Condizioni d'uso · SIDEY",

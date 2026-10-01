@@ -28,6 +28,8 @@
     "hero": {
       "title": "화면에 친구가 총총.",
       "description": "친구들이 조그만 픽셀 캐릭터가 되어 화면 가장자리를 돌아다녀요. 일하다 슬쩍 보고, 생각나면 짧게 한마디 건네 보세요.",
+      "freeDownload": "무료로 SIDEY 다운로드",
+      "purchaseNote": "앱 내 구입 포함",
       "downloadsLabel": "다운로드 선택",
       "appStoreDownload": "App Store 다운로드",
       "macDownload": "macOS 다운로드",
@@ -110,7 +112,7 @@
       "windowsButton": "Windows 다운로드",
       "releaseNotes": "릴리스 정보",
       "macSystem": "macOS 26 이상 · Apple Silicon(arm64)",
-      "windowsSystem": "Windows 10 1809(build 17763) 이상 · x64",
+      "windowsSystem": "Windows 10 1809(build 17763) 이상 · x64 / ARM64",
       "copyFailure": "복사하지 못했습니다. 해시를 직접 선택해 주세요.",
       "hashCopy": "SHA-256 해시 복사",
       "hashCopied": "SHA-256 해시를 복사했습니다."
@@ -300,7 +302,7 @@
     "refund": "청약철회 및 환불 정책",
     "language": "언어 선택"
   },
-  "legalNotice": "SIDEY 공식 서비스를 이용하면 {terms} 및 {privacy}에 동의하게 됩니다.",
+  "legalNotice": "SIDEY를 다운로드하면 {terms} 및 {privacy}에 동의하게 됩니다.",
   "policies": {
     "terms": {
       "title": "이용약관 · SIDEY",

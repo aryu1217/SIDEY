@@ -28,6 +28,8 @@
     "hero": {
       "title": "Přátelé na okraji vaší obrazovky.",
       "description": "Vaši přátelé se promění v malé pixelové postavičky, které se procházejí podél okraje obrazovky. Během práce na ně mrkněte, a když si na ně vzpomenete, pošlete jim krátkou zprávu.",
+      "freeDownload": "Stáhnout SIDEY zdarma",
+      "purchaseNote": "Obsahuje nákupy v aplikaci",
       "downloadsLabel": "Možnosti stahování",
       "appStoreDownload": "Stáhnout z App Storu",
       "macDownload": "Stáhnout pro macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Stáhnout pro Windows",
       "releaseNotes": "Poznámky k vydání",
       "macSystem": "macOS 26 nebo novější · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (sestavení 17763) nebo novější · x64",
+      "windowsSystem": "Windows 10 1809 (sestavení 17763) nebo novější · x64 / ARM64",
       "copyFailure": "Nelze kopírovat. Vyberte hash ručně.",
       "hashCopy": "Zkopírujte hash SHA-256",
       "hashCopied": "Hash SHA-256 zkopírován."
@@ -300,7 +302,7 @@
     "refund": "Zásady vrácení peněz",
     "language": "Vyberte jazyk"
   },
-  "legalNotice": "Používáním oficiální služby SIDEY souhlasíte se {terms} a {privacy}.",
+  "legalNotice": "Stažením SIDEY souhlasíte se {terms} a {privacy}.",
   "policies": {
     "terms": {
       "title": "Podmínky použití · SIDEY",

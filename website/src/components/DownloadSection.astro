@@ -1,5 +1,5 @@
 ---
-import DownloadButton from "./DownloadButton.astro";
+import DownloadLegalNotice from "./DownloadLegalNotice.astro";
 import Checksum from "./Checksum.astro";
 import type { Locale } from "../i18n/landing";
 import { getWebsiteReleases } from "../data/release-notes";
@@ -9,11 +9,14 @@ import PhraseText from "./PhraseText.astro";
 
 interface Props { locale: Locale; }
 const { locale } = Astro.props;
-const copy = getLandingCopy(locale).download;
+const landingCopy = getLandingCopy(locale);
+const copy = landingCopy.download;
+const base = import.meta.env.BASE_URL;
 const titleParts = "titleParts" in copy ? copy.titleParts : null;
 const macVersion = getWebsiteReleases("macos")[0]?.version;
 const notesRoot = `${localeRoot(locale)}whats-new/`;
 const appStoreURL = appStoreURLForLocale(locale);
+const appStoreBadgeLocale = ["ko", "en", "ja", "ru", "uk", "zh-Hans", "zh-Hant"].includes(locale) ? locale : "en";
 ---
 
 <section class="section download-section" id="download" aria-labelledby="download-title">
@@ -21,17 +24,38 @@ const appStoreURL = appStoreURLForLocale(locale);
   <div class="download-grid">
     <article class="download-card">
       <span class="platform-label"><img class="platform-logo platform-logo-macos" src={`${import.meta.env.BASE_URL}assets/platforms/macos-dark.svg`} alt="" width="16" height="16">macOS</span><h3>SIDEY{macVersion && <> v{macVersion}</>}</h3>
-      <div class="download-actions"><DownloadButton label={copy.macButton} platform="macos" id="macos-download-action" href={appStoreURL} appStoreLink legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}macos/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
+      <div class="download-actions"><span class="download-license-wrap">
+        <a class="mac-app-store-link" id="macos-download-action" href={appStoreURL} data-app-store-link aria-describedby="macos-download-license"><img src={`${base}assets/app-store/mac-app-store.${appStoreBadgeLocale}.svg`} alt={copy.macButton} height="56" /></a>
+        <DownloadLegalNotice id="macos-download-license" locale={locale} />
+      </span><a class="button button-text" href={`${notesRoot}macos/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a></div>
       <p class="system-note">{copy.macSystem}</p>
     </article>
     <article class="download-card">
       <span class="platform-label"><img class="platform-logo platform-logo-windows" src={`${import.meta.env.BASE_URL}assets/platforms/windows-dark.svg`} alt="" width="16" height="16">Windows</span><h3>SIDEY v<span data-release-version="windows">{releases.windows.version}</span></h3>
-      <div class="download-actions"><DownloadButton label={`${copy.windowsButton} (x64)`} platform="windows" id="windows-download-action" href={releases.windows.url} describedBy="windows-card-status" legalNotice locale={locale} /><a class="button button-text" href={`${notesRoot}windows/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a></div>
+      <div class="download-actions">
+        <div class="download-selector windows-download-selector" data-download-selector data-download-platform="windows">
+          <a class="button download-button primary-download-action" id="windows-download-action" href={releases.windows.url} data-auto-download data-windows-url={releases.windows.url} data-windows-arm64-url={releases.windows.arm64?.url ?? ""} data-windows-label={`${copy.windowsButton} (x64)`} data-windows-arm64-label={`${copy.windowsButton} (ARM64)`} data-choose-label={`${copy.windowsButton} (x64)`} aria-describedby="windows-card-status windows-download-license">
+            <img class="download-platform-logo download-platform-logo-windows" data-download-logo data-windows-logo={`${base}assets/platforms/windows-light.svg`} src={`${base}assets/platforms/windows-light.svg`} alt="" width="18" height="18">
+            <span class="download-button-label" data-download-label>{copy.windowsButton} (x64)</span>
+          </a>
+          <button class="download-selector-toggle" type="button" data-download-toggle aria-expanded="false" aria-controls="windows-architecture-menu" aria-label={`${copy.windowsButton} (x64 / ARM64)`}>
+            <span class="download-chevron" aria-hidden="true">
+              <span class="material-symbols-rounded download-chevron-closed">expand_more</span>
+              <span class="material-symbols-rounded download-chevron-open">expand_less</span>
+            </span>
+          </button>
+          <div class="download-platform-menu" id="windows-architecture-menu" data-download-menu hidden aria-label={`${copy.windowsButton} (x64 / ARM64)`}>
+            <a id="windows-x64-download-action" href={releases.windows.url} data-windows-architecture="x64"><img class="download-platform-logo download-platform-logo-windows" src={`${base}assets/platforms/windows-light.svg`} alt="" width="18" height="18"><span>{copy.windowsButton} (x64)</span></a>
+            <a id="windows-arm64-download-action" href={releases.windows.arm64?.url ?? "#download"} data-windows-architecture="arm64" data-windows-arm64-download hidden={!releases.windows.arm64}><img class="download-platform-logo download-platform-logo-windows" src={`${base}assets/platforms/windows-light.svg`} alt="" width="18" height="18"><span>{copy.windowsButton} (ARM64)</span></a>
+          </div>
+          <DownloadLegalNotice id="windows-download-license" locale={locale} />
+        </div>
+        <a class="button button-text" href={`${notesRoot}windows/`}>{copy.releaseNotes}<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a>
+      </div>
       <p class="system-note" id="windows-card-status">{copy.windowsSystem}</p>
-      <Checksum id="windows-download-sha256" value={releases.windows.sha256} copyLabel={copy.hashCopy} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} releasePlatform="windows" />
-      <div data-windows-arm64-download hidden>
-        <div class="download-actions"><DownloadButton label={`${copy.windowsButton} (ARM64)`} platform="windows" id="windows-arm64-download-action" href="#download" legalNotice locale={locale} /></div>
-        <Checksum id="windows-arm64-download-sha256" value="" copyLabel={copy.hashCopy} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} />
+      <Checksum id="windows-download-sha256" label="SHA-256 (x64)" value={releases.windows.sha256} copyLabel={`${copy.hashCopy} (x64)`} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} releasePlatform="windows" />
+      <div data-windows-arm64-download hidden={!releases.windows.arm64}>
+        <Checksum id="windows-arm64-download-sha256" label="SHA-256 (ARM64)" value={releases.windows.arm64?.sha256 ?? ""} copyLabel={`${copy.hashCopy} (ARM64)`} copiedAnnouncement={copy.hashCopied} failureAnnouncement={copy.copyFailure} />
       </div>
     </article>
   </div>

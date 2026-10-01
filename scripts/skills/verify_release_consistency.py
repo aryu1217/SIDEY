@@ -176,11 +176,13 @@ def validate_published_windows_release() -> dict[str, object]:
         tag = windows_release_tag(version)
         require(entry.get("url") == f"https://github.com/sidey-app/SIDEY/releases/tag/{tag}",
                 f"published Windows release {version} has the wrong tag URL")
-        asset = entry.get("asset")
-        if "asset" in entry:
+        for asset_key, architecture in (("asset", "x64"), ("arm64Asset", "arm64")):
+            if asset_key not in entry:
+                continue
+            asset = entry[asset_key]
             require(isinstance(asset, dict),
                     f"published Windows release {version} has invalid installer metadata")
-            installer_name = f"SIDEY-Windows-x64-v{version}-Setup.exe"
+            installer_name = f"SIDEY-Windows-{architecture}-v{version}-Setup.exe"
             require(asset.get("url") == (
                 f"https://github.com/sidey-app/SIDEY/releases/download/{tag}/{installer_name}"
             ), f"published Windows release {version} has the wrong installer URL")

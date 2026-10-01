@@ -28,6 +28,8 @@
     "hero": {
       "title": "Amigos al borde de tu pantalla.",
       "description": "Tus amigos se convierten en pequeños personajes de píxeles que pasean por el borde de tu pantalla. Echa un vistazo mientras trabajas y envíales un mensaje cuando te acuerdes de ellos.",
+      "freeDownload": "Descargar SIDEY gratis",
+      "purchaseNote": "Incluye compras dentro de la app",
       "downloadsLabel": "Opciones de descarga",
       "appStoreDownload": "Descargar en el App Store",
       "macDownload": "Descargar para macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Descargar para Windows",
       "releaseNotes": "Notas de la versión",
       "macSystem": "macOS 26 o posterior · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (compilación 17763) o posterior · x64",
+      "windowsSystem": "Windows 10 1809 (compilación 17763) o posterior · x64 / ARM64",
       "copyFailure": "No se pudo copiar. Selecciona el hash manualmente.",
       "hashCopy": "Copiar hash SHA-256",
       "hashCopied": "Hash SHA-256 copiado."
@@ -300,7 +302,7 @@
     "refund": "Política de reembolso",
     "language": "Elige idioma"
   },
-  "legalNotice": "Al utilizar el servicio oficial de SIDEY, acepta {terms} y {privacy}.",
+  "legalNotice": "Al descargar SIDEY, acepta {terms} y {privacy}.",
   "policies": {
     "terms": {
       "title": "Condiciones de uso · SIDEY",

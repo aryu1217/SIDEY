@@ -63,6 +63,50 @@
     });
   });
 
+  document.querySelectorAll("[data-checksum-text]").forEach((code) => {
+    let drag;
+    let dragged = false;
+    const selectChecksum = () => {
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+    code.addEventListener("pointerdown", (event) => {
+      dragged = false;
+      if (event.pointerType !== "mouse" || event.button !== 0 || code.scrollWidth <= code.clientWidth) return;
+      drag = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: code.scrollLeft };
+      code.setPointerCapture(event.pointerId);
+      code.focus({ preventScroll: true });
+      event.preventDefault();
+    });
+    code.addEventListener("pointermove", (event) => {
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const distance = event.clientX - drag.startX;
+      if (Math.abs(distance) > 4) dragged = true;
+      if (dragged) {
+        code.dataset.dragging = "true";
+        code.scrollLeft = drag.scrollLeft - distance;
+      }
+    });
+    const endDrag = () => {
+      drag = undefined;
+      delete code.dataset.dragging;
+    };
+    code.addEventListener("pointerup", endDrag);
+    code.addEventListener("pointercancel", endDrag);
+    code.addEventListener("lostpointercapture", endDrag);
+    code.addEventListener("click", () => { if (!dragged) selectChecksum(); });
+    code.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        selectChecksum();
+      }
+    });
+  });
+
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const supportedAppStoreRegions = new Set(["GB", "CA", "AU", "SG", "HK", "MO", "TW", "JP", "KR", "US"]);
@@ -122,6 +166,7 @@
     if (!primary || !toggle || !menu || !label || !logo) return;
     let menuTimer;
     let manualSelection = false;
+    const windowsOnly = selector.dataset.downloadPlatform === "windows";
 
     const setMenu = (open) => {
       window.clearTimeout(menuTimer);
@@ -143,7 +188,11 @@
       }, reducedMotion.matches ? 0 : 160);
     };
     const setPlatform = (platform, architecture) => {
-      const key = platform === "windows" ? "windows" : "macos";
+      if (windowsOnly) {
+        platform = "windows";
+        architecture = architecture === "arm64" && primary.dataset.windowsArm64Url ? "arm64" : "x64";
+      }
+      const key = windowsOnly || platform === "windows" ? "windows" : "macos";
       const url = platform === "windows"
         ? architecture === "arm64" ? primary.dataset.windowsArm64Url : architecture === "x64" ? primary.dataset.windowsUrl : undefined
         : platform === "macos" ? primary.dataset.macosUrl : undefined;
@@ -153,9 +202,9 @@
         ? primary.dataset[architecture === "arm64" ? "windowsArm64Label" : `${key}Label`]
         : primary.dataset.chooseLabel;
       logo.src = logo.dataset[`${key}Logo`];
-      logo.classList.toggle("download-platform-logo-windows", platform === "windows");
-      logo.classList.toggle("download-platform-logo-macos", platform !== "windows");
-      logo.hidden = !supported;
+      logo.classList.toggle("download-platform-logo-windows", windowsOnly || platform === "windows");
+      logo.classList.toggle("download-platform-logo-macos", !windowsOnly && platform !== "windows");
+      logo.hidden = !supported && !windowsOnly;
       primary.dataset.detectedPlatform = supported ? platform : "unsupported";
       if (architecture) primary.dataset.detectedArchitecture = architecture;
       else delete primary.dataset.detectedArchitecture;
@@ -164,7 +213,7 @@
     const platformSource = navigator.userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
     if (/win/i.test(platformSource)) {
       // Reduced user agents and browser process architecture cannot identify the Windows CPU.
-      // Keep manual selection available while hints are unavailable, denied, or pending.
+      // Use the labelled x64 default while reliable hints are unavailable or pending.
       setPlatform("windows");
       if (navigator.userAgentData?.getHighEntropyValues) {
         Promise.resolve().then(() => navigator.userAgentData.getHighEntropyValues(["architecture", "bitness"]))
@@ -178,7 +227,7 @@
           .catch(() => { if (!manualSelection) setPlatform("windows"); });
       }
     }
-    else if (/mac/i.test(platformSource)) setPlatform("macos");
+    else if (!windowsOnly && /mac/i.test(platformSource)) setPlatform("macos");
     else setPlatform("unsupported");
 
     menu.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
@@ -188,7 +237,7 @@
     }));
     toggle.addEventListener("click", () => setMenu(toggle.getAttribute("aria-expanded") !== "true"));
     primary.addEventListener("click", (event) => {
-      if (primary.dataset.detectedPlatform === "unsupported") {
+      if (!windowsOnly && primary.dataset.detectedPlatform === "unsupported") {
         event.preventDefault();
         setMenu(toggle.getAttribute("aria-expanded") !== "true");
       }

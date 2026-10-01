@@ -82,6 +82,24 @@ class ReleaseConsistencyTests(unittest.TestCase):
                 with self.assertRaisesRegex(verification.ConsistencyError, "SHA-256 digest"):
                     verification.validate_published_windows_release()
 
+    def test_published_arm64_asset_requires_its_architecture_and_valid_hash(self):
+        entry = self.published_release()
+        entry["arm64Asset"] = {
+            "url": entry["asset"]["url"].replace("-x64-", "-arm64-"),
+            "sha256": entry["asset"]["sha256"],
+        }
+        self.write_published_releases([entry])
+        self.assertEqual(verification.validate_published_windows_release(), entry)
+        entry["arm64Asset"]["url"] = entry["asset"]["url"]
+        self.write_published_releases([entry])
+        with self.assertRaisesRegex(verification.ConsistencyError, "wrong installer URL"):
+            verification.validate_published_windows_release()
+        entry["arm64Asset"]["url"] = entry["asset"]["url"].replace("-x64-", "-arm64-")
+        entry["arm64Asset"]["sha256"] = "invalid"
+        self.write_published_releases([entry])
+        with self.assertRaisesRegex(verification.ConsistencyError, "SHA-256 digest"):
+            verification.validate_published_windows_release()
+
     def test_latest_published_release_requires_asset_even_when_previous_has_one(self):
         latest = self.published_release()
         del latest["asset"]

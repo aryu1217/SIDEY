@@ -54,6 +54,18 @@ test("website locale registry and complete translations match Windows languages"
   }
 });
 
+test("download consent refers to downloading SIDEY and retains both policy links", () => {
+  assert.equal(bundles.ko.legalNotice, "SIDEY를 다운로드하면 {terms} 및 {privacy}에 동의하게 됩니다.");
+  assert.equal(bundles.en.legalNotice, "By downloading SIDEY, you agree to the {terms} and {privacy}.");
+  for (const locale of locales) {
+    const html = read(`${routeFor(locale)}/index.html`);
+    const tooltip = html.split('id="windows-download-license"')[1].split('</span>')[0];
+    assert.ok(tooltip.includes(`/${routeFor(locale)}/terms/`));
+    assert.ok(tooltip.includes(`/${routeFor(locale)}/privacy/`));
+    assert.ok(html.includes(escapeHTML(bundles[locale].legalNotice.split("{terms}")[0])));
+  }
+});
+
 test("downloads show published versions and link both platform histories on the website", () => {
   const windows = JSON.parse(readFileSync(new URL("../src/data/release-notes/recent.json", import.meta.url)))[0];
   const macos = JSON.parse(readFileSync(new URL("../src/data/release-notes/macos.json", import.meta.url)))[0];
@@ -669,9 +681,9 @@ test("localized pages use locale-default App Store storefronts consistently", ()
     const url = `https://apps.apple.com/${storefront}/app/sidey/id6808528060?mt=12`;
     const landing = read(`${locale}/index.html`);
     assert.ok(landing.includes(`href="${url}"`), `${locale}: landing link`);
-    assert.ok(landing.includes(`data-macos-url="${url}"`), `${locale}: platform selector`);
+    assert.ok(landing.includes('id="primary-download-action" href="#download"'), `${locale}: hero section link`);
     assert.ok(landing.includes(`"downloadUrl":"${url}"`), `${locale}: structured data`);
-    assert.ok(landing.match(/data-app-store-link/g)?.length >= 3, `${locale}: adjustable links`);
+    assert.ok(landing.match(/data-app-store-link/g)?.length >= 1, `${locale}: adjustable links`);
     assert.ok(read(`${locale}/whats-new/index.html`).includes('id="v2.0.0"'), `${locale}: local macOS version history`);
     assert.ok(!read(`${locale}/whats-new/index.html`).includes("data-app-store-link"), `${locale}: release notes stay on website`);
   }
@@ -708,16 +720,39 @@ test("browser regions update App Store links and the platform-selector macOS tar
   }
 });
 
-test("all download pages identify separate Windows installers without advertising an unpublished ARM64 download", () => {
+test("all download pages offer both published Windows architectures in local rendering", () => {
+  const windows = JSON.parse(readFileSync(new URL("../src/data/release-notes/recent.json", import.meta.url)))[0];
+  assert.match(windows.arm64Asset.sha256, /^[a-f0-9]{64}$/);
   for (const locale of locales) {
     const html = read(`${routeFor(locale)}/index.html`);
-    assert.match(html, /data-windows-label="[^"]+ \(x64\)"/);
-    assert.match(html, /data-windows-arm64-label="[^"]+ \(ARM64\)"/);
-    assert.match(html, /data-windows-arm64-url=""/);
-    assert.match(html, /id="hero-windows-x64-download-action"[^>]+data-windows-architecture="x64"/);
-    assert.match(html, /id="hero-windows-arm64-download-action"[^>]+href="#download"[^>]+data-windows-arm64-download[^>]+hidden/);
-    assert.match(html, /<div data-windows-arm64-download hidden>/);
+
+    assert.equal((html.match(new RegExp(`data-windows-arm64-url="${windows.arm64Asset.url}"`, "g")) ?? []).length, 1);
+    assert.doesNotMatch(html, /data-windows-arm64-download hidden/);
+    assert.ok(html.includes(windows.arm64Asset.sha256));
     assert.match(html, /id="windows-arm64-download-sha256"/);
+    assert.match(html, /data-download-selector data-download-platform="windows"/);
+    assert.match(html, /id="windows-download-action"[^>]+data-auto-download[^>]+data-windows-url=/);
+    assert.match(html, /id="windows-x64-download-action"[^>]+data-windows-architecture="x64"/);
+    assert.match(html, /id="windows-arm64-download-action"[^>]+data-windows-architecture="arm64"/);
+    assert.ok(html.includes(`data-download-label>${escapeHTML(bundles[locale].landing.download.windowsButton)} (x64)<`));
+    assert.ok(html.includes("SHA-256 (x64)"));
+    assert.ok(html.includes("SHA-256 (ARM64)"));
+    assert.ok(bundles[locale].landing.download.windowsSystem.endsWith("x64 / ARM64"));
+    const badgeLocale = ["ko", "en", "ja", "ru", "uk", "zh-Hans", "zh-Hant"].includes(locale) ? locale : "en";
+    assert.ok(html.includes(`assets/app-store/mac-app-store.${badgeLocale}.svg`));
+    const hero = html.split('class="hero"')[1].split('</section>')[0];
+    assert.doesNotMatch(hero, /data-download-selector|data-windows-url/);
+    assert.ok(hero.includes(`>${escapeHTML(bundles[locale].landing.hero.freeDownload)}</a>`));
+    assert.ok(hero.includes(escapeHTML(bundles[locale].landing.hero.purchaseNote)));
+    const section = html.split('id="download"')[1].split('</section>')[0];
+    assert.doesNotMatch(section, /download-button-circle|hero-purchase-note/);
+    assert.ok(section.includes('data-checksum-text tabindex="0"'));
+    const windowsSelector = section.split('data-download-platform="windows"')[1];
+    assert.ok(windowsSelector.indexOf('id="windows-download-action"') < windowsSelector.indexOf('data-download-toggle'));
+
+    assert.equal((section.match(/>arrow_outward<\/span>/g) ?? []).length, 2);
+    assert.doesNotMatch(section, />arrow_forward<\/span>/);
+
   }
 });
 
@@ -739,7 +774,8 @@ test("Windows download selection requires OS architecture hints and preserves ex
     { name: "iPhone", platform: "iPhone" },
     { name: "Linux", platform: "Linux" },
   ];
-  for (const scenario of cases) {
+  for (const windowsOnly of [false, true]) for (const scenario of cases) {
+    const expected = windowsOnly ? scenario.expected === "arm64" ? "arm64" : "x64" : scenario.expected;
     const element = (dataset = {}) => ({
       dataset, hidden: false, href: "https://apps.apple.com/us/app/sidey/id6808528060?mt=12", textContent: "", listeners: {}, attributes: {},
       classList: { toggle() {} },
@@ -757,7 +793,7 @@ test("Windows download selection requires OS architecture hints and preserves ex
     const label = element();
     const logo = element({ windowsLogo: "windows.svg", macosLogo: "macos.svg" });
     const nodes = { "[data-auto-download]": primary, "[data-download-toggle]": toggle, "[data-download-menu]": menu, "[data-download-label]": label, "[data-download-logo]": logo };
-    const selector = element();
+    const selector = element(windowsOnly ? { downloadPlatform: "windows" } : {});
     selector.querySelector = query => nodes[query];
     selector.contains = () => true;
     const navigator = { languages: ["en-US"], platform: scenario.platform ?? "Win32", userAgent: "Windows NT 10.0; Win64; x64" };
@@ -779,10 +815,18 @@ test("Windows download selection requires OS architecture hints and preserves ex
     resolveHints?.(scenario.hints);
     // Flush promises created within the VM and their rejection handler.
     await new Promise(resolve => setImmediate(resolve));
-    const expectedURL = scenario.expected === "x64" ? primary.dataset.windowsUrl : scenario.expected === "arm64" ? primary.dataset.windowsArm64Url : scenario.expected === "macos" ? primary.dataset.macosUrl : "#download";
+    const expectedURL = expected === "x64" ? primary.dataset.windowsUrl : expected === "arm64" ? primary.dataset.windowsArm64Url : expected === "macos" ? primary.dataset.macosUrl : "#download";
     assert.equal(primary.href, expectedURL, scenario.name);
-    assert.equal(label.textContent, scenario.expected === "x64" ? "Windows (x64)" : scenario.expected === "arm64" ? "Windows (ARM64)" : scenario.expected === "macos" ? "App Store" : "Choose platform", scenario.name);
-    if (!scenario.expected) {
+    assert.equal(label.textContent, expected === "x64" ? "Windows (x64)" : expected === "arm64" ? "Windows (ARM64)" : expected === "macos" ? "App Store" : "Choose platform", scenario.name);
+    if (windowsOnly) {
+      let prevented = false;
+      primary.listeners.click({ preventDefault() { prevented = true; } });
+      assert.equal(prevented, false, scenario.name);
+      assert.equal(menu.hidden, true, scenario.name);
+      toggle.listeners.click();
+      assert.equal(menu.hidden, false, scenario.name);
+    }
+    if (!expected) {
       let prevented = false;
       primary.listeners.click({ preventDefault() { prevented = true; } });
       assert.equal(prevented, true, scenario.name);

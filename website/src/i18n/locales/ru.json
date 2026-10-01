@@ -28,6 +28,8 @@
     "hero": {
       "title": "Друзья на краю экрана.",
       "description": "Ваши друзья становятся маленькими пиксельными персонажами, которые гуляют вдоль края экрана. Поглядывайте на них во время работы и отправляйте короткое сообщение, когда вспоминаете о них.",
+      "freeDownload": "Скачать SIDEY бесплатно",
+      "purchaseNote": "Есть покупки в приложении",
       "downloadsLabel": "Варианты загрузки",
       "appStoreDownload": "Скачать в App Store",
       "macDownload": "Скачать для macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "Скачать для Windows",
       "releaseNotes": "Примечания к выпуску",
       "macSystem": "macOS 26 или новее · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (сборка 17763) или новее · x64",
+      "windowsSystem": "Windows 10 1809 (сборка 17763) или новее · x64 / ARM64",
       "copyFailure": "Не удалось скопировать. Пожалуйста, выберите хэш вручную.",
       "hashCopy": "Скопировать хеш SHA-256",
       "hashCopied": "Хэш SHA-256 скопирован."
@@ -300,7 +302,7 @@
     "refund": "Политика возврата",
     "language": "Выберите язык"
   },
-  "legalNotice": "Используя официальную службу SIDEY, вы соглашаетесь с {terms} и {privacy}.",
+  "legalNotice": "Скачивая SIDEY, вы соглашаетесь с {terms} и {privacy}.",
   "policies": {
     "terms": {
       "title": "Условия использования · SIDEY",

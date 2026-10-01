@@ -174,7 +174,7 @@ main { overflow: hidden; }
 .button-text { padding-inline: .5rem; color: var(--brand-dark); background: transparent; }
 .button-text:hover { color: var(--ink); }
 .button-icon { font-size: 1.1em; line-height: 1; }
-.download-button, #windows-download-action {
+.download-button {
   min-height: 3.5rem; padding-block: .625rem; padding-inline: 1.625rem .75rem; border: .0625rem solid rgba(118, 82, 156, .28); border-radius: 62.4375rem; color: #18181b; background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); font-size: .96rem; font-weight: 680;
   @include glass(.5rem, 125%);
 
@@ -182,6 +182,9 @@ main { overflow: hidden; }
 }
 .download-button-simple { width: 100%; min-width: 0; min-height: 3rem; gap: .625rem; padding: .4375rem 1rem; font-size: .9rem; }
 .download-button-simple .download-button-label { padding: 0; }
+.hero-actions #primary-download-action { width: 100%; padding-inline: 1.75rem; }
+.hero-download-cta { width: min(100%, 14rem); }
+.hero-purchase-note { margin: .5rem 0 0; color: var(--muted); font-size: .72rem; text-align: start; }
 #windows-download-action[disabled] { cursor: not-allowed; color: #8a8990; border-color: rgba(120, 119, 130, .2); background: rgba(239, 238, 235, .68); box-shadow: none; }
 .download-button-label { padding-inline: .25rem .5rem; white-space: nowrap; }
 .download-platform-logo { flex: 0 0 auto; width: 1.125rem; height: 1.125rem; object-fit: contain; }
@@ -197,7 +200,11 @@ main { overflow: hidden; }
 .download-license-wrap:hover .download-license-tooltip, .download-license-wrap:focus-within .download-license-tooltip, .download-selector:hover .download-license-tooltip, .download-selector:focus-within .download-license-tooltip { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .download-selector { position: relative; display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) 2.625rem; }
 .download-selector .primary-download-action { border-radius: 0; border-start-start-radius: 62.4375rem; border-end-start-radius: 62.4375rem; border-inline-end: 0; }
-.download-selector .download-button-label, #windows-arm64-download-action .download-button-label { min-width: 0; white-space: normal; }
+.download-selector .download-button-label { min-width: 0; white-space: normal; }
+.windows-download-selector { width: auto; max-width: 100%; }
+.mac-app-store-link { display: inline-flex; max-width: 100%; border-radius: .625rem; }
+.mac-app-store-link img { display: block; width: auto; max-width: 100%; height: 3.5rem; }
+.windows-download-selector .download-platform-menu { width: max-content; max-width: 100%; }
 .download-selector-toggle {
   display: grid; min-width: 2.625rem; padding: 0; place-items: center; border: .0625rem solid rgba(118, 82, 156, .28); border-inline-start-color: rgba(118, 82, 156, .16); border-radius: 0; border-start-end-radius: 62.4375rem; border-end-end-radius: 62.4375rem; color: var(--ink); background: rgba(255, 255, 255, .7); box-shadow: 0 .5rem 1.125rem rgba(45, 34, 67, .12); cursor: pointer;
   @include glass(.5rem, 125%);
@@ -458,15 +465,19 @@ main { overflow: hidden; }
 .download-actions .button-text .material-symbols-rounded { font-size: 1.0625rem; }
 .system-note { margin: 1.0625rem 0 0; color: var(--muted); font-size: .75rem; }
 .download-checksum {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .375rem .625rem; margin-top: .4375rem;
+  display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: .375rem .625rem; margin-top: .4375rem;
 
   > span:first-child { color: var(--muted); font-size: .62rem; font-weight: 760; letter-spacing: .04em; }
   > .visually-hidden { position: absolute !important; }
 }
+.download-checksum + [data-windows-arm64-download] .download-checksum { margin-top: 0; }
 .checksum-value {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .3125rem; min-width: 0;
 
-  code { min-width: 0; overflow-wrap: anywhere; color: #77787e; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .6rem; line-height: 1.35; }
+  code { min-width: 0; overflow-x: auto; scrollbar-width: none; white-space: nowrap; color: #77787e; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .6rem; line-height: 1.35; }
+  code { cursor: grab; }
+  code::-webkit-scrollbar { display: none; }
+  code[data-dragging] { cursor: grabbing; user-select: none; }
   .copy-button { width: 1.75rem; min-height: 1.75rem; color: var(--muted); background: transparent; }
   .copy-button:hover { color: var(--ink); background: rgba(74, 74, 92, .08); }
   .material-symbols-rounded { font-size: 1rem; }
@@ -677,8 +688,8 @@ main { overflow: hidden; }
   .button-primary { color: #fff; background: #5b5bd6; }
   .button-primary:hover { background: #6c6ce4; }
   .button-secondary { background: var(--surface); }
-  .download-button, #windows-download-action { color: var(--ink); border-color: rgba(184, 182, 255, .28); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
-  .download-button:hover, #windows-download-action:hover { color: #fff; border-color: rgba(184, 182, 255, .5); background: rgba(47, 47, 62, .96); }
+  .download-button { color: var(--ink); border-color: rgba(184, 182, 255, .28); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
+  .download-button:hover { color: #fff; border-color: rgba(184, 182, 255, .5); background: rgba(47, 47, 62, .96); }
   .download-selector-toggle { color: var(--ink); border-color: rgba(184, 182, 255, .28); border-inline-start-color: rgba(184, 182, 255, .14); background: rgba(35, 35, 47, .82); box-shadow: 0 .5rem 1.375rem rgba(0, 0, 0, .25); }
   .download-selector-toggle:hover, .download-selector-toggle[aria-expanded="true"] { border-color: rgba(184, 182, 255, .5); background: rgba(47, 47, 62, .96); }
   .download-platform-menu { border-color: rgba(255, 255, 255, .12); background: rgba(29, 29, 39, .94); box-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, .38); }
@@ -732,5 +743,4 @@ html[dir="rtl"] {
   .policy-markdown pre, .checksum-value { direction: ltr; text-align: left; }
   .policy-markdown pre { overflow-x: auto; max-width: 100%; }
   .material-symbols-rounded { direction: ltr; }
-  .download-actions .button-text .material-symbols-rounded { transform: scaleX(-1); }
 }

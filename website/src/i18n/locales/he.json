@@ -28,6 +28,8 @@
     "hero": {
       "title": "חברים בקצה המסך שלך.",
       "description": "החברים שלך הופכים לדמויות פיקסל קטנות שמטיילות לאורך קצה המסך. אפשר להציץ תוך כדי העבודה ולשלוח הודעה קצרה כשנזכרים בהם.",
+      "freeDownload": "הורדת SIDEY בחינם",
+      "purchaseNote": "כולל רכישות בתוך האפליקציה",
       "downloadsLabel": "אפשרויות הורדה",
       "appStoreDownload": "הורדה מה-App Store",
       "macDownload": "הורדה ל-macOS",
@@ -110,7 +112,7 @@
       "windowsButton": "הורדה ל-Windows",
       "releaseNotes": "עדכוני גרסה",
       "macSystem": "macOS 26 ומעלה · Apple Silicon (arm64)",
-      "windowsSystem": "Windows 10 1809 (build 17763) או מאוחר יותר · x64",
+      "windowsSystem": "Windows 10 1809 (build 17763) או מאוחר יותר · x64 / ARM64",
       "copyFailure": "ההעתקה נכשלה. יש לסמן את ערך הגיבוב ידנית.",
       "hashCopy": "העתקת גיבוב SHA-256",
       "hashCopied": "גיבוב SHA-256 הועתק."
@@ -300,7 +302,7 @@
     "refund": "מדיניות החזר כספי",
     "language": "בחר שפה"
   },
-  "legalNotice": "השימוש בשירות הרשמי של SIDEY מהווה הסכמה ל{terms} ול{privacy}.",
+  "legalNotice": "הורדת SIDEY מהווה הסכמה ל{terms} ול{privacy}.",
   "policies": {
     "terms": {
       "title": "תנאי שימוש · SIDEY",

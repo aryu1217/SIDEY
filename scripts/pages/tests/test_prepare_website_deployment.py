@@ -74,6 +74,14 @@ class PrepareWebsiteDeploymentTests(unittest.TestCase):
         self.assertIn(self.digest, html)
         self.assertNotIn('data-windows-arm64-download hidden', html)
 
+    def test_arm64_snapshot_requires_a_matching_public_asset(self) -> None:
+        self.snapshot_data[-1]["arm64Asset"] = {
+            "url": self.url.replace("-x64-", "-arm64-"), "sha256": self.digest,
+        }
+        self.write_json(self.snapshot, self.snapshot_data)
+        with self.assertRaisesRegex(ValueError, "stable GitHub release digest"):
+            self.run_prepare()
+
     def test_arm64_feed_cannot_point_to_x64_installer(self) -> None:
         self.write_json(self.pages / "windows-arm64-latest.json", self.feed)
         with self.assertRaisesRegex(ValueError, "download URL"):

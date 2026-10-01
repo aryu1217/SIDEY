@@ -147,6 +147,12 @@ def prepare(
                     releases, repository)
     feeds: dict[str, bytes] = {}
     arm64_download = None
+    arm64_asset = latest.get("arm64Asset")
+    if arm64_asset is not None:
+        if not isinstance(arm64_asset, dict):
+            raise ValueError("Invalid published ARM64 installer snapshot")
+        verify_download(expected[0], f"windows-v{expected[0]}", arm64_asset.get("url"),
+                        arm64_asset.get("sha256"), releases, repository, "arm64")
     required_data: list[object] = []
     for relative in (*REQUIRED_FEEDS, *OPTIONAL_FEEDS):
         source = published_pages_dir / relative
@@ -161,6 +167,8 @@ def prepare(
         if architecture == "arm64":
             if current[0] != expected[0]:
                 raise ValueError("Published ARM64 feed differs from the displayed Windows version")
+            if arm64_asset is not None and current[1:] != (arm64_asset.get("url"), arm64_asset.get("sha256")):
+                raise ValueError("Published ARM64 feed differs from the shipped website snapshot")
             arm64_download = current
         if relative in REQUIRED_FEEDS:
             if current != expected:
@@ -184,12 +192,14 @@ def prepare(
             raise ValueError("Website update feed destination must not be a symlink")
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
-    if arm64_download is not None:
-        for path in output_root.glob("*/index.html"):
-            html = path.read_text(encoding="utf-8")
-            updated = apply_arm64_downloads(html, arm64_download[1], arm64_download[2])
-            if updated != html:
-                path.write_text(updated, encoding="utf-8", newline="\n")
+    for path in output_root.glob("*/index.html"):
+        html = path.read_text(encoding="utf-8")
+        updated = apply_arm64_downloads(
+            html, arm64_download[1] if arm64_download else "",
+            arm64_download[2] if arm64_download else "",
+        )
+        if updated != html:
+            path.write_text(updated, encoding="utf-8", newline="\n")
     files = validate_tree(output_root, repository)
     return {"windowsVersion": expected[0], "windowsSHA256": expected[2],
             "preservedFeeds": list(feeds), "publicFileCount": len(files)}
